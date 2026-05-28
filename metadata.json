@@ -1,0 +1,6 @@
+{
+  "name": "ExamReady",
+  "description": "Premium academic landing page for Nigerian secondary school students preparing for JAMB, WAEC, and NECO exams.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
