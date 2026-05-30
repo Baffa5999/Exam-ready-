@@ -312,7 +312,19 @@ export default function App() {
     selectedExams: ('JAMB' | 'WAEC' | 'NECO')[];
     subjects: Record<string, string[]>;
   }) => {
-    if (!currentUser || !studentProfile) return;
+    const { data: { session } } = await supabase.auth.getSession();
+
+    console.log('Current session:', session);
+    console.log('User ID:', session?.user?.id);
+    console.log('Onboarding save user object:', session?.user ?? currentUser);
+
+    const user = session?.user ?? currentUser;
+
+    if (!user) {
+      throw new Error('Please sign in again before saving onboarding.');
+    }
+
+    setCurrentUser(user);
 
     const primaryExam = onboardingData.selectedExams[0] || 'JAMB';
     const subjectList = [...new Set(Object.values(onboardingData.subjects).flat())];
@@ -320,38 +332,54 @@ export default function App() {
     const updatedAt = createdAt;
 
     const updates = {
-      id: currentUser.id,
+      id: user.id,
       full_name: onboardingData.displayName,
-      display_name: onboardingData.displayName,
       username: onboardingData.username,
-      email: currentUser.email || '',
-      exam_type: primaryExam,
       exam_types: onboardingData.selectedExams,
-      is_onboarded: true,
-      selected_exams: onboardingData.selectedExams,
       subjects: onboardingData.subjects,
       streak: 0,
-      questions_practiced: studentProfile.questionsPracticed,
-      accuracy: studentProfile.accuracy,
-      created_at: createdAt,
-      updated_at: updatedAt
+      created_at: createdAt
     };
+
+    console.log('Onboarding profile upsert payload:', updates);
 
     const { error } = await supabase
       .from('profiles')
       .upsert(updates, { onConflict: 'id' });
 
     if (error) {
+      console.log('Full error:', JSON.stringify(error, null, 2));
       console.error('Supabase profile save failed:', error);
       throw new Error('Failed saving onboarding answers to Supabase.');
     }
 
-    setStudentProfile(prev => prev ? {
-      ...prev,
+    setStudentProfile(prev => ({
+      ...(prev ?? {
+        uid: user.id,
+        displayName: onboardingData.displayName,
+        email: user.email || '',
+        examType: primaryExam,
+        targetScore: 280,
+        streak: 0,
+        questionsPracticed: 0,
+        accuracy: 70,
+        createdAt,
+        updatedAt,
+        isOnboarded: true,
+        selectedExams: onboardingData.selectedExams,
+        subjects: onboardingData.subjects,
+        targetScores: {},
+        fullName: onboardingData.displayName,
+        username: onboardingData.username,
+        examTypes: onboardingData.selectedExams,
+        subjectList,
+        targetScoreSummary: '',
+        profileExists: true
+      }),
+      uid: user.id,
       displayName: onboardingData.displayName,
-      email: currentUser.email || prev.email,
+      email: user.email || prev?.email || '',
       examType: primaryExam,
-      targetScore: prev.targetScore || 280,
       streak: 0,
       isOnboarded: true,
       selectedExams: onboardingData.selectedExams,
@@ -362,10 +390,10 @@ export default function App() {
       examTypes: onboardingData.selectedExams,
       subjectList,
       targetScoreSummary: '',
-      createdAt,
+      createdAt: prev?.createdAt || createdAt,
       updatedAt,
       profileExists: true
-    } : null);
+    }));
 
     navigateTo('dashboard', { replace: true });
     showBanner('success', '🏆 Academy account set up successfully! Welcome!');
