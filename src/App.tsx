@@ -589,303 +589,39 @@ export default function App() {
 
       {/* STUDENT DASHBOARD INTERFACE */}
       {view === 'dashboard' && studentProfile && (
-        <div className="min-h-screen bg-[#0A0F1E] flex flex-col pt-20">
-          
-          {/* Dashboard Header Bar */}
-          <header className="fixed top-0 left-0 right-0 h-20 bg-[rgba(10,15,30,0.95)] backdrop-blur-md border-b border-[rgba(255,255,255,0.06)] z-50 flex items-center justify-between px-6 md:px-12">
-            <div className="flex items-center gap-3">
-              <span className="font-heading font-bold text-xl tracking-tight">
-                Exam<span className="text-[#FF6B35]">Ready</span>
-              </span>
-              <span className="text-[10px] bg-[rgba(255,107,53,0.12)] text-[#FF6B35] px-2 py-0.5 rounded-full font-bold">
-                ACADEMY PORTAL
-              </span>
-            </div>
+        <div className="min-h-screen bg-[#0A0F1E] text-white font-sans flex flex-col">
+          <nav className="h-20 px-6 md:px-12 flex items-center justify-between border-b border-white/10 bg-[#0A0F1E]/95 backdrop-blur-md">
+            <span className="font-heading font-extrabold text-2xl tracking-tight text-white">
+              Exam<span className="text-[#FF6B35]">Ready</span>
+            </span>
+            <button
+              onClick={handleSignOut}
+              className="rounded-full border border-white/10 px-4 py-2 text-sm text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+            >
+              Sign Out
+            </button>
+          </nav>
 
-            <div className="flex items-center gap-4">
-              <div className="hidden sm:flex flex-col text-right">
-                <span className="text-xs text-[#8B9CB8]">Active Student</span>
-                <span className="text-sm font-bold text-white">{studentProfile.displayName}</span>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="hover:bg-[rgba(255,107,53,0.1)] border border-[rgba(255,255,255,0.1)] hover:border-[#FF6B35]/40 text-[#8B9CB8] hover:text-[#FF6B35] rounded-xl p-2.5 transition-all cursor-pointer"
-                title="Sign Out"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </header>
+          <main className="flex flex-1 items-center justify-center px-6 py-16">
+            <section className="w-full max-w-2xl text-center">
+              <h1 className="font-heading text-4xl md:text-6xl font-extrabold tracking-tight text-white">
+                Welcome to ExamReady
+              </h1>
+              <p className="mt-5 font-sans text-base md:text-lg text-[#8B9CB8]">
+                Your dashboard is being built. Check back soon.
+              </p>
 
-          {/* Portal Layout Grid */}
-          <main className="flex-1 max-w-7xl mx-auto w-full px-4 md:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
-            
-            {/* Column 1: Progress Indicators & Interactive controls (8 cols) */}
-            <div className="lg:col-span-8 space-y-6">
-              
-              {/* Profile welcome row */}
-              <div className="bg-gradient-to-r from-[#111827] to-[#1a2233] border border-[rgba(255,255,255,0.06)] rounded-[24px] p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
-                <div className="absolute right-0 bottom-0 translate-y-1/4 translate-x-1/4 w-44 h-44 bg-[#FF6B35] opacity-5 rounded-full blur-2xl" />
-                
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-2xl">🎓</span>
-                    <span className="text-xs font-bold text-[#FF6B35] uppercase tracking-widest">Syllabus-Aligned</span>
-                  </div>
-                  <h1 className="font-heading font-extrabold text-2xl md:text-3xl text-white mb-2 leading-tight">
-                    Welcome back, {studentProfile.displayName.split(' ')[0]}!
-                  </h1>
-                  <p className="font-sans text-sm text-[#8B9CB8] max-w-lg">
-                    Your study stats are saved securely in Supabase. Continue reading topic cheatsheets or practice daily mocks to raise your exam accuracy.
-                  </p>
-                </div>
-
-                <div className="bg-[#0A0F1E] border border-[rgba(255,255,255,0.06)] rounded-2xl p-4 flex flex-col shrink-0 items-center justify-center text-center">
-                  <span className="text-xs text-[#8B9CB8]">Target Exam</span>
-                  <span className="text-xl font-heading font-extrabold text-white mt-1">{studentProfile.examType} 2026</span>
-                  <span className="text-[10px] text-[#FF6B35]/85 bg-[rgba(255,107,53,0.12)] px-2 py-0.5 rounded-md mt-2 font-bold uppercase">
-                    Aiming {studentProfile.targetScore}
-                  </span>
-                </div>
+              <div className="mx-auto mt-10 flex h-28 w-28 items-center justify-center rounded-full bg-[#FF6B35] font-heading text-5xl font-extrabold text-white shadow-[0_24px_60px_rgba(255,107,53,0.35)]">
+                {(studentProfile.displayName || studentProfile.email || 'E').charAt(0).toUpperCase()}
               </div>
 
-              {/* Fast Exam Selector Row */}
-              <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6 font-sans">
-                <h3 className="text-sm font-heading font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                  <Target className="w-4 h-4 text-[#FF6B35]" /> Configure Your 2026 Target Exam
-                </h3>
-                <div className="grid grid-cols-3 gap-3">
-                  {(['JAMB', 'WAEC', 'NECO'] as const).map((exam) => (
-                    <button
-                      key={exam}
-                      onClick={() => handleUpdateExam(exam)}
-                      className={`py-3 px-4 rounded-xl font-bold font-heading text-sm transition-all duration-300 ${
-                        studentProfile.examType === exam
-                          ? 'bg-[#FF6B35] text-white shadow-lg shadow-[rgba(255,107,53,0.3)]'
-                          : 'bg-[#0A0F1E] hover:bg-[#ff6b35]/10 border border-[rgba(255,255,255,0.06)] text-[#8B9CB8] hover:text-white'
-                      }`}
-                    >
-                      {exam} Target
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* MOCK ARENA */}
-              <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-[24px] overflow-hidden">
-                <div className="border-b border-[rgba(255,255,255,0.06)] p-5 flex items-center justify-between bg-[rgba(255,107,53,0.02)]">
-                  <h3 className="font-heading font-bold text-lg text-white flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-[#FF6B35] animate-pulse" /> Weakness Assassin Diagnostic Arena
-                  </h3>
-
-                  <button
-                    onClick={handleSimulatePractice}
-                    className="bg-[#FF6B35] hover:bg-[#ff7c4d] text-white font-sans font-bold text-xs py-2 px-4 rounded-lg transition-all flex items-center gap-1.5"
-                  >
-                    <Zap className="w-3.5 h-3.5 fill-current" /> Auto Practice
-                  </button>
-                </div>
-
-                <div className="p-6 space-y-6">
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#0A0F1E] border border-[rgba(255,255,255,0.04)] p-4 rounded-xl">
-                    <div className="space-y-1">
-                      <span className="text-[10px] tracking-wide uppercase font-bold text-[#FF6B35] block">CURRENT LEVEL</span>
-                      <h4 className="text-sm font-bold text-white">Interactive Chemistry Syllabus Practice</h4>
-                      <p className="text-xs text-[#8B9CB8]">Question aligns with standard sub-topics on functional groups</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold bg-[#111827] px-3 py-1.5 border border-[rgba(255,255,255,0.06)] rounded-lg text-white">
-                        Subject: Chemistry
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Standard Syllabus Quiz Question block */}
-                  <div className="bg-[#0A0F1E] border border-[rgba(255,255,255,0.06)] rounded-xl p-5 space-y-4">
-                    <span className="text-xs font-bold bg-[#FF6B35]/10 text-[#FF6B35] border border-[#FF6B35]/20 px-2 py-0.5 rounded">
-                      QUESTION 12
-                    </span>
-                    <p className="text-sm md:text-base text-white/95 font-medium leading-relaxed">
-                      Which of the following organic functional groups contains a &ldquo;Carbonyl&rdquo; group bonded directly to at least one Hydrogen atom?
-                    </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                      {[
-                        'Esters (R-COOR)',
-                        'Ketones (R-CO-R)',
-                        'Aldehydes (R-CHO)',
-                        'Ethers (R-O-R)'
-                      ].map((option, idx) => {
-                        let btnStyle = "bg-[#111827] hover:bg-[#1f293d] border-[rgba(255,255,255,0.05)] text-[#8B9CB8]";
-                        if (answered) {
-                          if (idx === 2) {
-                            btnStyle = "bg-emerald-500/20 border-emerald-500/50 text-emerald-300";
-                          } else if (selectedAnswer === idx) {
-                            btnStyle = "bg-red-500/20 border-red-500/50 text-red-300";
-                          } else {
-                            btnStyle = "bg-[#111827] opacity-60 border-[rgba(255,255,255,0.05)] text-[#8B9CB8]";
-                          }
-                        }
-                        return (
-                          <button
-                            key={idx}
-                            disabled={answered}
-                            onClick={() => handleAnswerQuestion(idx)}
-                            className={`border p-3.5 rounded-xl text-left text-xs md:text-sm font-medium transition-all flex justify-between items-center ${btnStyle} ${!answered ? 'cursor-pointer hover:border-[#FF6B35]/30' : 'cursor-default'}`}
-                          >
-                            <span>{String.fromCharCode(65 + idx)}. {option}</span>
-                            {answered && idx === 2 && <span className="text-emerald-400 text-xs">Correct ✓</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {answered && (
-                      <div className="bg-[#111827] border border-[rgba(255,255,255,0.05)] p-4 rounded-xl text-xs md:text-sm text-[#8B9CB8] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
-                          <p className="text-white font-bold mb-1">Explanation:</p>
-                          <p>Aldehydes have the general structure R-CHO, meaning the carbonyl carbon (C=O) is bonded directly to at least one Hydrogen atom.</p>
-                        </div>
-                        <button
-                          onClick={handleResetQuiz}
-                          className="bg-[#0A0F1E] border border-[rgba(255,255,255,0.1)] hover:border-[#FF6B35]/40 text-white font-sans text-[11px] font-bold py-2 px-3.5 rounded-lg shrink-0 cursor-pointer"
-                        >
-                          Next Question
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                </div>
-              </div>
-
-              {/* STUDY MANUALS & STUDY SLOP / PERSISTENT NOTES EXAMPLES */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-12">
-                <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6">
-                  <h4 className="font-heading font-bold text-base text-white mb-3 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-[#FF6B35]" /> Core Syllabus Cheatsheets
-                  </h4>
-                  <ul className="space-y-3 font-sans text-xs md:text-sm text-[#8B9CB8]">
-                    <li className="flex items-center justify-between border-b border-[rgba(255,255,255,0.04)] pb-2">
-                      <span className="text-white">Mathematics: Circle Theorems</span>
-                      <span className="text-[10px] bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded">PDF Cheatsheet</span>
-                    </li>
-                    <li className="flex items-center justify-between border-b border-[rgba(255,255,255,0.04)] pb-2">
-                      <span className="text-white">Physics: Waves & Sound Motion</span>
-                      <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded">Active Summary</span>
-                    </li>
-                    <li className="flex items-center justify-between">
-                      <span className="text-white">English: Sentence Concord Rules</span>
-                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded">Full Revision</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6">
-                  <h4 className="font-heading font-bold text-base text-white mb-3 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-[#FF6B35]" /> Active Arena Competitors
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center text-[10px] font-bold">1</div>
-                        <span className="text-xs text-white">Chukwudi O.</span>
-                      </div>
-                      <span className="text-[10px] text-[#8B9CB8]">93% Acc. / Anambra</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-[#FF6B35]/20 text-[#FF6B35] rounded-full flex items-center justify-center text-[10px] font-bold">2</div>
-                        <span className="text-xs text-white">Amina K.</span>
-                      </div>
-                      <span className="text-[10px] text-[#8B9CB8]">89% Acc. / Kano</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-purple-500/20 text-purple-400 rounded-full flex items-center justify-center text-[10px] font-bold">3</div>
-                        <span className="text-xs text-white">Fatima M.</span>
-                      </div>
-                      <span className="text-[10px] text-[#8B9CB8]">84% Acc. / Kaduna</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Column 2: Statistics Sidebar (4 cols) */}
-            <div className="lg:col-span-4 space-y-6">
-              
-              {/* Student Profile Card */}
-              <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-[24px] p-6 text-center relative overflow-hidden">
-                <div className="w-16 h-16 mx-auto bg-gradient-to-tr from-[#FF6B35] to-[#FF9500] rounded-full flex items-center justify-center text-xl font-heading font-extrabold text-white mb-3 shadow-[0_0_20px_rgba(255,107,53,0.3)]">
-                  {studentProfile.displayName.charAt(0).toUpperCase()}
-                </div>
-                
-                <h3 className="text-lg font-heading font-extrabold text-white leading-snug">{studentProfile.displayName}</h3>
-                <p className="text-xs text-[#8B9CB8] mt-1">{studentProfile.email}</p>
-
-                {/* Supabase session indicator status */}
-                <div className="mt-4 inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-full">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Signed in with Google</span>
-                </div>
-              </div>
-
-              {/* Supabase-backed study stats */}
-              <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-[24px] p-6 space-y-4">
-                <h4 className="text-xs font-heading font-bold text-white uppercase tracking-widest border-b border-[rgba(255,255,255,0.04)] pb-3">
-                  Study Metrics
-                </h4>
-
-                <div className="space-y-3">
-                  {/* Streak Card */}
-                  <div className="flex justify-between items-center bg-[#0A0F1E] p-3 rounded-xl border border-[rgba(255,255,255,0.02)]">
-                    <div className="flex items-center gap-2 text-xs">
-                      <Flame className="w-4 h-4 text-[#FF6B35] fill-current" />
-                      <span className="text-[#8B9CB8]">Study Streak</span>
-                    </div>
-                    <span className="font-heading font-extrabold text-white text-sm">{studentProfile.streak}🔥</span>
-                  </div>
-
-                  {/* Questions Practiced */}
-                  <div className="flex justify-between items-center bg-[#0A0F1E] p-3 rounded-xl border border-[rgba(255,255,255,0.02)]">
-                    <div className="flex items-center gap-2 text-xs">
-                      <CheckCircle className="w-4 h-4 text-[#FF6B35]" />
-                      <span className="text-[#8B9CB8]">Questions Solved</span>
-                    </div>
-                    <span className="font-heading font-extrabold text-white text-sm">{studentProfile.questionsPracticed} / 10K+</span>
-                  </div>
-
-                  {/* Accuracy Rate */}
-                  <div className="flex justify-between items-center bg-[#0A0F1E] p-3 rounded-xl border border-[rgba(255,255,255,0.02)]">
-                    <div className="flex items-center gap-2 text-xs">
-                      <Award className="w-4 h-4 text-[#FF6B35]" />
-                      <span className="text-[#8B9CB8]">Syllabus Accuracy</span>
-                    </div>
-                    <span className="font-heading font-extrabold text-[#FF6B35] text-sm">{studentProfile.accuracy}%</span>
-                  </div>
-                </div>
-
-                <p className="text-[10px] text-[#8B9CB8] text-center leading-relaxed">
-                  These metrics save to your Supabase profile.
-                </p>
-              </div>
-
-              {/* Study helper tip */}
-              <div className="bg-gradient-to-br from-[#111827] to-[rgba(255,107,53,0.04)] border border-[#FF6B35]/10 rounded-[20px] p-5 space-y-2">
-                <span className="text-xs font-bold text-[#FF6B35]">🚀 Study Tip of the Day</span>
-                <p className="text-xs text-[#8B9CB8] leading-relaxed">
-                  Syllabus requirements for JAMB Literature stress reading set-books in depth. Practice 15 mock questions on poetry today to retain terms!
-                </p>
-              </div>
-
-            </div>
-
+              <p className="mt-5 font-sans text-sm text-[#8B9CB8]">
+                {studentProfile.email}
+              </p>
+            </section>
           </main>
         </div>
       )}
-
 
       {/* ONBOARDING FLOW */}
       {view === 'onboarding' && studentProfile && (
