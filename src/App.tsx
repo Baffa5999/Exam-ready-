@@ -52,19 +52,21 @@ interface StudentProfile {
   profileExists?: boolean;
 }
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard';
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'authCallback';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
   signin: '/signin',
   onboarding: '/onboarding',
-  dashboard: '/dashboard'
+  dashboard: '/dashboard',
+  authCallback: '/auth/callback'
 };
 
 function pathToView(pathname: string): AppView {
   if (pathname === '/signin') return 'signin';
   if (pathname === '/onboarding') return 'onboarding';
   if (pathname === '/dashboard') return 'dashboard';
+  if (pathname === '/auth/callback') return 'authCallback';
   return 'landing';
 }
 
@@ -194,7 +196,7 @@ export default function App() {
     const isProtectedRoute = view === 'onboarding' || view === 'dashboard';
 
     if (!currentUser) {
-      if (isProtectedRoute) {
+      if (isProtectedRoute || view === 'authCallback') {
         navigateTo('landing', { replace: true });
       }
       return;
@@ -204,7 +206,7 @@ export default function App() {
 
     const intendedSignedInView = studentProfile.profileExists === false ? 'onboarding' : 'dashboard';
 
-    if (isPublicRoute) {
+    if (isPublicRoute || view === 'authCallback') {
       navigateTo(intendedSignedInView, { replace: true });
       return;
     }
@@ -438,7 +440,7 @@ export default function App() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/onboarding`
+        redirectTo: new URL(viewToPath.authCallback, window.location.origin).toString()
       }
     });
 
@@ -484,12 +486,12 @@ export default function App() {
     setQuizScore(null);
   };
 
-  if (!authReady && loading) {
+  if ((!authReady && loading) || view === 'authCallback') {
     return (
       <div className="min-h-screen bg-[#0A0F1E] text-white font-sans flex items-center justify-center">
         <div className="flex items-center gap-3 text-sm text-[#8B9CB8]">
           <RefreshCw className="w-5 h-5 text-[#FF6B35] animate-spin" />
-          Preparing your ExamReady session...
+          Completing Google sign in...
         </div>
       </div>
     );
