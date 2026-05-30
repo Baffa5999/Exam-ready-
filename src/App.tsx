@@ -20,11 +20,13 @@ import {
   ArrowRight,
   Sparkles,
   RefreshCw,
-  FileText
+  FileText,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
 
-// Google Fonts link inside styles
+// Fonts link inside styles
 const fontStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;700&display=swap');
 `;
@@ -52,21 +54,19 @@ interface StudentProfile {
   profileExists?: boolean;
 }
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'authCallback';
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
   signin: '/signin',
   onboarding: '/onboarding',
-  dashboard: '/dashboard',
-  authCallback: '/auth/callback'
+  dashboard: '/dashboard'
 };
 
 function pathToView(pathname: string): AppView {
   if (pathname === '/signin') return 'signin';
   if (pathname === '/onboarding') return 'onboarding';
   if (pathname === '/dashboard') return 'dashboard';
-  if (pathname === '/auth/callback') return 'authCallback';
   return 'landing';
 }
 
@@ -78,6 +78,10 @@ export default function App() {
   const [authReady, setAuthReady] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [practiceActive, setPracticeActive] = useState<boolean>(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authForm, setAuthForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
+  const [authErrors, setAuthErrors] = useState<Partial<Record<'fullName' | 'email' | 'password' | 'confirmPassword' | 'general', string>>>({});
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
@@ -116,67 +120,8 @@ export default function App() {
       await fetchOrInitializeProfile(user);
     };
 
-    const completeAuthCallback = async () => {
-      const params = new URLSearchParams(window.location.search);
-
-      if (params.has('code')) {
-        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
-        if (error) {
-          console.error('Supabase OAuth callback exchange failed:', error);
-          showBanner('error', 'Unable to complete Google sign in. Please try again.');
-        } else {
-          window.history.replaceState({}, document.title, viewToPath.authCallback);
-        }
-      }
-
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      console.log('Supabase auth callback session:', sessionData.session);
-
-      if (!isMounted) return;
-
-      if (sessionError) {
-        console.error('Supabase callback session lookup failed:', sessionError);
-        showBanner('error', 'Unable to restore your Google session. Please sign in again.');
-        setCurrentUser(null);
-        setStudentProfile(null);
-        navigateTo('landing', { replace: true });
-        return;
-      }
-
-      if (sessionData.session?.user) {
-        await handleAuthenticatedUser(sessionData.session.user);
-        return;
-      }
-
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      console.log('Supabase auth callback user:', userData.user);
-
-      if (userError) {
-        console.error('Supabase callback user lookup failed:', userError);
-      }
-
-      if (userData.user) {
-        await handleAuthenticatedUser(userData.user);
-        return;
-      }
-
-      setCurrentUser(null);
-      setStudentProfile(null);
-      navigateTo('landing', { replace: true });
-    };
-
     const initializeSession = async () => {
       setLoading(true);
-
-      if (window.location.pathname === viewToPath.authCallback) {
-        await completeAuthCallback();
-        if (isMounted) {
-          setLoading(false);
-          setAuthReady(true);
-        }
-        return;
-      }
-
       const { data, error } = await supabase.auth.getSession();
 
       if (!isMounted) return;
@@ -204,10 +149,6 @@ export default function App() {
 
       window.setTimeout(async () => {
         if (!isMounted) return;
-
-        if (window.location.pathname === viewToPath.authCallback && !session?.user) {
-          return;
-        }
 
         setLoading(true);
         if (session?.user) {
@@ -247,7 +188,7 @@ export default function App() {
     const isProtectedRoute = view === 'onboarding' || view === 'dashboard';
 
     if (!currentUser) {
-      if (isProtectedRoute || view === 'authCallback') {
+      if (isProtectedRoute) {
         navigateTo('landing', { replace: true });
       }
       return;
@@ -257,7 +198,7 @@ export default function App() {
 
     const intendedSignedInView = studentProfile.profileExists === false ? 'onboarding' : 'dashboard';
 
-    if (isPublicRoute || view === 'authCallback') {
+    if (isPublicRoute) {
       navigateTo(intendedSignedInView, { replace: true });
       return;
     }
@@ -485,21 +426,174 @@ export default function App() {
     showBanner('success', '🔥 Study session saved! 15 syllabus questions completed.');
   };
 
-  // Handle Supabase Google authentication triggers.
-  const handleGoogleSignIn = async () => {
+  const resetAuthFormMessages = () => {
+    setAuthErrors({});
+    setStatusMessage(null);
+  };
+
+  const updateAuthField = (field: keyof typeof authForm, value: string) => {
+    setAuthForm(prev => ({ ...prev, [field]: value }));
+    setAuthErrors(prev => ({ ...prev, [field]: undefined, general: undefined }));
+  };
+
+  const getPasswordStrength = () => {
+    if (!authForm.password) return null;
+    if (authForm.password.length < 6) return { label: 'Weak', className: 'text-red-400 bg-red-500' };
+    if (authForm.password.length >= 10 && /[A-Za-z]/.test(authForm.password) && /\d/.test(authForm.password)) {
+      return { label: 'Strong', className: 'text-emerald-400 bg-emerald-500' };
+    }
+    return { label: 'Fair', className: 'text-[#FF6B35] bg-[#FF6B35]' };
+  };
+
+  const mapSignInError = (message: string) => {
+    const normalized = message.toLowerCase();
+    if (normalized.includes('not found') || normalized.includes('user not found')) {
+      setAuthErrors({ email: 'No account found with this email.' });
+      return;
+    }
+    if (normalized.includes('invalid') || normalized.includes('credentials') || normalized.includes('password')) {
+      setAuthErrors({ password: 'Incorrect password. Please try again.' });
+      return;
+    }
+    setAuthErrors({ general: message || 'Unable to sign in. Please try again.' });
+  };
+
+  const mapSignUpError = (message: string) => {
+    const normalized = message.toLowerCase();
+    if (normalized.includes('registered') || normalized.includes('already') || normalized.includes('exists')) {
+      setAuthErrors({ email: 'An account with this email already exists. Sign in instead.' });
+      return;
+    }
+    if (normalized.includes('password')) {
+      setAuthErrors({ password: 'Password must be at least 6 characters.' });
+      return;
+    }
+    setAuthErrors({ general: message || 'Unable to create your account. Please try again.' });
+  };
+
+  const handleEmailSignIn = async () => {
+    resetAuthFormMessages();
+    const email = authForm.email.trim();
+
+    if (!email) {
+      setAuthErrors({ email: 'Enter your email.' });
+      return;
+    }
+    if (!authForm.password) {
+      setAuthErrors({ password: 'Enter your password.' });
+      return;
+    }
+
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: authForm.password
+    });
+
+    if (error) {
+      mapSignInError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      setCurrentUser(data.user);
+      await fetchOrInitializeProfile(data.user);
+    }
+    setLoading(false);
+  };
+
+  const handleEmailSignUp = async () => {
+    resetAuthFormMessages();
+    const fullName = authForm.fullName.trim();
+    const email = authForm.email.trim();
+
+    if (!fullName) {
+      setAuthErrors({ fullName: 'Enter your full name.' });
+      return;
+    }
+    if (!email) {
+      setAuthErrors({ email: 'Enter your email.' });
+      return;
+    }
+    if (authForm.password.length < 6) {
+      setAuthErrors({ password: 'Password must be at least 6 characters.' });
+      return;
+    }
+    if (authForm.password !== authForm.confirmPassword) {
+      setAuthErrors({ confirmPassword: 'Passwords do not match.' });
+      return;
+    }
+
+    setLoading(true);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: authForm.password,
       options: {
-        redirectTo: new URL(viewToPath.authCallback, window.location.origin).toString()
+        data: {
+          full_name: fullName,
+          display_name: fullName
+        }
       }
     });
 
     if (error) {
-      console.error('Supabase Google sign in failed:', error);
-      showBanner('error', 'A Google sign in error occurred. Please try again.');
+      mapSignUpError(error.message);
       setLoading(false);
+      return;
     }
+
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      setAuthErrors({ email: 'An account with this email already exists. Sign in instead.' });
+      setLoading(false);
+      return;
+    }
+
+    let signedInUser = data.session?.user || data.user || null;
+
+    if (!data.session) {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: authForm.password
+      });
+
+      if (signInError) {
+        mapSignUpError(signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      signedInUser = signInData.user;
+    }
+
+    if (signedInUser) {
+      const now = new Date().toISOString();
+      setCurrentUser(signedInUser);
+      setStudentProfile({
+        uid: signedInUser.id,
+        displayName: fullName,
+        email: signedInUser.email || email,
+        examType: 'JAMB',
+        targetScore: 280,
+        streak: 1,
+        questionsPracticed: 0,
+        accuracy: 70,
+        createdAt: now,
+        updatedAt: now,
+        isOnboarded: false,
+        selectedExams: [],
+        subjects: {},
+        targetScores: {},
+        fullName,
+        examTypes: [],
+        subjectList: [],
+        targetScoreSummary: '',
+        profileExists: false
+      });
+      navigateTo('onboarding', { replace: true });
+    }
+
+    setLoading(false);
   };
 
   const handleSignOut = async () => {
@@ -537,12 +631,12 @@ export default function App() {
     setQuizScore(null);
   };
 
-  if ((!authReady && loading) || view === 'authCallback') {
+  if (!authReady && loading) {
     return (
       <div className="min-h-screen bg-[#0A0F1E] text-white font-sans flex items-center justify-center">
         <div className="flex items-center gap-3 text-sm text-[#8B9CB8]">
           <RefreshCw className="w-5 h-5 text-[#FF6B35] animate-spin" />
-          Completing Google sign in...
+          Preparing your ExamReady session...
         </div>
       </div>
     );
@@ -569,74 +663,166 @@ export default function App() {
 
       {/* SIGN IN VIEW */}
       {view === 'signin' && (
-        <div className="min-h-screen flex items-center justify-center relative bg-[#0A0F1E] px-4">
-          
-          {/* Centered Orange Radial Glow effect */}
-          <div className="absolute w-[450px] h-[450px] rounded-full bg-[radial-gradient(rgba(255,107,53,0.18),transparent_70%)] blur-2xl pointer-events-none z-0" />
-          
-          <div className="w-full max-w-md bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-[28px] p-8 md:p-10 shadow-[0_45px_100px_rgba(0,0,0,0.7),0_0_85px_rgba(255,107,53,0.05)] text-center relative z-10 animate-fade-up">
-            
-            {/* Logo */}
-            <div className="flex items-center justify-center mb-6">
-              <span className="font-heading font-extrabold text-[26px] tracking-tight">
+        <div className="min-h-screen flex items-center justify-center relative bg-[#0A0F1E] px-4 py-10">
+          <div className="absolute w-[520px] h-[520px] rounded-full bg-[radial-gradient(rgba(255,107,53,0.18),transparent_70%)] blur-3xl pointer-events-none z-0" />
+
+          <div className="w-full max-w-md bg-[#111827]/95 border border-white/10 rounded-[28px] p-8 md:p-10 shadow-[0_45px_100px_rgba(0,0,0,0.7),0_0_85px_rgba(255,107,53,0.08)] relative z-10 animate-fade-up">
+            <div className="text-center mb-8">
+              <span className="font-heading font-extrabold text-[28px] tracking-tight text-white">
                 Exam<span className="text-[#FF6B35]">Ready</span>
               </span>
             </div>
 
-            {/* Title heading */}
-            <h2 className="font-heading font-extrabold text-2xl md:text-3xl text-white tracking-tight mb-2">
-              Welcome Back
-            </h2>
-            
-            {/* Description */}
-            <p className="font-sans text-sm text-[#8B9CB8] mb-8 max-w-xs mx-auto">
-              Sign in to continue your exam preparation.
-            </p>
-
-            {/* Google sign-in button */}
-            <button
-              id="google-signin-btn"
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full bg-[#111827] hover:bg-[#1a2233] border border-[rgba(255,255,255,0.12)] text-white font-sans font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-[0_0_25px_rgba(255,107,53,0.22)] active:scale-98 cursor-pointer disabled:opacity-50"
-            >
-              {loading ? (
-                <RefreshCw className="w-5 h-5 text-[#FF6B35] animate-spin" />
-              ) : (
-                <span className="flex items-center gap-2">
-                  <span className="text-xl">🇳🇬</span>
-                  Continue with Google
-                </span>
-              )}
-            </button>
-
-            {/* Legal / Policy */}
-            <p className="font-sans text-[11px] text-[#8B9CB8]/80 mt-6 leading-relaxed">
-              By signing in you agree to our <a href="#terms" className="text-[#FF6B35] underline hover:text-[#ff7c4d] transition-colors">Terms</a> and <a href="#privacy" className="text-[#FF6B35] underline hover:text-[#ff7c4d] transition-colors">Privacy Policy</a>.
-            </p>
-
-            {/* Close / Return Button */}
-            <div className="mt-8 pt-4 border-t border-[rgba(255,255,255,0.05)]">
+            <div className="grid grid-cols-2 gap-4 mb-8 border-b border-white/10">
               <button
-                onClick={() => navigateTo('landing')}
-                className="font-sans text-xs text-[#8B9CB8] hover:text-[#FF6B35] tracking-wide uppercase transition-colors"
+                type="button"
+                onClick={() => {
+                  setAuthMode('signin');
+                  resetAuthFormMessages();
+                }}
+                className={`pb-3 font-heading text-sm font-bold transition-colors border-b-2 ${authMode === 'signin' ? 'border-[#FF6B35] text-white' : 'border-transparent text-[#8B9CB8] hover:text-white'}`}
               >
-                ← Return to Landing Page
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('signup');
+                  resetAuthFormMessages();
+                }}
+                className={`pb-3 font-heading text-sm font-bold transition-colors border-b-2 ${authMode === 'signup' ? 'border-[#FF6B35] text-white' : 'border-transparent text-[#8B9CB8] hover:text-white'}`}
+              >
+                Sign Up
               </button>
             </div>
 
-          </div>
+            <div className="text-center mb-8">
+              <h2 className="font-heading font-extrabold text-2xl md:text-3xl text-white tracking-tight mb-2">
+                {authMode === 'signin' ? 'Welcome Back' : 'Create Account'}
+              </h2>
+              <p className="font-sans text-sm text-[#8B9CB8] max-w-xs mx-auto">
+                {authMode === 'signin'
+                  ? 'Sign in to continue your preparation.'
+                  : 'Join thousands of students preparing for JAMB, WAEC and NECO.'}
+              </p>
+            </div>
 
-          {/* Bottom built banner */}
-          <div className="absolute bottom-8 text-center w-full">
-            <p className="font-sans text-xs text-[#8B9CB8]/65">
-              Built for Nigerian Students 🇳🇬
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (authMode === 'signin') {
+                  handleEmailSignIn();
+                } else {
+                  handleEmailSignUp();
+                }
+              }}
+            >
+              {authMode === 'signup' && (
+                <div>
+                  <input
+                    type="text"
+                    value={authForm.fullName}
+                    onChange={(event) => updateAuthField('fullName', event.target.value)}
+                    placeholder="Enter your full name"
+                    className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15),0_0_28px_rgba(255,107,53,0.18)]"
+                  />
+                  {authErrors.fullName && <p className="mt-2 text-xs text-red-400">{authErrors.fullName}</p>}
+                </div>
+              )}
+
+              <div>
+                <input
+                  type="email"
+                  value={authForm.email}
+                  onChange={(event) => updateAuthField('email', event.target.value)}
+                  placeholder="Enter your email"
+                  className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15),0_0_28px_rgba(255,107,53,0.18)]"
+                />
+                {authErrors.email && <p className="mt-2 text-xs text-red-400">{authErrors.email}</p>}
+              </div>
+
+              <div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={authForm.password}
+                    onChange={(event) => updateAuthField('password', event.target.value)}
+                    placeholder={authMode === 'signin' ? 'Enter your password' : 'Create a password'}
+                    className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 pr-12 font-sans text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15),0_0_28px_rgba(255,107,53,0.18)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8B9CB8] hover:text-[#FF6B35]"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {authErrors.password && <p className="mt-2 text-xs text-red-400">{authErrors.password}</p>}
+
+                {authMode === 'signin' ? (
+                  <div className="mt-2 text-right">
+                    <button type="button" className="font-sans text-xs font-semibold text-[#FF6B35] hover:text-[#ff7c4d]">
+                      Forgot password?
+                    </button>
+                  </div>
+                ) : (
+                  authForm.password && (() => {
+                    const strength = getPasswordStrength();
+                    return strength ? (
+                      <div className="mt-3">
+                        <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                          <div className={`h-full rounded-full ${strength.className.split(' ')[1]} ${strength.label === 'Weak' ? 'w-1/3' : strength.label === 'Fair' ? 'w-2/3' : 'w-full'}`} />
+                        </div>
+                        <p className={`mt-1 text-xs font-semibold ${strength.className.split(' ')[0]}`}>{strength.label}</p>
+                      </div>
+                    ) : null;
+                  })()
+                )}
+              </div>
+
+              {authMode === 'signup' && (
+                <div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={authForm.confirmPassword}
+                    onChange={(event) => updateAuthField('confirmPassword', event.target.value)}
+                    placeholder="Confirm your password"
+                    className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15),0_0_28px_rgba(255,107,53,0.18)]"
+                  />
+                  {authErrors.confirmPassword && <p className="mt-2 text-xs text-red-400">{authErrors.confirmPassword}</p>}
+                </div>
+              )}
+
+              {authErrors.general && <p className="text-sm text-red-400">{authErrors.general}</p>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-2xl bg-[#FF6B35] px-6 py-4 font-sans text-sm font-bold text-white transition hover:bg-[#ff7c4d] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? 'Please wait...' : authMode === 'signin' ? 'Sign In' : 'Create Account'}
+              </button>
+            </form>
+
+            <p className="mt-6 text-center font-sans text-sm text-[#8B9CB8]">
+              {authMode === 'signin' ? "Don't have an account " : 'Already have an account '}
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+                  resetAuthFormMessages();
+                }}
+                className="font-semibold text-[#FF6B35] hover:text-[#ff7c4d]"
+              >
+                {authMode === 'signin' ? 'Create one' : 'Sign In'}
+              </button>
             </p>
           </div>
-
         </div>
       )}
-
 
       {/* STUDENT DASHBOARD INTERFACE */}
       {view === 'dashboard' && studentProfile && (
