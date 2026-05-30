@@ -52,15 +52,42 @@ interface StudentProfile {
   profileExists?: boolean;
 }
 
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard';
+
+const viewToPath: Record<AppView, string> = {
+  landing: '/',
+  signin: '/signin',
+  onboarding: '/onboarding',
+  dashboard: '/dashboard'
+};
+
+function pathToView(pathname: string): AppView {
+  if (pathname === '/signin') return 'signin';
+  if (pathname === '/onboarding') return 'onboarding';
+  if (pathname === '/dashboard') return 'dashboard';
+  return 'landing';
+}
+
 export default function App() {
-  // Navigation views: 'landing' | 'signin' | 'onboarding' | 'dashboard'
-  const [view, setView] = useState<'landing' | 'signin' | 'onboarding' | 'dashboard'>('landing');
+  const [view, setView] = useState<AppView>(() => pathToView(window.location.pathname));
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [authReady, setAuthReady] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [practiceActive, setPracticeActive] = useState<boolean>(false);
+
+  const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
+    const nextPath = viewToPath[nextView];
+    if (window.location.pathname !== nextPath) {
+      if (options.replace) {
+        window.history.replaceState({}, '', nextPath);
+      } else {
+        window.history.pushState({}, '', nextPath);
+      }
+    }
+    setView(nextView);
+  };
   
   // Quiz states
   const [quizScore, setQuizScore] = useState<number | null>(null);
@@ -68,7 +95,17 @@ export default function App() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answered, setAnswered] = useState<boolean>(false);
 
-  // Monitor Supabase authentication and route signed-in users by profile status.
+  // Keep the in-app view synchronized with browser navigation.
+  useEffect(() => {
+    const handlePopState = () => {
+      setView(pathToView(window.location.pathname));
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Monitor Supabase authentication and load the matching profile, if one exists.
   useEffect(() => {
     let isMounted = true;
 
@@ -100,13 +137,11 @@ export default function App() {
         showBanner('error', 'Unable to restore your session. Please sign in again.');
         setCurrentUser(null);
         setStudentProfile(null);
-        setView('landing');
       } else if (data.session?.user) {
         await handleAuthenticatedUser(data.session.user);
       } else {
         setCurrentUser(null);
         setStudentProfile(null);
-        setView(current => (current === 'dashboard' || current === 'onboarding' ? 'landing' : current));
       }
 
       if (isMounted) {
@@ -127,7 +162,6 @@ export default function App() {
         } else {
           setCurrentUser(null);
           setStudentProfile(null);
-          setView('landing');
         }
         if (isMounted) {
           setLoading(false);
@@ -152,12 +186,36 @@ export default function App() {
     }, 5000);
   };
 
-  // A signed-in user should never remain on public landing/sign-in screens.
+  // Enforce route guards for all public and protected routes.
   useEffect(() => {
-    if (!authReady || !currentUser) return;
+    if (!authReady) return;
 
-    if ((view === 'landing' || view === 'signin') && studentProfile) {
-      setView(studentProfile.profileExists === false ? 'onboarding' : 'dashboard');
+    const isPublicRoute = view === 'landing' || view === 'signin';
+    const isProtectedRoute = view === 'onboarding' || view === 'dashboard';
+
+    if (!currentUser) {
+      if (isProtectedRoute) {
+        navigateTo('landing', { replace: true });
+      }
+      return;
+    }
+
+    if (!studentProfile) return;
+
+    const intendedSignedInView = studentProfile.profileExists === false ? 'onboarding' : 'dashboard';
+
+    if (isPublicRoute) {
+      navigateTo(intendedSignedInView, { replace: true });
+      return;
+    }
+
+    if (view === 'dashboard' && studentProfile.profileExists === false) {
+      navigateTo('onboarding', { replace: true });
+      return;
+    }
+
+    if (view === 'onboarding' && studentProfile.profileExists) {
+      navigateTo('dashboard', { replace: true });
     }
   }, [authReady, currentUser, studentProfile, view]);
 
@@ -211,7 +269,7 @@ export default function App() {
     if (data) {
       const profile = buildProfileFromSupabase(user, data);
       setStudentProfile(profile);
-      setView('dashboard');
+      navigateTo('dashboard', { replace: true });
       return;
     }
 
@@ -237,7 +295,7 @@ export default function App() {
       targetScoreSummary: '',
       profileExists: false
     });
-    setView('onboarding');
+    navigateTo('onboarding', { replace: true });
   };
 
   // Saved answers handler from premium onboarding screen.
@@ -302,7 +360,7 @@ export default function App() {
       profileExists: true
     } : null);
 
-    setView('dashboard');
+    navigateTo('dashboard', { replace: true });
     showBanner('success', '🏆 Academy account set up successfully! Welcome!');
   };
 
@@ -380,7 +438,7 @@ export default function App() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: `${window.location.origin}/onboarding`
       }
     });
 
@@ -404,7 +462,7 @@ export default function App() {
 
     setCurrentUser(null);
     setStudentProfile(null);
-    setView('landing');
+    navigateTo('landing', { replace: true });
     showBanner('success', 'Logged out successfully. Good luck studying!');
     setLoading(false);
   };
@@ -507,7 +565,7 @@ export default function App() {
             {/* Close / Return Button */}
             <div className="mt-8 pt-4 border-t border-[rgba(255,255,255,0.05)]">
               <button
-                onClick={() => setView('landing')}
+                onClick={() => navigateTo('landing')}
                 className="font-sans text-xs text-[#8B9CB8] hover:text-[#FF6B35] tracking-wide uppercase transition-colors"
               >
                 ← Return to Landing Page
@@ -854,7 +912,7 @@ export default function App() {
             <div>
               <button 
                 id="signin-btn"
-                onClick={() => setView('signin')}
+                onClick={() => navigateTo('signin')}
                 className="border border-[rgba(255,107,53,0.4)] text-[#FF6B35] font-sans font-medium text-sm rounded-full py-2 px-5 transition-all duration-300 hover:bg-[#FF6B35] hover:text-white cursor-pointer"
               >
                 Sign In
@@ -897,7 +955,7 @@ export default function App() {
                 <div className="flex flex-wrap gap-4 w-full sm:w-auto">
                   <button 
                     id="cta-practice" 
-                    onClick={() => setView('signin')}
+                    onClick={() => navigateTo('signin')}
                     className="bg-[#FF6B35] hover:bg-[#ff7c4d] text-white font-sans font-bold py-3.5 px-7 rounded-xl transition-all duration-300 shadow-md hover:shadow-[0_0_20px_rgba(255,107,53,0.4)] active:scale-95 text-center w-full sm:w-auto cursor-pointer"
                   >
                     Start Practicing Free
@@ -1331,7 +1389,7 @@ export default function App() {
               <div className="flex flex-col items-center gap-4 mb-8">
                 <button 
                   id="cta-start-free-btn"
-                  onClick={() => setView('signin')}
+                  onClick={() => navigateTo('signin')}
                   className="bg-[#FF6B35] hover:bg-[#ff7c4d] text-white font-sans font-bold text-base md:text-lg py-4 px-8 rounded-xl transition-all duration-300 shadow-md hover:shadow-[0_0_25px_rgba(255,107,53,0.6)] hover:scale-[1.02] active:scale-95 cursor-pointer inline-flex items-center gap-2"
                 >
                   Get Started Free <span className="text-xl">→</span>
