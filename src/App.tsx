@@ -5,26 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  auth, 
-  db, 
-  googleProvider, 
-  OperationType, 
-  handleFirestoreError 
-} from './firebase';
-import { 
-  signInWithPopup, 
-  signOut, 
-  onAuthStateChanged,
-  User as FirebaseUser
-} from 'firebase/auth';
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc,
-  serverTimestamp
-} from 'firebase/firestore';
-import { 
   LogOut, 
   Flame, 
   CheckCircle, 
@@ -47,6 +27,12 @@ const fontStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;700&display=swap');
 `;
 
+interface LocalUser {
+  uid: string;
+  displayName: string;
+  email: string;
+}
+
 // Student profile interface
 interface StudentProfile {
   uid: string;
@@ -68,7 +54,7 @@ interface StudentProfile {
 export default function App() {
   // Navigation views: 'landing' | 'signin' | 'onboarding' | 'dashboard'
   const [view, setView] = useState<'landing' | 'signin' | 'onboarding' | 'dashboard'>('landing');
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<LocalUser | null>(null);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -80,25 +66,10 @@ export default function App() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answered, setAnswered] = useState<boolean>(false);
 
-  // Monitor Firebase Auth changes
+  // Initialize the app without an external session provider.
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setLoading(true);
-      if (user) {
-        setCurrentUser(user);
-        await fetchOrInitializeProfile(user);
-      } else {
-        setCurrentUser(null);
-        setStudentProfile(null);
-        if (view === 'dashboard' || view === 'onboarding') {
-          setView('landing');
-        }
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [view]);
+    setLoading(false);
+  }, []);
 
   // Show dynamic banner messages
   const showBanner = (type: 'success' | 'error', text: string) => {
@@ -108,72 +79,31 @@ export default function App() {
     }, 5000);
   };
 
-  // Create or load profile in Firestore
-  const fetchOrInitializeProfile = async (user: FirebaseUser) => {
-    const userRef = doc(db, 'users', user.uid);
-    try {
-      const snap = await getDoc(userRef);
-      if (snap.exists()) {
-        const data = snap.data();
-        const profile: StudentProfile = {
-          uid: data.uid,
-          displayName: data.displayName || user.displayName || 'Nigerian Student',
-          email: data.email || user.email || '',
-          examType: data.examType || 'JAMB',
-          targetScore: data.targetScore || 280,
-          streak: data.streak || 1,
-          questionsPracticed: data.questionsPracticed || 0,
-          accuracy: data.accuracy || 70,
-          createdAt: data.createdAt && typeof data.createdAt.toDate === 'function' 
-            ? data.createdAt.toDate().toISOString() 
-            : (data.createdAt || new Date().toISOString()),
-          updatedAt: data.updatedAt && typeof data.updatedAt.toDate === 'function' 
-            ? data.updatedAt.toDate().toISOString() 
-            : (data.updatedAt || new Date().toISOString()),
-          isOnboarded: data.isOnboarded || false,
-          selectedExams: data.selectedExams || [],
-          subjects: data.subjects || {},
-          targetScores: data.targetScores || {}
-        };
-        setStudentProfile(profile);
-        if (data.isOnboarded) {
-          setView('dashboard');
-        } else {
-          setView('onboarding');
-        }
-      } else {
-        // Initial draft of a new student profile, not yet onboarded
-        const newProfile: any = {
-          uid: user.uid,
-          displayName: user.displayName || '',
-          email: user.email || '',
-          examType: 'JAMB',
-          targetScore: 280,
-          streak: 1,
-          questionsPracticed: 0,
-          accuracy: 70,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          isOnboarded: false,
-          selectedExams: [],
-          subjects: {},
-          targetScores: {}
-        };
-        await setDoc(userRef, newProfile);
-        setStudentProfile({
-          ...newProfile,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        } as unknown as StudentProfile);
-        setView('onboarding');
-      }
-    } catch (err) {
-      handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
-      showBanner('error', 'Could not sync with Academy database: missing permissions or offline.');
-    }
+  // Create a local placeholder profile so the app can run without a backend.
+  const fetchOrInitializeProfile = (user: LocalUser) => {
+    const now = new Date().toISOString();
+    const profile: StudentProfile = {
+      uid: user.uid,
+      displayName: user.displayName || 'Nigerian Student',
+      email: user.email || '',
+      examType: 'JAMB',
+      targetScore: 280,
+      streak: 1,
+      questionsPracticed: 0,
+      accuracy: 70,
+      createdAt: now,
+      updatedAt: now,
+      isOnboarded: false,
+      selectedExams: [],
+      subjects: {},
+      targetScores: {}
+    };
+
+    setStudentProfile(profile);
+    setView('onboarding');
   };
 
-  // Saved answers handler from premium onboarding screen
+  // Saved answers handler from premium onboarding screen.
   const handleOnboardingComplete = async (onboardingData: {
     displayName: string;
     selectedExams: ('JAMB' | 'WAEC' | 'NECO')[];
@@ -181,129 +111,84 @@ export default function App() {
     targetScores: Record<string, string | number>;
   }) => {
     if (!currentUser || !studentProfile) return;
-    const userRef = doc(db, 'users', currentUser.uid);
 
     // Primary default exam/score for backward compatibility
     const primaryExam = onboardingData.selectedExams[0] || 'JAMB';
     const primaryTargetScore = onboardingData.targetScores[primaryExam] || (primaryExam === 'JAMB' ? 280 : 'B2');
 
-    try {
-      await updateDoc(userRef, {
-        displayName: onboardingData.displayName,
-        examType: primaryExam,
-        targetScore: primaryTargetScore,
-        isOnboarded: true,
-        selectedExams: onboardingData.selectedExams,
-        subjects: onboardingData.subjects,
-        targetScores: onboardingData.targetScores,
-        updatedAt: serverTimestamp()
-      });
+    setStudentProfile(prev => prev ? {
+      ...prev,
+      displayName: onboardingData.displayName,
+      examType: primaryExam,
+      targetScore: primaryTargetScore,
+      isOnboarded: true,
+      selectedExams: onboardingData.selectedExams,
+      subjects: onboardingData.subjects,
+      targetScores: onboardingData.targetScores,
+      updatedAt: new Date().toISOString()
+    } : null);
 
-      setStudentProfile(prev => prev ? {
-        ...prev,
-        displayName: onboardingData.displayName,
-        examType: primaryExam,
-        targetScore: primaryTargetScore,
-        isOnboarded: true,
-        selectedExams: onboardingData.selectedExams,
-        subjects: onboardingData.subjects,
-        targetScores: onboardingData.targetScores,
-        updatedAt: new Date().toISOString()
-      } : null);
-
-      setView('dashboard');
-      showBanner('success', '🏆 Academy account set up successfully! Welcome!');
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `users/${currentUser.uid}`);
-      showBanner('error', 'Failed saving premium onboarding answers.');
-    }
+    setView('dashboard');
+    showBanner('success', '🏆 Academy account set up successfully! Welcome!');
   };
 
-  // Update target exam & related default score goals
-  const handleUpdateExam = async (exam: 'JAMB' | 'WAEC' | 'NECO') => {
+  // Update target exam & related default score goals.
+  const handleUpdateExam = (exam: 'JAMB' | 'WAEC' | 'NECO') => {
     if (!currentUser || !studentProfile) return;
-    const userRef = doc(db, 'users', currentUser.uid);
     // JAMB target score generally 200-400, WAEC/NECO are aggregates / grades (A1/B2)
     const targetScore = exam === 'JAMB' ? 280 : 85; 
 
-    try {
-      await updateDoc(userRef, {
-        examType: exam,
-        targetScore,
-        updatedAt: serverTimestamp()
-      });
-      setStudentProfile(prev => prev ? { 
-        ...prev, 
-        examType: exam, 
-        targetScore, 
-        updatedAt: new Date().toISOString() 
-      } : null);
-      showBanner('success', `🎯 Goal changed to ${exam} 2026. Keep Studying!`);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `users/${currentUser.uid}`);
-      showBanner('error', 'Failed updating profile in Firestore.');
-    }
+    setStudentProfile(prev => prev ? { 
+      ...prev, 
+      examType: exam, 
+      targetScore, 
+      updatedAt: new Date().toISOString() 
+    } : null);
+    showBanner('success', `🎯 Goal changed to ${exam} 2026. Keep Studying!`);
   };
 
-  // Handle mock study sessions
-  const handleSimulatePractice = async () => {
+  // Handle mock study sessions.
+  const handleSimulatePractice = () => {
     if (!currentUser || !studentProfile) return;
-    const userRef = doc(db, 'users', currentUser.uid);
     
-    // Simulate updating study telemetry
+    // Simulate updating study telemetry locally.
     const newQuestions = studentProfile.questionsPracticed + 15;
     const newStreak = studentProfile.streak + (Math.random() > 0.7 ? 1 : 0);
     const newAccuracy = Math.min(100, Math.max(50, studentProfile.accuracy + (Math.random() > 0.5 ? 2 : -1)));
 
-    try {
-      await updateDoc(userRef, {
-        questionsPracticed: newQuestions,
-        streak: newStreak,
-        accuracy: newAccuracy,
-        updatedAt: serverTimestamp()
-      });
-      
-      setStudentProfile(prev => prev ? {
-        ...prev,
-        questionsPracticed: newQuestions,
-        streak: newStreak,
-        accuracy: newAccuracy,
-        updatedAt: new Date().toISOString()
-      } : null);
-      
-      showBanner('success', '🔥 Study session saved! 15 syllabus questions completed.');
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `users/${currentUser.uid}`);
-      showBanner('error', 'Failed updating practice metrics inside Firestore.');
-    }
+    setStudentProfile(prev => prev ? {
+      ...prev,
+      questionsPracticed: newQuestions,
+      streak: newStreak,
+      accuracy: newAccuracy,
+      updatedAt: new Date().toISOString()
+    } : null);
+    
+    showBanner('success', '🔥 Study session saved locally! 15 syllabus questions completed.');
   };
 
-  // Handle authentication triggers
-  const handleGoogleSignIn = async () => {
+  // Handle placeholder session triggers.
+  const handlePlaceholderSignIn = () => {
     setLoading(true);
-    try {
-      await signInWithPopup(auth, googleProvider);
-      showBanner('success', 'Welcome into ExamReady!');
-    } catch (err) {
-      console.error('Google Sign In Failed: ', err);
-      showBanner('error', 'A connection error occurred. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    const placeholderUser: LocalUser = {
+      uid: 'local-student',
+      displayName: 'Nigerian Student',
+      email: ''
+    };
+
+    setCurrentUser(placeholderUser);
+    fetchOrInitializeProfile(placeholderUser);
+    showBanner('success', 'Welcome into ExamReady!');
+    setLoading(false);
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
     setLoading(true);
-    try {
-      await signOut(auth);
-      setView('landing');
-      showBanner('success', 'Logged out successfully. Good luck studying!');
-    } catch (err) {
-      console.error('Sign Out Failed: ', err);
-      showBanner('error', 'Failed signing out.');
-    } finally {
-      setLoading(false);
-    }
+    setCurrentUser(null);
+    setStudentProfile(null);
+    setView('landing');
+    showBanner('success', 'Logged out successfully. Good luck studying!');
+    setLoading(false);
   };
 
   // Staggered mock question helper
@@ -368,10 +253,10 @@ export default function App() {
               Sign in to continue your exam preparation.
             </p>
 
-            {/* Google Authentication Button */}
+            {/* Placeholder sign-in button */}
             <button
-              id="google-signin-btn"
-              onClick={handleGoogleSignIn}
+              id="placeholder-signin-btn"
+              onClick={handlePlaceholderSignIn}
               disabled={loading}
               className="w-full bg-[#111827] hover:bg-[#1a2233] border border-[rgba(255,255,255,0.12)] text-white font-sans font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-[0_0_25px_rgba(255,107,53,0.22)] active:scale-98 cursor-pointer disabled:opacity-50"
             >
@@ -380,7 +265,7 @@ export default function App() {
               ) : (
                 <span className="flex items-center gap-2">
                   <span className="text-xl">🇳🇬</span>
-                  Continue with Google
+                  Continue
                 </span>
               )}
             </button>
@@ -413,7 +298,7 @@ export default function App() {
       )}
 
 
-      {/* AUTHENTICATED STUDENT DASHBOARD INTERFACE */}
+      {/* STUDENT DASHBOARD INTERFACE */}
       {view === 'dashboard' && studentProfile && (
         <div className="min-h-screen bg-[#0A0F1E] flex flex-col pt-20">
           
@@ -462,7 +347,7 @@ export default function App() {
                     Welcome back, {studentProfile.displayName.split(' ')[0]}!
                   </h1>
                   <p className="font-sans text-sm text-[#8B9CB8] max-w-lg">
-                    Your database stats are synced via Firebase. Continue reading topic cheatsheets or practice daily mocks to raise your exam accuracy.
+                    Your study stats update locally while you use the app. Continue reading topic cheatsheets or practice daily mocks to raise your exam accuracy.
                   </p>
                 </div>
 
@@ -639,10 +524,10 @@ export default function App() {
 
             </div>
 
-            {/* Column 2: Synchronized Statistics Sidebar (4 cols) */}
+            {/* Column 2: Statistics Sidebar (4 cols) */}
             <div className="lg:col-span-4 space-y-6">
               
-              {/* Authenticated Student Profile Card */}
+              {/* Student Profile Card */}
               <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-[24px] p-6 text-center relative overflow-hidden">
                 <div className="w-16 h-16 mx-auto bg-gradient-to-tr from-[#FF6B35] to-[#FF9500] rounded-full flex items-center justify-center text-xl font-heading font-extrabold text-white mb-3 shadow-[0_0_20px_rgba(255,107,53,0.3)]">
                   {studentProfile.displayName.charAt(0).toUpperCase()}
@@ -651,17 +536,17 @@ export default function App() {
                 <h3 className="text-lg font-heading font-extrabold text-white leading-snug">{studentProfile.displayName}</h3>
                 <p className="text-xs text-[#8B9CB8] mt-1">{studentProfile.email}</p>
 
-                {/* Firestore Real-Time Indicator status */}
+                {/* Local session indicator status */}
                 <div className="mt-4 inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-full">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Verified via Google Auth</span>
+                  <span>Local session active</span>
                 </div>
               </div>
 
-              {/* Firestore database synced stats */}
+              {/* Local study stats */}
               <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-[24px] p-6 space-y-4">
                 <h4 className="text-xs font-heading font-bold text-white uppercase tracking-widest border-b border-[rgba(255,255,255,0.04)] pb-3">
-                  Firebase Synced Metrics
+                  Study Metrics
                 </h4>
 
                 <div className="space-y-3">
@@ -694,7 +579,7 @@ export default function App() {
                 </div>
 
                 <p className="text-[10px] text-[#8B9CB8] text-center leading-relaxed">
-                  These metrics save instantaneously onto Cloud Firestore database instances.
+                  These metrics update in the current local session.
                 </p>
               </div>
 
