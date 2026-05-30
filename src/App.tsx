@@ -116,18 +116,65 @@ export default function App() {
       await fetchOrInitializeProfile(user);
     };
 
-    const initializeSession = async () => {
-      setLoading(true);
-
+    const completeAuthCallback = async () => {
       const params = new URLSearchParams(window.location.search);
+
       if (params.has('code')) {
         const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
         if (error) {
           console.error('Supabase OAuth callback exchange failed:', error);
           showBanner('error', 'Unable to complete Google sign in. Please try again.');
         } else {
-          window.history.replaceState({}, document.title, window.location.pathname);
+          window.history.replaceState({}, document.title, viewToPath.authCallback);
         }
+      }
+
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      console.log('Supabase auth callback session:', sessionData.session);
+
+      if (!isMounted) return;
+
+      if (sessionError) {
+        console.error('Supabase callback session lookup failed:', sessionError);
+        showBanner('error', 'Unable to restore your Google session. Please sign in again.');
+        setCurrentUser(null);
+        setStudentProfile(null);
+        navigateTo('landing', { replace: true });
+        return;
+      }
+
+      if (sessionData.session?.user) {
+        await handleAuthenticatedUser(sessionData.session.user);
+        return;
+      }
+
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      console.log('Supabase auth callback user:', userData.user);
+
+      if (userError) {
+        console.error('Supabase callback user lookup failed:', userError);
+      }
+
+      if (userData.user) {
+        await handleAuthenticatedUser(userData.user);
+        return;
+      }
+
+      setCurrentUser(null);
+      setStudentProfile(null);
+      navigateTo('landing', { replace: true });
+    };
+
+    const initializeSession = async () => {
+      setLoading(true);
+
+      if (window.location.pathname === viewToPath.authCallback) {
+        await completeAuthCallback();
+        if (isMounted) {
+          setLoading(false);
+          setAuthReady(true);
+        }
+        return;
       }
 
       const { data, error } = await supabase.auth.getSession();
@@ -157,6 +204,10 @@ export default function App() {
 
       window.setTimeout(async () => {
         if (!isMounted) return;
+
+        if (window.location.pathname === viewToPath.authCallback && !session?.user) {
+          return;
+        }
 
         setLoading(true);
         if (session?.user) {
