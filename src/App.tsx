@@ -248,6 +248,8 @@ export default function App() {
   };
 
   const sendUserToOnboarding = (user: User) => {
+    // A missing or unreadable profile means this is still an onboarding flow, not a user-facing error.
+    setStatusMessage(null);
     const now = new Date().toISOString();
     setStudentProfile({
       uid: user.id,
@@ -275,6 +277,8 @@ export default function App() {
 
   // Load the signed-in user's Supabase profile and route them to onboarding when none exists.
   const fetchOrInitializeProfile = async (user: User) => {
+    setStatusMessage(null);
+
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
