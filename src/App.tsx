@@ -82,6 +82,7 @@ export default function App() {
   const [authForm, setAuthForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
   const [authErrors, setAuthErrors] = useState<Partial<Record<'fullName' | 'email' | 'password' | 'confirmPassword' | 'general', string>>>({});
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string>('');
 
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
@@ -246,27 +247,7 @@ export default function App() {
     };
   };
 
-  // Load the signed-in user's Supabase profile and route them to onboarding when none exists.
-  const fetchOrInitializeProfile = async (user: User) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Supabase profile lookup failed:', error);
-      showBanner('error', 'Unable to load your Supabase profile. Please try again.');
-      return;
-    }
-
-    if (data) {
-      const profile = buildProfileFromSupabase(user, data);
-      setStudentProfile(profile);
-      navigateTo('dashboard', { replace: true });
-      return;
-    }
-
+  const sendUserToOnboarding = (user: User) => {
     const now = new Date().toISOString();
     setStudentProfile({
       uid: user.id,
@@ -290,6 +271,30 @@ export default function App() {
       profileExists: false
     });
     navigateTo('onboarding', { replace: true });
+  };
+
+  // Load the signed-in user's Supabase profile and route them to onboarding when none exists.
+  const fetchOrInitializeProfile = async (user: User) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Supabase profile lookup failed; routing signed-in user to onboarding:', error);
+      sendUserToOnboarding(user);
+      return;
+    }
+
+    if (data) {
+      const profile = buildProfileFromSupabase(user, data);
+      setStudentProfile(profile);
+      navigateTo('dashboard', { replace: true });
+      return;
+    }
+
+    sendUserToOnboarding(user);
   };
 
   // Saved answers handler from premium onboarding screen.
@@ -431,6 +436,11 @@ export default function App() {
     setStatusMessage(null);
   };
 
+  const resetAuthConfirmation = () => {
+    setPendingConfirmationEmail('');
+    resetAuthFormMessages();
+  };
+
   const updateAuthField = (field: keyof typeof authForm, value: string) => {
     setAuthForm(prev => ({ ...prev, [field]: value }));
     setAuthErrors(prev => ({ ...prev, [field]: undefined, general: undefined }));
@@ -491,7 +501,11 @@ export default function App() {
     });
 
     if (error) {
-      mapSignInError(error.message);
+      if (error.message.toLowerCase().includes('email not confirmed')) {
+        setPendingConfirmationEmail(email);
+      } else {
+        mapSignInError(error.message);
+      }
       setLoading(false);
       return;
     }
@@ -530,6 +544,7 @@ export default function App() {
       email,
       password: authForm.password,
       options: {
+        emailRedirectTo: `${window.location.origin}/onboarding`,
         data: {
           full_name: fullName,
           display_name: fullName
@@ -549,50 +564,38 @@ export default function App() {
       return;
     }
 
-    let signedInUser = data.session?.user || data.user || null;
+    if (data.session?.user) {
+      setCurrentUser(data.session.user);
+      sendUserToOnboarding(data.session.user);
+    } else {
+      setPendingConfirmationEmail(email);
+      setAuthForm({ fullName: '', email, password: '', confirmPassword: '' });
+    }
 
-    if (!data.session) {
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password: authForm.password
-      });
+    setLoading(false);
+  };
 
-      if (signInError) {
-        mapSignUpError(signInError.message);
-        setLoading(false);
-        return;
+  const handleResendConfirmationEmail = async () => {
+    if (!pendingConfirmationEmail) return;
+
+    resetAuthFormMessages();
+    setLoading(true);
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: pendingConfirmationEmail,
+      options: {
+        emailRedirectTo: `${window.location.origin}/onboarding`
       }
+    });
 
-      signedInUser = signInData.user;
+    if (error) {
+      console.error('Supabase confirmation resend failed:', error);
+      setAuthErrors({ general: 'Unable to resend the confirmation email. Please try again.' });
+      setLoading(false);
+      return;
     }
 
-    if (signedInUser) {
-      const now = new Date().toISOString();
-      setCurrentUser(signedInUser);
-      setStudentProfile({
-        uid: signedInUser.id,
-        displayName: fullName,
-        email: signedInUser.email || email,
-        examType: 'JAMB',
-        targetScore: 280,
-        streak: 1,
-        questionsPracticed: 0,
-        accuracy: 70,
-        createdAt: now,
-        updatedAt: now,
-        isOnboarded: false,
-        selectedExams: [],
-        subjects: {},
-        targetScores: {},
-        fullName,
-        examTypes: [],
-        subjectList: [],
-        targetScoreSummary: '',
-        profileExists: false
-      });
-      navigateTo('onboarding', { replace: true });
-    }
-
+    showBanner('success', 'Confirmation email sent again. Please check your inbox.');
     setLoading(false);
   };
 
@@ -673,12 +676,46 @@ export default function App() {
               </span>
             </div>
 
+            {pendingConfirmationEmail ? (
+              <div className="text-center py-4">
+                <div className="mb-5 text-6xl" aria-hidden="true">📧</div>
+                <h2 className="font-heading font-extrabold text-3xl text-white tracking-tight mb-3">
+                  Check your email
+                </h2>
+                <p className="font-sans text-sm leading-6 text-[#8B9CB8]">
+                  We sent a confirmation link to <span className="font-semibold text-white">{pendingConfirmationEmail}</span>. Click the link to activate your account and get started.
+                </p>
+                <p className="mt-5 font-sans text-xs leading-5 text-[#8B9CB8]">
+                  Did not receive it? Check your spam folder or click Resend Email.
+                </p>
+                {authErrors.general && <p className="mt-4 text-sm text-red-400">{authErrors.general}</p>}
+                <button
+                  type="button"
+                  onClick={handleResendConfirmationEmail}
+                  disabled={loading}
+                  className="mt-6 w-full rounded-2xl bg-[#FF6B35] px-6 py-4 font-sans text-sm font-bold text-white transition hover:bg-[#ff7c4d] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? 'Sending...' : 'Resend Email'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin');
+                    resetAuthConfirmation();
+                  }}
+                  className="mt-4 font-sans text-xs font-semibold text-[#FF6B35] hover:text-[#ff7c4d]"
+                >
+                  Back to Sign In
+                </button>
+              </div>
+            ) : (
+              <>
             <div className="grid grid-cols-2 gap-4 mb-8 border-b border-white/10">
               <button
                 type="button"
                 onClick={() => {
                   setAuthMode('signin');
-                  resetAuthFormMessages();
+                  resetAuthConfirmation();
                 }}
                 className={`pb-3 font-heading text-sm font-bold transition-colors border-b-2 ${authMode === 'signin' ? 'border-[#FF6B35] text-white' : 'border-transparent text-[#8B9CB8] hover:text-white'}`}
               >
@@ -688,7 +725,7 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setAuthMode('signup');
-                  resetAuthFormMessages();
+                  resetAuthConfirmation();
                 }}
                 className={`pb-3 font-heading text-sm font-bold transition-colors border-b-2 ${authMode === 'signup' ? 'border-[#FF6B35] text-white' : 'border-transparent text-[#8B9CB8] hover:text-white'}`}
               >
@@ -813,13 +850,15 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
-                  resetAuthFormMessages();
+                  resetAuthConfirmation();
                 }}
                 className="font-semibold text-[#FF6B35] hover:text-[#ff7c4d]"
               >
                 {authMode === 'signin' ? 'Create one' : 'Sign In'}
               </button>
             </p>
+              </>
+            )}
           </div>
         </div>
       )}
