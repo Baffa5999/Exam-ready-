@@ -197,19 +197,20 @@ export default function App() {
 
     if (!studentProfile) return;
 
-    const intendedSignedInView = studentProfile.profileExists === false ? 'onboarding' : 'dashboard';
+    const hasSupabaseProfile = studentProfile.profileExists === true;
+    const intendedSignedInView = hasSupabaseProfile ? 'dashboard' : 'onboarding';
 
     if (isPublicRoute) {
       navigateTo(intendedSignedInView, { replace: true });
       return;
     }
 
-    if (view === 'dashboard' && studentProfile.profileExists === false) {
+    if (view === 'dashboard' && !hasSupabaseProfile) {
       navigateTo('onboarding', { replace: true });
       return;
     }
 
-    if (view === 'onboarding' && studentProfile.profileExists) {
+    if (view === 'onboarding' && hasSupabaseProfile) {
       navigateTo('dashboard', { replace: true });
     }
   }, [authReady, currentUser, studentProfile, view]);
@@ -286,7 +287,7 @@ export default function App() {
       .maybeSingle();
 
     if (error) {
-      console.error('Supabase profile lookup failed; routing signed-in user to onboarding:', error);
+      console.info('Supabase profile was not available, continuing with onboarding:', error);
       sendUserToOnboarding(user);
       return;
     }
