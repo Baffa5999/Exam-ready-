@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Check, BookOpen, GraduationCap, Trophy, ChevronDown, Sparkles, LogOut } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { ArrowLeft, Check, LogOut, Rocket } from 'lucide-react';
 
 interface OnboardingProps {
   initialName: string;
@@ -13,7 +13,7 @@ interface OnboardingProps {
   onSignOut: () => void;
 }
 
-const ALL_SUBJECTS = [
+const SUBJECTS = [
   'Mathematics',
   'English Language',
   'Biology',
@@ -26,128 +26,150 @@ const ALL_SUBJECTS = [
   'Geography'
 ];
 
+const EXAMS: Array<{
+  id: 'JAMB' | 'WAEC' | 'NECO';
+  title: string;
+  description: string;
+}> = [
+  {
+    id: 'JAMB',
+    title: 'JAMB',
+    description: 'Joint Admissions and Matriculation Board'
+  },
+  {
+    id: 'WAEC',
+    title: 'WAEC',
+    description: 'West African Examinations Council'
+  },
+  {
+    id: 'NECO',
+    title: 'NECO',
+    description: 'National Examinations Council'
+  }
+];
+
 const GRADES = ['A1', 'B2', 'B3', 'C4', 'C5', 'C6'];
 
 export default function Onboarding({ initialName, onComplete, onSignOut }: OnboardingProps) {
   const [step, setStep] = useState<number>(1);
-  const [direction, setDirection] = useState<number>(1); // 1 for next, -1 for back
+  const [direction, setDirection] = useState<number>(1);
   const [name, setName] = useState<string>(initialName || '');
-
-  // Step 2 Selection States
   const [selectedExams, setSelectedExams] = useState<('JAMB' | 'WAEC' | 'NECO')[]>([]);
-  const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({
-    JAMB: false,
-    WAEC: false,
-    NECO: false
-  });
   const [examSubjects, setExamSubjects] = useState<Record<string, string[]>>({
     JAMB: [],
     WAEC: [],
     NECO: []
   });
-
-  // Step 3 Selection States
-  const [jambTarget, setJambTarget] = useState<string>('280');
+  const [jambTarget, setJambTarget] = useState<string>('');
   const [waecTarget, setWaecTarget] = useState<string>('B2');
   const [necoTarget, setNecoTarget] = useState<string>('B2');
-
   const [saving, setSaving] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Animation variants for smooth slide transitions (left to right)
   const slideVariants = {
     enter: (dir: number) => ({
-      x: dir > 0 ? 300 : -300,
+      x: dir > 0 ? 120 : -120,
       opacity: 0
     }),
     center: {
       x: 0,
       opacity: 1,
       transition: {
-        x: { type: 'spring', stiffness: 300, damping: 30 },
+        x: { type: 'spring', stiffness: 280, damping: 30 },
         opacity: { duration: 0.2 }
       }
     },
     exit: (dir: number) => ({
-      x: dir > 0 ? -300 : 300,
+      x: dir > 0 ? -120 : 120,
       opacity: 0,
       transition: {
-        x: { type: 'spring', stiffness: 300, damping: 30 },
-        opacity: { duration: 0.2 }
+        x: { type: 'spring', stiffness: 280, damping: 30 },
+        opacity: { duration: 0.18 }
       }
     })
   };
 
-  const handleNextStep = () => {
+  const canContinueStepOne = name.trim().length > 0;
+  const canContinueStepTwo = selectedExams.length > 0 && selectedExams.every(exam => examSubjects[exam].length > 0);
+
+  const goToStep = (nextStep: number) => {
+    setErrorMsg(null);
+    setDirection(nextStep > step ? 1 : -1);
+    setStep(nextStep);
+  };
+
+  const handleContinue = () => {
     if (step === 1) {
-      if (!name.trim()) return;
-      setDirection(1);
-      setStep(2);
-    } else if (step === 2) {
+      if (!canContinueStepOne) return;
+      goToStep(2);
+      return;
+    }
+
+    if (step === 2) {
       if (selectedExams.length === 0) {
         setErrorMsg('Please select at least one exam to prepare for.');
         return;
       }
-      // Check if they selected subjects for each chosen exam
-      const missingSubjects = selectedExams.some(exam => examSubjects[exam].length === 0);
-      if (missingSubjects) {
+
+      if (!canContinueStepTwo) {
         setErrorMsg('Please select at least one subject for each selected exam.');
         return;
       }
-      setErrorMsg(null);
-      setDirection(1);
-      setStep(3);
+
+      goToStep(3);
     }
   };
 
-  const handlePrevStep = () => {
-    setErrorMsg(null);
-    setDirection(-1);
-    setStep(prev => Math.max(1, prev - 1));
+  const handleBack = () => {
+    if (step === 1) return;
+    goToStep(step - 1);
   };
 
   const toggleExam = (exam: 'JAMB' | 'WAEC' | 'NECO') => {
     setErrorMsg(null);
     setSelectedExams(prev => {
-      const isSelected = prev.includes(exam);
-      if (isSelected) {
-        // Remove exam
-        const updated = prev.filter(e => e !== exam);
-        setOpenDropdowns(d => ({ ...d, [exam]: false }));
-        return updated;
-      } else {
-        // Add exam and open the subject dropdown automatically
-        const updated = [...prev, exam];
-        setOpenDropdowns(d => ({ ...d, [exam]: true }));
-        return updated;
+      if (prev.includes(exam)) {
+        setExamSubjects(subjects => ({
+          ...subjects,
+          [exam]: []
+        }));
+        return prev.filter(item => item !== exam);
       }
+
+      return [...prev, exam];
     });
   };
 
-  const toggleSubject = (exam: string, subject: string) => {
+  const toggleSubject = (exam: 'JAMB' | 'WAEC' | 'NECO', subject: string) => {
     setErrorMsg(null);
     setExamSubjects(prev => {
       const current = prev[exam] || [];
-      const updated = current.includes(subject)
-        ? current.filter(s => s !== subject)
-        : [...current, subject];
-      return { ...prev, [exam]: updated };
+      return {
+        ...prev,
+        [exam]: current.includes(subject)
+          ? current.filter(item => item !== subject)
+          : [...current, subject]
+      };
     });
   };
 
-  const toggleDropdown = (exam: string) => {
-    setOpenDropdowns(prev => ({
-      ...prev,
-      [exam]: !prev[exam]
-    }));
+  const getTargetScore = () => {
+    if (selectedExams.includes('JAMB')) {
+      const parsedScore = parseInt(jambTarget, 10);
+      return Number.isNaN(parsedScore) ? '' : parsedScore;
+    }
+
+    if (selectedExams.includes('WAEC')) return waecTarget;
+    if (selectedExams.includes('NECO')) return necoTarget;
+    return '';
   };
 
   const handleFinish = async () => {
     setErrorMsg(null);
-    // Validate Step 3 Inputs
+
     if (selectedExams.includes('JAMB')) {
       const score = parseInt(jambTarget, 10);
-      if (isNaN(score) || score < 180 || score > 400) {
+      if (Number.isNaN(score) || score < 180 || score > 400) {
         setErrorMsg('Please enter a valid JAMB target score between 180 and 400.');
         return;
       }
@@ -162,9 +184,11 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
         finalSubjects[exam] = examSubjects[exam];
         if (exam === 'JAMB') {
           finalTargetScores[exam] = parseInt(jambTarget, 10);
-        } else if (exam === 'WAEC') {
+        }
+        if (exam === 'WAEC') {
           finalTargetScores[exam] = waecTarget;
-        } else if (exam === 'NECO') {
+        }
+        if (exam === 'NECO') {
           finalTargetScores[exam] = necoTarget;
         }
       });
@@ -175,98 +199,275 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
         subjects: finalSubjects,
         targetScores: finalTargetScores
       });
-    } catch (err: any) {
-      console.error(err);
-      setErrorMsg(err.message || 'An error occurred while saving your profile. Please try again.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An error occurred while saving your profile. Please try again.';
+      setErrorMsg(message);
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#0A0F1E] text-white font-sans flex flex-col relative select-none">
-      
-      {/* Decorative radial background glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-[radial-gradient(rgba(255,107,53,0.1),transparent_70%)] blur-3xl pointer-events-none z-0" />
+  const renderProgress = () => (
+    <div className="flex items-center justify-center gap-3 pt-8 pb-10">
+      {[1, 2, 3].map(item => {
+        const isActive = item === step;
+        const isCompleted = item < step;
 
-      {/* Top Header Row / Navigation */}
-      <header className="w-full max-w-5xl mx-auto px-6 py-6 flex items-center justify-between relative z-10">
-        <div className="flex items-center gap-3">
-          <GraduationCap className="w-8 h-8 text-[#FF6B35]" />
-          <span className="font-heading font-extrabold text-2xl tracking-tight">
-            Exam<span className="text-[#FF6B35]">Ready</span>
-          </span>
+        return (
+          <div
+            key={item}
+            className={`h-3 w-3 rounded-full transition-all duration-300 ${
+              isActive || isCompleted
+                ? 'bg-[#FF6B35] shadow-[0_0_20px_rgba(255,107,53,0.45)]'
+                : 'bg-slate-600'
+            } ${isActive ? 'scale-125' : ''}`}
+            aria-label={`Step ${item}${isActive ? ' active' : isCompleted ? ' completed' : ' upcoming'}`}
+          />
+        );
+      })}
+    </div>
+  );
+
+  const renderStepOne = () => (
+    <section className="flex min-h-[calc(100vh-168px)] flex-col justify-center px-6 pb-28">
+      <div className="mx-auto w-full max-w-xl space-y-8 text-center">
+        <div className="space-y-3">
+          <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-5xl">
+            What should we call you?
+          </h1>
+          <p className="font-sans text-base leading-7 text-[#8B9CB8]">
+            This is how you will appear on the leaderboard and in battles.
+          </p>
         </div>
-        <button
-          onClick={onSignOut}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm border border-white/5 bg-[#111827] hover:bg-[#1f293d]/80 text-gray-400 hover:text-white transition-all cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
-        </button>
-      </header>
 
-      {/* Onboarding Centered Panel Card */}
-      <main className="flex-1 max-w-2xl w-full mx-auto px-4 md:px-6 flex flex-col justify-center pb-24 relative z-10">
-        
-        {/* Step dots Progress indicator at the top with line details */}
-        <div className="flex items-center justify-center gap-4 mb-10">
-          {[1, 2, 3].map((s) => {
-            const isActive = step === s;
-            const isCompleted = step > s;
+        <input
+          type="text"
+          value={name}
+          onChange={(event) => {
+            setName(event.target.value);
+            setErrorMsg(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && canContinueStepOne) {
+              handleContinue();
+            }
+          }}
+          placeholder="Enter your full name"
+          className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
+        />
+
+        <button
+          type="button"
+          onClick={handleContinue}
+          disabled={!canContinueStepOne}
+          className={`w-full rounded-2xl px-6 py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
+            canContinueStepOne
+              ? 'bg-[#FF6B35] text-white shadow-[0_18px_40px_rgba(255,107,53,0.32)] hover:bg-[#ff7c4d]'
+              : 'cursor-not-allowed bg-[#FF6B35]/25 text-white/40'
+          }`}
+        >
+          Continue
+        </button>
+      </div>
+    </section>
+  );
+
+  const renderStepTwo = () => (
+    <section className="flex min-h-[calc(100vh-168px)] flex-col px-6 pb-32">
+      <div className="mx-auto w-full max-w-2xl flex-1 space-y-7">
+        <div className="space-y-3 text-center">
+          <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-5xl">
+            Which exams are you preparing for?
+          </h1>
+          <p className="font-sans text-base text-[#8B9CB8]">
+            You can select more than one.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {EXAMS.map(exam => {
+            const isSelected = selectedExams.includes(exam.id);
+            const selectedCount = examSubjects[exam.id].length;
+
             return (
-              <React.Fragment key={s}>
-                {/* Step Circle */}
-                <div className="flex flex-col items-center">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-heading font-extrabold text-sm border-2 transition-all duration-500 shadow-lg ${
-                      isCompleted 
-                        ? 'bg-[#FF6B35] border-[#FF6B35] text-white' 
-                        : isActive 
-                        ? 'border-[#FF6B35] text-[#FF6B35] scale-110 shadow-[#FF6B35]/25 bg-amber-500/5' 
-                        : 'border-gray-700 text-gray-500 bg-transparent'
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <Check className="w-5 h-5 stroke-[3]" />
-                    ) : (
-                      s
-                    )}
+              <div key={exam.id} className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => toggleExam(exam.id)}
+                  className={`relative w-full rounded-3xl border bg-[#111827] p-5 text-left transition-all duration-300 ${
+                    isSelected
+                      ? 'border-[#FF6B35] shadow-[0_0_28px_rgba(255,107,53,0.16)]'
+                      : 'border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div className="pr-12">
+                    <h2 className="font-heading text-2xl font-extrabold text-white">{exam.title}</h2>
+                    <p className="mt-1 font-sans text-sm text-[#8B9CB8]">{exam.description}</p>
                   </div>
-                  <span className={`text-[10px] mt-2 font-heading font-bold uppercase tracking-wider ${
-                    isActive ? 'text-[#FF6B35]' : 'text-gray-500'
-                  }`}>
-                    {s === 1 ? 'Name' : s === 2 ? 'Exams' : 'Targets'}
-                  </span>
-                </div>
-                
-                {/* Connecting Line */}
-                {s < 3 && (
-                  <div className="flex-1 max-w-[60px] h-[2px] bg-gradient-to-r relative -top-3">
-                    <div 
-                      className={`absolute inset-0 transition-all duration-500 ${
-                        step > s 
-                          ? 'bg-[#FF6B35]' 
-                          : 'bg-gray-800'
-                      }`} 
-                    />
-                  </div>
-                )}
-              </React.Fragment>
+
+                  {isSelected && (
+                    <span className="absolute right-5 top-5 flex h-7 w-7 items-center justify-center rounded-full bg-[#FF6B35] text-white">
+                      <Check className="h-4 w-4 stroke-[3]" />
+                    </span>
+                  )}
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {isSelected && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0, y: -8 }}
+                      animate={{ height: 'auto', opacity: 1, y: 0 }}
+                      exit={{ height: 0, opacity: 0, y: -8 }}
+                      transition={{ duration: 0.28, ease: 'easeInOut' }}
+                      className="overflow-hidden rounded-3xl border border-white/10 bg-[#111827]/75"
+                    >
+                      <div className="space-y-4 p-4">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {SUBJECTS.map(subject => {
+                            const checked = examSubjects[exam.id].includes(subject);
+
+                            return (
+                              <label
+                                key={`${exam.id}-${subject}`}
+                                className="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/5 bg-[#0A0F1E] p-3 font-sans text-sm text-slate-200 transition-colors hover:border-white/15"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleSubject(exam.id, subject)}
+                                  className="sr-only"
+                                />
+                                <span
+                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all ${
+                                    checked
+                                      ? 'border-[#FF6B35] bg-[#FF6B35]'
+                                      : 'border-slate-600 bg-transparent'
+                                  }`}
+                                >
+                                  {checked && <Check className="h-3.5 w-3.5 text-white stroke-[3]" />}
+                                </span>
+                                <span>{subject}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+
+                        <p className="font-sans text-sm font-bold text-[#FF6B35]">
+                          {selectedCount} {selectedCount === 1 ? 'subject' : 'subjects'} selected
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             );
           })}
         </div>
+      </div>
+    </section>
+  );
 
-        {/* Dynamic Display of System/Server Error Banners */}
+  const renderGradeSelector = (
+    label: string,
+    value: string,
+    onChange: (grade: string) => void
+  ) => (
+    <div className="space-y-3">
+      <label className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
+        {label}
+      </label>
+      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+        {GRADES.map(grade => {
+          const selected = value === grade;
+
+          return (
+            <button
+              type="button"
+              key={`${label}-${grade}`}
+              onClick={() => onChange(grade)}
+              className={`rounded-2xl border px-4 py-4 font-heading text-sm font-extrabold transition-all ${
+                selected
+                  ? 'border-[#FF6B35] bg-[#FF6B35] text-white shadow-[0_14px_30px_rgba(255,107,53,0.28)]'
+                  : 'border-white/10 bg-[#111827] text-slate-300 hover:border-[#FF6B35]/60'
+              }`}
+            >
+              {grade}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderStepThree = () => (
+    <section className="flex min-h-[calc(100vh-168px)] flex-col px-6 pb-32">
+      <div className="mx-auto w-full max-w-2xl flex-1 space-y-8">
+        <div className="space-y-3 text-center">
+          <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-5xl">
+            What is your target score?
+          </h1>
+          <p className="font-sans text-base leading-7 text-[#8B9CB8]">
+            We will use this to track your readiness progress.
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          {selectedExams.includes('JAMB') && (
+            <div className="space-y-3">
+              <label htmlFor="jamb-target" className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
+                JAMB Target Score
+              </label>
+              <input
+                id="jamb-target"
+                type="number"
+                min={180}
+                max={400}
+                value={jambTarget}
+                onChange={(event) => {
+                  setJambTarget(event.target.value);
+                  setErrorMsg(null);
+                }}
+                placeholder="Enter score between 180 and 400"
+                className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
+              />
+            </div>
+          )}
+
+          {selectedExams.includes('WAEC') && renderGradeSelector('WAEC Target Grade', waecTarget, setWaecTarget)}
+          {selectedExams.includes('NECO') && renderGradeSelector('NECO Target Grade', necoTarget, setNecoTarget)}
+        </div>
+      </div>
+    </section>
+  );
+
+  return (
+    <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] text-white font-sans">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top,rgba(255,107,53,0.12),transparent_36%)]" />
+
+      <header className="relative z-20 flex items-center justify-between px-6 py-5">
+        <button
+          type="button"
+          onClick={step === 1 ? onSignOut : handleBack}
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#111827] px-4 py-2 font-sans text-sm text-slate-300 transition hover:border-white/20 hover:text-white"
+        >
+          {step === 1 ? <LogOut className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+          {step === 1 ? 'Sign out' : 'Back'}
+        </button>
+        <div className="font-heading text-xl font-extrabold tracking-tight">
+          Exam<span className="text-[#FF6B35]">Ready</span>
+        </div>
+      </header>
+
+      <main className="relative z-10">
+        {renderProgress()}
+
         {errorMsg && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-center gap-3 animate-fade-up">
-            <span className="text-lg">⚠️</span>
-            <p className="font-sans leading-relaxed">{errorMsg}</p>
+          <div className="mx-auto mb-4 w-[calc(100%-3rem)] max-w-2xl rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-sans text-sm text-red-300">
+            {errorMsg}
           </div>
         )}
 
-        {/* Step Transition Frame */}
-        <div className="relative overflow-visible w-full min-h-[420px]">
+        <div className="relative min-h-[calc(100vh-160px)] overflow-x-hidden">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={step}
@@ -275,459 +476,46 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
               initial="enter"
               animate="center"
               exit="exit"
-              className="w-full absolute inset-x-0 top-0 flex flex-col"
+              className="absolute inset-0"
             >
-              
-              {/* STEP 1: Name Input */}
-              {step === 1 && (
-                <div className="space-y-6">
-                  <div className="text-center space-y-2">
-                    <h1 className="font-heading font-extrabold text-3xl md:text-4xl text-white tracking-tight leading-tight">
-                      What should we call you?
-                    </h1>
-                    <p className="font-sans text-sm md:text-base text-[#8B9CB8]">
-                      This is how you will appear on the leaderboard and in battles.
-                    </p>
-                  </div>
-
-                  <div className="space-y-4 pt-4 max-w-md mx-auto">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => {
-                          setName(e.target.value);
-                          setErrorMsg(null);
-                        }}
-                        placeholder="Enter your full name"
-                        className="w-full bg-[#111827] text-white border-2 border-white/10 rounded-2xl px-5 py-4 placeholder:text-gray-500 font-sans font-medium text-base transition-all duration-300 focus:border-[#FF6B35] focus:shadow-[0_0_20px_rgba(255,107,53,0.15)] focus:outline-none"
-                      />
-                    </div>
-
-                    <button
-                      onClick={handleNextStep}
-                      disabled={!name.trim()}
-                      className={`w-full py-4 rounded-2xl font-heading font-extrabold text-base tracking-wide transition-all duration-300 transform active:scale-[0.98] ${
-                        name.trim()
-                          ? 'bg-[#FF6B35] text-white shadow-lg shadow-[rgba(255,107,53,0.3)] hover:brightness-110 cursor-pointer'
-                          : 'bg-[#FF6B35]/30 text-white/50 cursor-not-allowed opacity-50'
-                      }`}
-                    >
-                      Continue
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 2: Exam Selection */}
-              {step === 2 && (
-                <div className="space-y-6 pb-28">
-                  <div className="text-center space-y-2">
-                    <h1 className="font-heading font-extrabold text-3xl md:text-4xl text-white tracking-tight leading-tight">
-                      Which exams are you preparing for?
-                    </h1>
-                    <p className="font-sans text-sm md:text-base text-[#8B9CB8]">
-                      You can select more than one.
-                    </p>
-                  </div>
-
-                  {/* Vertical stack of 3 exam cards */}
-                  <div className="space-y-4 max-w-lg mx-auto pt-2">
-                    
-                    {/* JAMB CARD */}
-                    <div className="space-y-1">
-                      <div
-                        onClick={() => toggleExam('JAMB')}
-                        className={`p-5 rounded-2xl bg-[#111827] border-2 transition-all duration-300 cursor-pointer flex justify-between items-center relative ${
-                          selectedExams.includes('JAMB')
-                            ? 'border-[#FF6B35] shadow-[0_0_15px_rgba(255,107,53,0.1)]'
-                            : 'border-white/5 hover:border-white/10'
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <span className="font-heading font-extrabold text-lg text-white block">
-                            JAMB
-                          </span>
-                          <span className="font-sans text-xs text-gray-400 block">
-                            Joint Admissions and Matriculation Board
-                          </span>
-                        </div>
-                        {selectedExams.includes('JAMB') && (
-                          <div className="w-5 h-5 rounded-full bg-[#FF6B35] flex items-center justify-center animate-fade-up">
-                            <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Dropdown for JAMB */}
-                      <AnimatePresence>
-                        {selectedExams.includes('JAMB') && openDropdowns.JAMB && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="bg-[#111827]/60 border border-white/5 rounded-2xl mt-1.5 p-4 overflow-hidden"
-                          >
-                            <span className="text-xs font-heading font-extrabold text-zinc-400 tracking-wider uppercase block mb-3">
-                              Select JAMB Syllabus Subjects
-                            </span>
-                            <div className="grid grid-cols-2 gap-2">
-                              {ALL_SUBJECTS.map((subject) => {
-                                const isChecked = examSubjects.JAMB.includes(subject);
-                                return (
-                                  <label
-                                    key={subject}
-                                    className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
-                                      isChecked
-                                        ? 'bg-[#FF6B35]/5 border-[#FF6B35]/30 text-[#FF6B35]'
-                                        : 'bg-[#0A0F1E] border-white/5 text-gray-300 hover:text-white'
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={() => toggleSubject('JAMB', subject)}
-                                      className="sr-only"
-                                    />
-                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                                      isChecked 
-                                        ? 'bg-[#FF6B35] border-[#FF6B35]' 
-                                        : 'border-gray-600 bg-transparent'
-                                    }`}>
-                                      {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
-                                    </div>
-                                    <span className="text-xs font-semibold select-none">{subject}</span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                            <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center text-xs">
-                              <span className="text-[#FF6B35] font-bold">
-                                {examSubjects.JAMB.length} subjects selected
-                              </span>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* WAEC CARD */}
-                    <div className="space-y-1">
-                      <div
-                        onClick={() => toggleExam('WAEC')}
-                        className={`p-5 rounded-2xl bg-[#111827] border-2 transition-all duration-300 cursor-pointer flex justify-between items-center relative ${
-                          selectedExams.includes('WAEC')
-                            ? 'border-[#FF6B35] shadow-[0_0_15px_rgba(255,107,53,0.1)]'
-                            : 'border-white/5 hover:border-white/10'
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <span className="font-heading font-extrabold text-lg text-white block">
-                            WAEC
-                          </span>
-                          <span className="font-sans text-xs text-gray-400 block">
-                            West African Examinations Council
-                          </span>
-                        </div>
-                        {selectedExams.includes('WAEC') && (
-                          <div className="w-5 h-5 rounded-full bg-[#FF6B35] flex items-center justify-center animate-fade-up">
-                            <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Dropdown for WAEC */}
-                      <AnimatePresence>
-                        {selectedExams.includes('WAEC') && openDropdowns.WAEC && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="bg-[#111827]/60 border border-white/5 rounded-2xl mt-1.5 p-4 overflow-hidden"
-                          >
-                            <span className="text-xs font-heading font-extrabold text-zinc-400 tracking-wider uppercase block mb-3">
-                              Select WAEC Syllabus Subjects
-                            </span>
-                            <div className="grid grid-cols-2 gap-2">
-                              {ALL_SUBJECTS.map((subject) => {
-                                const isChecked = examSubjects.WAEC.includes(subject);
-                                return (
-                                  <label
-                                    key={subject}
-                                    className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
-                                      isChecked
-                                        ? 'bg-[#FF6B35]/5 border-[#FF6B35]/30 text-[#FF6B35]'
-                                        : 'bg-[#0A0F1E] border-white/5 text-gray-300 hover:text-white'
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={() => toggleSubject('WAEC', subject)}
-                                      className="sr-only"
-                                    />
-                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                                      isChecked 
-                                        ? 'bg-[#FF6B35] border-[#FF6B35]' 
-                                        : 'border-gray-600 bg-transparent'
-                                    }`}>
-                                      {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
-                                    </div>
-                                    <span className="text-xs font-semibold select-none">{subject}</span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                            <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center text-xs">
-                              <span className="text-[#FF6B35] font-bold">
-                                {examSubjects.WAEC.length} subjects selected
-                              </span>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* NECO CARD */}
-                    <div className="space-y-1">
-                      <div
-                        onClick={() => toggleExam('NECO')}
-                        className={`p-5 rounded-2xl bg-[#111827] border-2 transition-all duration-300 cursor-pointer flex justify-between items-center relative ${
-                          selectedExams.includes('NECO')
-                            ? 'border-[#FF6B35] shadow-[0_0_15px_rgba(255,107,53,0.1)]'
-                            : 'border-white/5 hover:border-white/10'
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <span className="font-heading font-extrabold text-lg text-white block">
-                            NECO
-                          </span>
-                          <span className="font-sans text-xs text-gray-400 block">
-                            National Examinations Council
-                          </span>
-                        </div>
-                        {selectedExams.includes('NECO') && (
-                          <div className="w-5 h-5 rounded-full bg-[#FF6B35] flex items-center justify-center animate-fade-up">
-                            <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Dropdown for NECO */}
-                      <AnimatePresence>
-                        {selectedExams.includes('NECO') && openDropdowns.NECO && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="bg-[#111827]/60 border border-white/5 rounded-2xl mt-1.5 p-4 overflow-hidden"
-                          >
-                            <span className="text-xs font-heading font-extrabold text-zinc-400 tracking-wider uppercase block mb-3">
-                              Select NECO Syllabus Subjects
-                            </span>
-                            <div className="grid grid-cols-2 gap-2">
-                              {ALL_SUBJECTS.map((subject) => {
-                                const isChecked = examSubjects.NECO.includes(subject);
-                                return (
-                                  <label
-                                    key={subject}
-                                    className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
-                                      isChecked
-                                        ? 'bg-[#FF6B35]/5 border-[#FF6B35]/30 text-[#FF6B35]'
-                                        : 'bg-[#0A0F1E] border-white/5 text-gray-300 hover:text-white'
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={() => toggleSubject('NECO', subject)}
-                                      className="sr-only"
-                                    />
-                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                                      isChecked 
-                                        ? 'bg-[#FF6B35] border-[#FF6B35]' 
-                                        : 'border-gray-600 bg-transparent'
-                                    }`}>
-                                      {isChecked && <Check className="w-3 h-3 text-white stroke-[3]" />}
-                                    </div>
-                                    <span className="text-xs font-semibold select-none">{subject}</span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                            <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center text-xs">
-                              <span className="text-[#FF6B35] font-bold">
-                                {examSubjects.NECO.length} subjects selected
-                              </span>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                  </div>
-
-                  {/* Fixed continuous bar at the bottom with Continue trigger */}
-                  <div className="fixed bottom-0 left-0 right-0 w-full bg-[#0A0F1E]/95 border-t border-white/5 py-4 px-6 md:px-12 z-50 flex items-center justify-between shadow-2xl backdrop-blur-md">
-                    <button
-                      onClick={handlePrevStep}
-                      className="font-heading font-extrabold text-sm text-gray-400 hover:text-white uppercase tracking-wider transition-colors"
-                    >
-                      ← Back
-                    </button>
-                    
-                    <button
-                      onClick={handleNextStep}
-                      disabled={selectedExams.length === 0}
-                      className={`py-3.5 px-8 rounded-xl font-heading font-extrabold text-sm tracking-wider uppercase transition-all duration-300 transform active:scale-95 ${
-                        selectedExams.length > 0
-                          ? 'bg-[#FF6B35] text-white shadow-lg shadow-[#FF6B35]/20 hover:brightness-110 cursor-pointer'
-                          : 'bg-[#FF6B35]/30 text-white/50 cursor-not-allowed opacity-50'
-                      }`}
-                    >
-                      Continue
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 3: Target Score */}
-              {step === 3 && (
-                <div className="space-y-6">
-                  <div className="text-center space-y-2">
-                    <h1 className="font-heading font-extrabold text-3xl md:text-4xl text-white tracking-tight leading-tight">
-                      What is your target score?
-                    </h1>
-                    <p className="font-sans text-sm md:text-base text-[#8B9CB8]">
-                      We will use this to track your readiness progress.
-                    </p>
-                  </div>
-
-                  <div className="max-w-md mx-auto space-y-8 pt-4">
-                    
-                    {/* JAMB Target Score Form Field */}
-                    {selectedExams.includes('JAMB') && (
-                      <div className="space-y-3 animate-fade-up">
-                        <label className="text-sm font-heading font-extrabold text-white flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
-                          JAMB Target Score
-                        </label>
-                        <input
-                          type="number"
-                          min="180"
-                          max="400"
-                          value={jambTarget}
-                          onChange={(e) => setJambTarget(e.target.value)}
-                          placeholder="Enter score between 180 and 400"
-                          className="w-full bg-[#111827] text-white border border-white/10 rounded-2xl px-5 py-4 placeholder:text-gray-600 font-sans font-medium text-sm transition-all focus:border-[#FF6B35] focus:shadow-[0_0_15px_rgba(255,107,53,0.1)] focus:outline-none"
-                        />
-                      </div>
-                    )}
-
-                    {/* WAEC Target Grade Row */}
-                    {selectedExams.includes('WAEC') && (
-                      <div className="space-y-3 animate-fade-up">
-                        <label className="text-sm font-heading font-extrabold text-white flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
-                          WAEC Target Grade
-                        </label>
-                        <div className="flex flex-wrap gap-2.5">
-                          {GRADES.map((grade) => {
-                            const isSelected = waecTarget === grade;
-                            return (
-                              <button
-                                key={grade}
-                                type="button"
-                                onClick={() => setWaecTarget(grade)}
-                                className={`flex-1 min-w-[50px] py-4 rounded-xl font-heading font-extrabold text-base border transition-all duration-300 transform active:scale-95 ${
-                                  isSelected
-                                    ? 'bg-[#FF6B35] text-white border-transparent shadow-lg shadow-[#FF6B35]/25 scale-105'
-                                    : 'bg-[#111827] text-gray-400 border-white/5 hover:border-white/10 hover:text-white cursor-pointer'
-                                }`}
-                              >
-                                {grade}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* NECO Target Grade Row */}
-                    {selectedExams.includes('NECO') && (
-                      <div className="space-y-3 animate-fade-up">
-                        <label className="text-sm font-heading font-extrabold text-white flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
-                          NECO Target Grade
-                        </label>
-                        <div className="flex flex-wrap gap-2.5">
-                          {GRADES.map((grade) => {
-                            const isSelected = necoTarget === grade;
-                            return (
-                              <button
-                                key={grade}
-                                type="button"
-                                onClick={() => setNecoTarget(grade)}
-                                className={`flex-1 min-w-[50px] py-4 rounded-xl font-heading font-extrabold text-base border transition-all duration-300 transform active:scale-95 ${
-                                  isSelected
-                                    ? 'bg-[#FF6B35] text-white border-transparent shadow-lg shadow-[#FF6B35]/25 scale-105'
-                                    : 'bg-[#111827] text-gray-400 border-white/5 hover:border-white/10 hover:text-white cursor-pointer'
-                                }`}
-                              >
-                                {grade}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Navigation Controles */}
-                    <div className="grid grid-cols-3 gap-4 pt-6">
-                      <button
-                        onClick={handlePrevStep}
-                        type="button"
-                        className="py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-heading font-bold text-sm text-center hover:bg-white/10 uppercase tracking-wider transition-all duration-300 cursor-pointer"
-                      >
-                        Back
-                      </button>
-
-                      <button
-                        onClick={handleFinish}
-                        disabled={saving}
-                        className="col-span-2 py-4 rounded-2xl bg-[#FF6B35] text-white font-heading font-extrabold text-base tracking-wider transition-all duration-300 shadow-lg shadow-[#FF6B35]/25 hover:brightness-110 transform active:scale-95 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-55"
-                      >
-                        {saving ? (
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <span>Let's Go</span>
-                            <span className="text-xl">🚀</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                  </div>
-                </div>
-              )}
-
+              {step === 1 && renderStepOne()}
+              {step === 2 && renderStepTwo()}
+              {step === 3 && renderStepThree()}
             </motion.div>
           </AnimatePresence>
         </div>
-
       </main>
 
-      {/* Footer Branding */}
-      <footer className="absolute bottom-6 left-0 right-0 text-center">
-        <p className="font-sans text-xs text-gray-500">
-          Ready to achieve exam success in Nigeria 🇳🇬
-        </p>
-      </footer>
+      {step === 2 && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0A0F1E]/90 px-6 py-4 backdrop-blur-xl">
+          <button
+            type="button"
+            onClick={handleContinue}
+            disabled={!canContinueStepTwo}
+            className={`mx-auto block w-full max-w-2xl rounded-2xl px-6 py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
+              canContinueStepTwo
+                ? 'bg-[#FF6B35] text-white shadow-[0_18px_40px_rgba(255,107,53,0.32)] hover:bg-[#ff7c4d]'
+                : 'cursor-not-allowed bg-[#FF6B35]/25 text-white/40'
+            }`}
+          >
+            Continue
+          </button>
+        </div>
+      )}
 
+      {step === 3 && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0A0F1E]/90 px-6 py-4 backdrop-blur-xl">
+          <button
+            type="button"
+            onClick={handleFinish}
+            disabled={saving}
+            className="mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-2xl bg-[#FF6B35] px-6 py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] text-white shadow-[0_18px_40px_rgba(255,107,53,0.32)] transition hover:bg-[#ff7c4d] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? 'Saving...' : 'Lets Go 🚀'}
+            {!saving && <Rocket className="h-4 w-4" />}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

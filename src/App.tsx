@@ -45,6 +45,10 @@ interface StudentProfile {
   selectedExams?: ('JAMB' | 'WAEC' | 'NECO')[];
   subjects?: Record<string, string[]>;
   targetScores?: Record<string, string | number>;
+  fullName?: string;
+  examTypes?: ('JAMB' | 'WAEC' | 'NECO')[];
+  subjectList?: string[];
+  targetScoreSummary?: string | number;
   profileExists?: boolean;
 }
 
@@ -160,12 +164,16 @@ export default function App() {
   const buildProfileFromSupabase = (user: User, data: Record<string, any>): StudentProfile => {
     const createdAt = data.created_at || data.createdAt || new Date().toISOString();
     const updatedAt = data.updated_at || data.updatedAt || createdAt;
-    const selectedExams = data.selected_exams || data.selectedExams || [];
+    const selectedExams = data.exam_types || data.selected_exams || data.selectedExams || [];
     const targetScores = data.target_scores || data.targetScores || {};
+    const subjects = data.subjects || {};
+    const subjectList = Array.isArray(subjects)
+      ? subjects
+      : Object.values(subjects).flatMap(value => Array.isArray(value) ? value : []);
 
     return {
       uid: data.id || data.uid || user.id,
-      displayName: data.display_name || data.displayName || user.user_metadata?.full_name || user.email || 'Nigerian Student',
+      displayName: data.full_name || data.display_name || data.displayName || user.user_metadata?.full_name || user.email || 'Nigerian Student',
       email: data.email || user.email || '',
       examType: data.exam_type || data.examType || selectedExams[0] || 'JAMB',
       targetScore: data.target_score || data.targetScore || targetScores.JAMB || 280,
@@ -176,8 +184,12 @@ export default function App() {
       updatedAt,
       isOnboarded: data.is_onboarded ?? data.isOnboarded ?? true,
       selectedExams,
-      subjects: data.subjects || {},
+      subjects: Array.isArray(subjects) ? {} : subjects,
       targetScores,
+      fullName: data.full_name || data.display_name || data.displayName || user.user_metadata?.full_name || user.email || 'Nigerian Student',
+      examTypes: selectedExams,
+      subjectList,
+      targetScoreSummary: data.target_score || data.targetScore || targetScores.JAMB || targetScores.WAEC || targetScores.NECO || '',
       profileExists: true
     };
   };
@@ -219,6 +231,10 @@ export default function App() {
       selectedExams: [],
       subjects: {},
       targetScores: {},
+      fullName: user.user_metadata?.full_name || user.email || 'Nigerian Student',
+      examTypes: [],
+      subjectList: [],
+      targetScoreSummary: '',
       profileExists: false
     });
     setView('onboarding');
@@ -236,17 +252,21 @@ export default function App() {
     // Primary default exam/score for backward compatibility
     const primaryExam = onboardingData.selectedExams[0] || 'JAMB';
     const primaryTargetScore = onboardingData.targetScores[primaryExam] || (primaryExam === 'JAMB' ? 280 : 'B2');
+    const subjectList = [...new Set(Object.values(onboardingData.subjects).flat())];
+    const targetScoreSummary = primaryTargetScore;
     const updatedAt = new Date().toISOString();
 
     const updates = {
       id: currentUser.id,
+      full_name: onboardingData.displayName,
       display_name: onboardingData.displayName,
       email: currentUser.email || '',
       exam_type: primaryExam,
-      target_score: primaryTargetScore,
+      exam_types: onboardingData.selectedExams,
+      target_score: targetScoreSummary,
       is_onboarded: true,
       selected_exams: onboardingData.selectedExams,
-      subjects: onboardingData.subjects,
+      subjects: subjectList,
       target_scores: onboardingData.targetScores,
       streak: studentProfile.streak,
       questions_practiced: studentProfile.questionsPracticed,
@@ -274,6 +294,10 @@ export default function App() {
       selectedExams: onboardingData.selectedExams,
       subjects: onboardingData.subjects,
       targetScores: onboardingData.targetScores,
+      fullName: onboardingData.displayName,
+      examTypes: onboardingData.selectedExams,
+      subjectList,
+      targetScoreSummary,
       updatedAt,
       profileExists: true
     } : null);
