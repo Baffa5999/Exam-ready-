@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowLeft, Check, LogOut, Rocket } from 'lucide-react';
+import { supabase } from '../supabase';
 
 interface OnboardingProps {
   initialName: string;
   onComplete: (data: {
     displayName: string;
+    username: string;
     selectedExams: ('JAMB' | 'WAEC' | 'NECO')[];
     subjects: Record<string, string[]>;
-    targetScores: Record<string, string | number>;
   }) => Promise<void>;
   onSignOut: () => void;
 }
@@ -48,23 +49,85 @@ const EXAMS: Array<{
   }
 ];
 
-const GRADES = ['A1', 'B2', 'B3', 'C4', 'C5', 'C6'];
+type UsernameStatus = 'idle' | 'invalid' | 'checking' | 'available' | 'taken';
+
+const validateUsername = (value: string): string | null => {
+  if (!value) return null;
+  if (/\s/.test(value)) return 'No spaces allowed.';
+  if (!/^[A-Za-z0-9_]+$/.test(value)) return 'Only letters, numbers and underscores allowed.';
+  if (value.length < 3) return 'Username must be at least 3 characters.';
+  if (value.length > 20) return 'Username must be 20 characters or fewer.';
+  return null;
+};
 
 export default function Onboarding({ initialName, onComplete, onSignOut }: OnboardingProps) {
   const [step, setStep] = useState<number>(1);
   const [direction, setDirection] = useState<number>(1);
   const [name, setName] = useState<string>(initialName || '');
+  const [username, setUsername] = useState<string>('');
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('idle');
+  const [usernameMessage, setUsernameMessage] = useState<string>('');
   const [selectedExams, setSelectedExams] = useState<('JAMB' | 'WAEC' | 'NECO')[]>([]);
   const [examSubjects, setExamSubjects] = useState<Record<string, string[]>>({
     JAMB: [],
     WAEC: [],
     NECO: []
   });
-  const [jambTarget, setJambTarget] = useState<string>('');
-  const [waecTarget, setWaecTarget] = useState<string>('B2');
-  const [necoTarget, setNecoTarget] = useState<string>('B2');
   const [saving, setSaving] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const normalizedUsername = useMemo(() => username.trim().replace(/^@+/, '').toLowerCase(), [username]);
+
+  useEffect(() => {
+    const validationMessage = validateUsername(normalizedUsername);
+
+    if (!normalizedUsername) {
+      setUsernameStatus('idle');
+      setUsernameMessage('');
+      return;
+    }
+
+    if (validationMessage) {
+      setUsernameStatus('invalid');
+      setUsernameMessage(validationMessage);
+      return;
+    }
+
+    let cancelled = false;
+    setUsernameStatus('checking');
+    setUsernameMessage('Checking username...');
+
+    const checkUsername = window.setTimeout(async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', normalizedUsername)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error('Username availability check failed:', error);
+        setUsernameStatus('invalid');
+        setUsernameMessage('Unable to check username right now. Please try again.');
+        return;
+      }
+
+      if (data) {
+        setUsernameStatus('taken');
+        setUsernameMessage('Username already taken. Try another.');
+        return;
+      }
+
+      setUsernameStatus('available');
+      setUsernameMessage('Username available');
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(checkUsername);
+    };
+  }, [normalizedUsername]);
 
   const slideVariants = {
     enter: (dir: number) => ({
@@ -89,8 +152,8 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
     })
   };
 
-  const canContinueStepOne = name.trim().length > 0;
-  const canContinueStepTwo = selectedExams.length > 0 && selectedExams.every(exam => examSubjects[exam].length > 0);
+  const canContinueStepOne = name.trim().length > 0 && usernameStatus === 'available';
+  const canFinishStepTwo = selectedExams.length > 0 && selectedExams.every(exam => examSubjects[exam].length > 0);
 
   const goToStep = (nextStep: number) => {
     setErrorMsg(null);
@@ -102,21 +165,6 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
     if (step === 1) {
       if (!canContinueStepOne) return;
       goToStep(2);
-      return;
-    }
-
-    if (step === 2) {
-      if (selectedExams.length === 0) {
-        setErrorMsg('Please select at least one exam to prepare for.');
-        return;
-      }
-
-      if (!canContinueStepTwo) {
-        setErrorMsg('Please select at least one subject for each selected exam.');
-        return;
-      }
-
-      goToStep(3);
     }
   };
 
@@ -153,51 +201,27 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
     });
   };
 
-  const getTargetScore = () => {
-    if (selectedExams.includes('JAMB')) {
-      const parsedScore = parseInt(jambTarget, 10);
-      return Number.isNaN(parsedScore) ? '' : parsedScore;
-    }
-
-    if (selectedExams.includes('WAEC')) return waecTarget;
-    if (selectedExams.includes('NECO')) return necoTarget;
-    return '';
-  };
-
   const handleFinish = async () => {
     setErrorMsg(null);
 
-    if (selectedExams.includes('JAMB')) {
-      const score = parseInt(jambTarget, 10);
-      if (Number.isNaN(score) || score < 180 || score > 400) {
-        setErrorMsg('Please enter a valid JAMB target score between 180 and 400.');
-        return;
-      }
+    if (!canFinishStepTwo) {
+      setErrorMsg('Please select at least one subject for each selected exam.');
+      return;
     }
 
     setSaving(true);
     try {
       const finalSubjects: Record<string, string[]> = {};
-      const finalTargetScores: Record<string, string | number> = {};
 
       selectedExams.forEach(exam => {
         finalSubjects[exam] = examSubjects[exam];
-        if (exam === 'JAMB') {
-          finalTargetScores[exam] = parseInt(jambTarget, 10);
-        }
-        if (exam === 'WAEC') {
-          finalTargetScores[exam] = waecTarget;
-        }
-        if (exam === 'NECO') {
-          finalTargetScores[exam] = necoTarget;
-        }
       });
 
       await onComplete({
         displayName: name.trim(),
+        username: normalizedUsername,
         selectedExams,
-        subjects: finalSubjects,
-        targetScores: finalTargetScores
+        subjects: finalSubjects
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An error occurred while saving your profile. Please try again.';
@@ -209,7 +233,7 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
 
   const renderProgress = () => (
     <div className="flex items-center justify-center gap-3 pt-8 pb-10">
-      {[1, 2, 3].map(item => {
+      {[1, 2].map(item => {
         const isActive = item === step;
         const isCompleted = item < step;
 
@@ -236,25 +260,64 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
             What should we call you?
           </h1>
           <p className="font-sans text-base leading-7 text-[#8B9CB8]">
-            This is how you will appear on the leaderboard and in battles.
+            Set your display name and unique battle identity.
           </p>
         </div>
 
-        <input
-          type="text"
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value);
-            setErrorMsg(null);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && canContinueStepOne) {
-              handleContinue();
-            }
-          }}
-          placeholder="Enter your full name"
-          className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
-        />
+        <div className="space-y-5 text-left">
+          <div className="space-y-2">
+            <label htmlFor="full-name" className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
+              Full Name
+            </label>
+            <p className="font-sans text-xs text-[#8B9CB8]">This is just for display in greetings.</p>
+            <input
+              id="full-name"
+              type="text"
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+                setErrorMsg(null);
+              }}
+              placeholder="Enter your full name"
+              className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="username" className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
+              Username
+            </label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 font-sans text-base text-[#8B9CB8]">@</span>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(event) => {
+                  setUsername(event.target.value.replace(/^@+/, '').toLowerCase());
+                  setErrorMsg(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && canContinueStepOne) {
+                    handleContinue();
+                  }
+                }}
+                placeholder="jamb_champion"
+                maxLength={21}
+                className="w-full rounded-2xl border border-white/10 bg-[#111827] px-9 py-4 font-sans text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
+              />
+            </div>
+            <p className="font-sans text-xs leading-5 text-[#8B9CB8]">
+              This is how you will appear on the leaderboard and in battles. Must be unique.
+            </p>
+            {usernameMessage && (
+              <p className={`flex items-center gap-1 font-sans text-xs font-bold ${usernameStatus === 'available' ? 'text-emerald-400' : usernameStatus === 'checking' ? 'text-[#8B9CB8]' : 'text-red-400'}`}>
+                {usernameStatus === 'available' && <Check className="h-3.5 w-3.5" />}
+                {usernameMessage}
+              </p>
+            )}
+          </div>
+        </div>
 
         <button
           type="button"
@@ -367,79 +430,6 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
     </section>
   );
 
-  const renderGradeSelector = (
-    label: string,
-    value: string,
-    onChange: (grade: string) => void
-  ) => (
-    <div className="space-y-3">
-      <label className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
-        {label}
-      </label>
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-        {GRADES.map(grade => {
-          const selected = value === grade;
-
-          return (
-            <button
-              type="button"
-              key={`${label}-${grade}`}
-              onClick={() => onChange(grade)}
-              className={`rounded-2xl border px-4 py-4 font-heading text-sm font-extrabold transition-all ${
-                selected
-                  ? 'border-[#FF6B35] bg-[#FF6B35] text-white shadow-[0_14px_30px_rgba(255,107,53,0.28)]'
-                  : 'border-white/10 bg-[#111827] text-slate-300 hover:border-[#FF6B35]/60'
-              }`}
-            >
-              {grade}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  const renderStepThree = () => (
-    <section className="flex min-h-[calc(100vh-168px)] flex-col px-6 pb-32">
-      <div className="mx-auto w-full max-w-2xl flex-1 space-y-8">
-        <div className="space-y-3 text-center">
-          <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-5xl">
-            What is your target score?
-          </h1>
-          <p className="font-sans text-base leading-7 text-[#8B9CB8]">
-            We will use this to track your readiness progress.
-          </p>
-        </div>
-
-        <div className="space-y-6">
-          {selectedExams.includes('JAMB') && (
-            <div className="space-y-3">
-              <label htmlFor="jamb-target" className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
-                JAMB Target Score
-              </label>
-              <input
-                id="jamb-target"
-                type="number"
-                min={180}
-                max={400}
-                value={jambTarget}
-                onChange={(event) => {
-                  setJambTarget(event.target.value);
-                  setErrorMsg(null);
-                }}
-                placeholder="Enter score between 180 and 400"
-                className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
-              />
-            </div>
-          )}
-
-          {selectedExams.includes('WAEC') && renderGradeSelector('WAEC Target Grade', waecTarget, setWaecTarget)}
-          {selectedExams.includes('NECO') && renderGradeSelector('NECO Target Grade', necoTarget, setNecoTarget)}
-        </div>
-      </div>
-    </section>
-  );
-
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] text-white font-sans">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top,rgba(255,107,53,0.12),transparent_36%)]" />
@@ -480,7 +470,6 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
             >
               {step === 1 && renderStepOne()}
               {step === 2 && renderStepTwo()}
-              {step === 3 && renderStepThree()}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -490,26 +479,13 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0A0F1E]/90 px-6 py-4 backdrop-blur-xl">
           <button
             type="button"
-            onClick={handleContinue}
-            disabled={!canContinueStepTwo}
-            className={`mx-auto block w-full max-w-2xl rounded-2xl px-6 py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
-              canContinueStepTwo
+            onClick={handleFinish}
+            disabled={!canFinishStepTwo || saving}
+            className={`mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-2xl px-6 py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
+              canFinishStepTwo && !saving
                 ? 'bg-[#FF6B35] text-white shadow-[0_18px_40px_rgba(255,107,53,0.32)] hover:bg-[#ff7c4d]'
                 : 'cursor-not-allowed bg-[#FF6B35]/25 text-white/40'
             }`}
-          >
-            Continue
-          </button>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0A0F1E]/90 px-6 py-4 backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={handleFinish}
-            disabled={saving}
-            className="mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-2xl bg-[#FF6B35] px-6 py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] text-white shadow-[0_18px_40px_rgba(255,107,53,0.32)] transition hover:bg-[#ff7c4d] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? 'Saving...' : 'Lets Go 🚀'}
             {!saving && <Rocket className="h-4 w-4" />}

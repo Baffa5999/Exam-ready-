@@ -48,6 +48,7 @@ interface StudentProfile {
   subjects?: Record<string, string[]>;
   targetScores?: Record<string, string | number>;
   fullName?: string;
+  username?: string;
   examTypes?: ('JAMB' | 'WAEC' | 'NECO')[];
   subjectList?: string[];
   targetScoreSummary?: string | number;
@@ -241,6 +242,7 @@ export default function App() {
       subjects: Array.isArray(subjects) ? {} : subjects,
       targetScores,
       fullName: data.full_name || data.display_name || data.displayName || user.user_metadata?.full_name || user.email || 'Nigerian Student',
+      username: data.username || '',
       examTypes: selectedExams,
       subjectList,
       targetScoreSummary: data.target_score || data.targetScore || targetScores.JAMB || targetScores.WAEC || targetScores.NECO || '',
@@ -268,6 +270,7 @@ export default function App() {
       subjects: {},
       targetScores: {},
       fullName: user.user_metadata?.full_name || user.email || 'Nigerian Student',
+      username: '',
       examTypes: [],
       subjectList: [],
       targetScoreSummary: '',
@@ -305,35 +308,32 @@ export default function App() {
   // Saved answers handler from premium onboarding screen.
   const handleOnboardingComplete = async (onboardingData: {
     displayName: string;
+    username: string;
     selectedExams: ('JAMB' | 'WAEC' | 'NECO')[];
     subjects: Record<string, string[]>;
-    targetScores: Record<string, string | number>;
   }) => {
     if (!currentUser || !studentProfile) return;
 
-    // Primary default exam/score for backward compatibility
     const primaryExam = onboardingData.selectedExams[0] || 'JAMB';
-    const primaryTargetScore = onboardingData.targetScores[primaryExam] || (primaryExam === 'JAMB' ? 280 : 'B2');
     const subjectList = [...new Set(Object.values(onboardingData.subjects).flat())];
-    const targetScoreSummary = primaryTargetScore;
-    const updatedAt = new Date().toISOString();
+    const createdAt = new Date().toISOString();
+    const updatedAt = createdAt;
 
     const updates = {
       id: currentUser.id,
       full_name: onboardingData.displayName,
       display_name: onboardingData.displayName,
+      username: onboardingData.username,
       email: currentUser.email || '',
       exam_type: primaryExam,
       exam_types: onboardingData.selectedExams,
-      target_score: targetScoreSummary,
       is_onboarded: true,
       selected_exams: onboardingData.selectedExams,
-      subjects: subjectList,
-      target_scores: onboardingData.targetScores,
-      streak: studentProfile.streak,
+      subjects: onboardingData.subjects,
+      streak: 0,
       questions_practiced: studentProfile.questionsPracticed,
       accuracy: studentProfile.accuracy,
-      created_at: studentProfile.createdAt,
+      created_at: createdAt,
       updated_at: updatedAt
     };
 
@@ -351,15 +351,18 @@ export default function App() {
       displayName: onboardingData.displayName,
       email: currentUser.email || prev.email,
       examType: primaryExam,
-      targetScore: primaryTargetScore,
+      targetScore: prev.targetScore || 280,
+      streak: 0,
       isOnboarded: true,
       selectedExams: onboardingData.selectedExams,
       subjects: onboardingData.subjects,
-      targetScores: onboardingData.targetScores,
+      targetScores: {},
       fullName: onboardingData.displayName,
+      username: onboardingData.username,
       examTypes: onboardingData.selectedExams,
       subjectList,
-      targetScoreSummary,
+      targetScoreSummary: '',
+      createdAt,
       updatedAt,
       profileExists: true
     } : null);
