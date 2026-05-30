@@ -4,6 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import type { User } from '@supabase/supabase-js';
+import { supabase } from './supabase';
 import { 
   LogOut, 
   Flame, 
@@ -27,12 +29,6 @@ const fontStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;700&display=swap');
 `;
 
-interface LocalUser {
-  uid: string;
-  displayName: string;
-  email: string;
-}
-
 // Student profile interface
 interface StudentProfile {
   uid: string;
@@ -54,7 +50,7 @@ interface StudentProfile {
 export default function App() {
   // Navigation views: 'landing' | 'signin' | 'onboarding' | 'dashboard'
   const [view, setView] = useState<'landing' | 'signin' | 'onboarding' | 'dashboard'>('landing');
-  const [currentUser, setCurrentUser] = useState<LocalUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -66,9 +62,59 @@ export default function App() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answered, setAnswered] = useState<boolean>(false);
 
-  // Initialize the app without an external session provider.
+  // Monitor Supabase authentication and route signed-in users by profile status.
   useEffect(() => {
-    setLoading(false);
+    let isMounted = true;
+
+    const initializeSession = async () => {
+      setLoading(true);
+      const { data, error } = await supabase.auth.getSession();
+
+      if (!isMounted) return;
+
+      if (error) {
+        console.error('Supabase session lookup failed:', error);
+        showBanner('error', 'Unable to restore your session. Please sign in again.');
+        setCurrentUser(null);
+        setStudentProfile(null);
+        setView('landing');
+      } else if (data.session?.user) {
+        setCurrentUser(data.session.user);
+        await fetchOrInitializeProfile(data.session.user);
+      } else {
+        setCurrentUser(null);
+        setStudentProfile(null);
+        setView(current => (current === 'dashboard' || current === 'onboarding' ? 'landing' : current));
+      }
+
+      if (isMounted) {
+        setLoading(false);
+      }
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!isMounted) return;
+
+      setLoading(true);
+      if (session?.user) {
+        setCurrentUser(session.user);
+        await fetchOrInitializeProfile(session.user);
+      } else {
+        setCurrentUser(null);
+        setStudentProfile(null);
+        setView('landing');
+      }
+      if (isMounted) {
+        setLoading(false);
+      }
+    });
+
+    initializeSession();
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   // Show dynamic banner messages
@@ -79,12 +125,55 @@ export default function App() {
     }, 5000);
   };
 
-  // Create a local placeholder profile so the app can run without a backend.
-  const fetchOrInitializeProfile = (user: LocalUser) => {
+  const buildProfileFromSupabase = (user: User, data: Record<string, any>): StudentProfile => {
+    const createdAt = data.created_at || data.createdAt || new Date().toISOString();
+    const updatedAt = data.updated_at || data.updatedAt || createdAt;
+    const selectedExams = data.selected_exams || data.selectedExams || [];
+    const targetScores = data.target_scores || data.targetScores || {};
+
+    return {
+      uid: data.id || data.uid || user.id,
+      displayName: data.display_name || data.displayName || user.user_metadata?.full_name || user.email || 'Nigerian Student',
+      email: data.email || user.email || '',
+      examType: data.exam_type || data.examType || selectedExams[0] || 'JAMB',
+      targetScore: data.target_score || data.targetScore || targetScores.JAMB || 280,
+      streak: data.streak || 1,
+      questionsPracticed: data.questions_practiced || data.questionsPracticed || 0,
+      accuracy: data.accuracy || 70,
+      createdAt,
+      updatedAt,
+      isOnboarded: data.is_onboarded ?? data.isOnboarded ?? true,
+      selectedExams,
+      subjects: data.subjects || {},
+      targetScores
+    };
+  };
+
+  // Load the signed-in user's Supabase profile and route them to onboarding when none exists.
+  const fetchOrInitializeProfile = async (user: User) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Supabase profile lookup failed:', error);
+      showBanner('error', 'Unable to load your Supabase profile. Please try again.');
+      return;
+    }
+
+    if (data) {
+      const profile = buildProfileFromSupabase(user, data);
+      setStudentProfile(profile);
+      setView('dashboard');
+      return;
+    }
+
     const now = new Date().toISOString();
-    const profile: StudentProfile = {
-      uid: user.uid,
-      displayName: user.displayName || 'Nigerian Student',
+    setStudentProfile({
+      uid: user.id,
+      displayName: user.user_metadata?.full_name || user.email || 'Nigerian Student',
       email: user.email || '',
       examType: 'JAMB',
       targetScore: 280,
@@ -97,9 +186,7 @@ export default function App() {
       selectedExams: [],
       subjects: {},
       targetScores: {}
-    };
-
-    setStudentProfile(profile);
+    });
     setView('onboarding');
   };
 
@@ -115,17 +202,45 @@ export default function App() {
     // Primary default exam/score for backward compatibility
     const primaryExam = onboardingData.selectedExams[0] || 'JAMB';
     const primaryTargetScore = onboardingData.targetScores[primaryExam] || (primaryExam === 'JAMB' ? 280 : 'B2');
+    const updatedAt = new Date().toISOString();
+
+    const updates = {
+      id: currentUser.id,
+      display_name: onboardingData.displayName,
+      email: currentUser.email || '',
+      exam_type: primaryExam,
+      target_score: primaryTargetScore,
+      is_onboarded: true,
+      selected_exams: onboardingData.selectedExams,
+      subjects: onboardingData.subjects,
+      target_scores: onboardingData.targetScores,
+      streak: studentProfile.streak,
+      questions_practiced: studentProfile.questionsPracticed,
+      accuracy: studentProfile.accuracy,
+      created_at: studentProfile.createdAt,
+      updated_at: updatedAt
+    };
+
+    const { error } = await supabase
+      .from('profiles')
+      .upsert(updates, { onConflict: 'id' });
+
+    if (error) {
+      console.error('Supabase profile save failed:', error);
+      throw new Error('Failed saving onboarding answers to Supabase.');
+    }
 
     setStudentProfile(prev => prev ? {
       ...prev,
       displayName: onboardingData.displayName,
+      email: currentUser.email || prev.email,
       examType: primaryExam,
       targetScore: primaryTargetScore,
       isOnboarded: true,
       selectedExams: onboardingData.selectedExams,
       subjects: onboardingData.subjects,
       targetScores: onboardingData.targetScores,
-      updatedAt: new Date().toISOString()
+      updatedAt
     } : null);
 
     setView('dashboard');
@@ -133,57 +248,101 @@ export default function App() {
   };
 
   // Update target exam & related default score goals.
-  const handleUpdateExam = (exam: 'JAMB' | 'WAEC' | 'NECO') => {
+  const handleUpdateExam = async (exam: 'JAMB' | 'WAEC' | 'NECO') => {
     if (!currentUser || !studentProfile) return;
     // JAMB target score generally 200-400, WAEC/NECO are aggregates / grades (A1/B2)
     const targetScore = exam === 'JAMB' ? 280 : 85; 
+    const updatedAt = new Date().toISOString();
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        exam_type: exam,
+        target_score: targetScore,
+        updated_at: updatedAt
+      })
+      .eq('id', currentUser.id);
+
+    if (error) {
+      console.error('Supabase exam update failed:', error);
+      showBanner('error', 'Failed updating profile in Supabase.');
+      return;
+    }
 
     setStudentProfile(prev => prev ? { 
       ...prev, 
       examType: exam, 
       targetScore, 
-      updatedAt: new Date().toISOString() 
+      updatedAt
     } : null);
     showBanner('success', `🎯 Goal changed to ${exam} 2026. Keep Studying!`);
   };
 
   // Handle mock study sessions.
-  const handleSimulatePractice = () => {
+  const handleSimulatePractice = async () => {
     if (!currentUser || !studentProfile) return;
     
-    // Simulate updating study telemetry locally.
+    // Simulate updating study telemetry.
     const newQuestions = studentProfile.questionsPracticed + 15;
     const newStreak = studentProfile.streak + (Math.random() > 0.7 ? 1 : 0);
     const newAccuracy = Math.min(100, Math.max(50, studentProfile.accuracy + (Math.random() > 0.5 ? 2 : -1)));
+    const updatedAt = new Date().toISOString();
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        questions_practiced: newQuestions,
+        streak: newStreak,
+        accuracy: newAccuracy,
+        updated_at: updatedAt
+      })
+      .eq('id', currentUser.id);
+
+    if (error) {
+      console.error('Supabase practice metrics update failed:', error);
+      showBanner('error', 'Failed updating practice metrics in Supabase.');
+      return;
+    }
 
     setStudentProfile(prev => prev ? {
       ...prev,
       questionsPracticed: newQuestions,
       streak: newStreak,
       accuracy: newAccuracy,
-      updatedAt: new Date().toISOString()
+      updatedAt
     } : null);
     
-    showBanner('success', '🔥 Study session saved locally! 15 syllabus questions completed.');
+    showBanner('success', '🔥 Study session saved! 15 syllabus questions completed.');
   };
 
-  // Handle placeholder session triggers.
-  const handlePlaceholderSignIn = () => {
+  // Handle Supabase Google authentication triggers.
+  const handleGoogleSignIn = async () => {
     setLoading(true);
-    const placeholderUser: LocalUser = {
-      uid: 'local-student',
-      displayName: 'Nigerian Student',
-      email: ''
-    };
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
 
-    setCurrentUser(placeholderUser);
-    fetchOrInitializeProfile(placeholderUser);
-    showBanner('success', 'Welcome into ExamReady!');
-    setLoading(false);
+    if (error) {
+      console.error('Supabase Google sign in failed:', error);
+      showBanner('error', 'A Google sign in error occurred. Please try again.');
+      setLoading(false);
+    }
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     setLoading(true);
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error('Supabase sign out failed:', error);
+      showBanner('error', 'Failed signing out.');
+      setLoading(false);
+      return;
+    }
+
     setCurrentUser(null);
     setStudentProfile(null);
     setView('landing');
@@ -253,10 +412,10 @@ export default function App() {
               Sign in to continue your exam preparation.
             </p>
 
-            {/* Placeholder sign-in button */}
+            {/* Google sign-in button */}
             <button
-              id="placeholder-signin-btn"
-              onClick={handlePlaceholderSignIn}
+              id="google-signin-btn"
+              onClick={handleGoogleSignIn}
               disabled={loading}
               className="w-full bg-[#111827] hover:bg-[#1a2233] border border-[rgba(255,255,255,0.12)] text-white font-sans font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-3 transition-all duration-300 hover:shadow-[0_0_25px_rgba(255,107,53,0.22)] active:scale-98 cursor-pointer disabled:opacity-50"
             >
@@ -265,7 +424,7 @@ export default function App() {
               ) : (
                 <span className="flex items-center gap-2">
                   <span className="text-xl">🇳🇬</span>
-                  Continue
+                  Continue with Google
                 </span>
               )}
             </button>
@@ -347,7 +506,7 @@ export default function App() {
                     Welcome back, {studentProfile.displayName.split(' ')[0]}!
                   </h1>
                   <p className="font-sans text-sm text-[#8B9CB8] max-w-lg">
-                    Your study stats update locally while you use the app. Continue reading topic cheatsheets or practice daily mocks to raise your exam accuracy.
+                    Your study stats are saved securely in Supabase. Continue reading topic cheatsheets or practice daily mocks to raise your exam accuracy.
                   </p>
                 </div>
 
@@ -536,14 +695,14 @@ export default function App() {
                 <h3 className="text-lg font-heading font-extrabold text-white leading-snug">{studentProfile.displayName}</h3>
                 <p className="text-xs text-[#8B9CB8] mt-1">{studentProfile.email}</p>
 
-                {/* Local session indicator status */}
+                {/* Supabase session indicator status */}
                 <div className="mt-4 inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-full">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Local session active</span>
+                  <span>Signed in with Google</span>
                 </div>
               </div>
 
-              {/* Local study stats */}
+              {/* Supabase-backed study stats */}
               <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-[24px] p-6 space-y-4">
                 <h4 className="text-xs font-heading font-bold text-white uppercase tracking-widest border-b border-[rgba(255,255,255,0.04)] pb-3">
                   Study Metrics
@@ -579,7 +738,7 @@ export default function App() {
                 </div>
 
                 <p className="text-[10px] text-[#8B9CB8] text-center leading-relaxed">
-                  These metrics update in the current local session.
+                  These metrics save to your Supabase profile.
                 </p>
               </div>
 
