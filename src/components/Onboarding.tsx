@@ -120,7 +120,7 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
       }
 
       setUsernameStatus('available');
-      setUsernameMessage('Username available');
+      setUsernameMessage('✓ Username available');
     }, 450);
 
     return () => {
@@ -287,32 +287,28 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
             <label htmlFor="username" className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
               Username
             </label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 font-sans text-base text-[#8B9CB8]">@</span>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(event) => {
-                  setUsername(event.target.value.replace(/^@+/, '').toLowerCase());
-                  setErrorMsg(null);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && canContinueStepOne) {
-                    handleContinue();
-                  }
-                }}
-                placeholder="jamb_champion"
-                maxLength={21}
-                className="w-full rounded-2xl border border-white/10 bg-[#111827] px-9 py-4 font-sans text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
-              />
-            </div>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(event) => {
+                setUsername(event.target.value.replace(/^@+/, '').toLowerCase());
+                setErrorMsg(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && canContinueStepOne) {
+                  handleContinue();
+                }
+              }}
+              placeholder="Choose a username e.g. jamb_champion"
+              maxLength={21}
+              className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
+            />
             <p className="font-sans text-xs leading-5 text-[#8B9CB8]">
               This is how you will appear on the leaderboard and in battles. Must be unique.
             </p>
             {usernameMessage && (
-              <p className={`flex items-center gap-1 font-sans text-xs font-bold ${usernameStatus === 'available' ? 'text-emerald-400' : usernameStatus === 'checking' ? 'text-[#8B9CB8]' : 'text-red-400'}`}>
-                {usernameStatus === 'available' && <Check className="h-3.5 w-3.5" />}
+              <p className={`font-sans text-xs font-bold ${usernameStatus === 'available' ? 'text-emerald-400' : usernameStatus === 'checking' ? 'text-[#8B9CB8]' : 'text-red-400'}`}>
                 {usernameMessage}
               </p>
             )}
