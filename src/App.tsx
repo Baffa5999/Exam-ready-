@@ -45,6 +45,7 @@ interface StudentProfile {
   selectedExams?: ('JAMB' | 'WAEC' | 'NECO')[];
   subjects?: Record<string, string[]>;
   targetScores?: Record<string, string | number>;
+  profileExists?: boolean;
 }
 
 export default function App() {
@@ -53,6 +54,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [authReady, setAuthReady] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [practiceActive, setPracticeActive] = useState<boolean>(false);
   
@@ -66,8 +68,25 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
+    const handleAuthenticatedUser = async (user: User) => {
+      setCurrentUser(user);
+      await fetchOrInitializeProfile(user);
+    };
+
     const initializeSession = async () => {
       setLoading(true);
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('code')) {
+        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+        if (error) {
+          console.error('Supabase OAuth callback exchange failed:', error);
+          showBanner('error', 'Unable to complete Google sign in. Please try again.');
+        } else {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+
       const { data, error } = await supabase.auth.getSession();
 
       if (!isMounted) return;
@@ -79,8 +98,7 @@ export default function App() {
         setStudentProfile(null);
         setView('landing');
       } else if (data.session?.user) {
-        setCurrentUser(data.session.user);
-        await fetchOrInitializeProfile(data.session.user);
+        await handleAuthenticatedUser(data.session.user);
       } else {
         setCurrentUser(null);
         setStudentProfile(null);
@@ -89,24 +107,29 @@ export default function App() {
 
       if (isMounted) {
         setLoading(false);
+        setAuthReady(true);
       }
     };
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!isMounted) return;
 
-      setLoading(true);
-      if (session?.user) {
-        setCurrentUser(session.user);
-        await fetchOrInitializeProfile(session.user);
-      } else {
-        setCurrentUser(null);
-        setStudentProfile(null);
-        setView('landing');
-      }
-      if (isMounted) {
-        setLoading(false);
-      }
+      window.setTimeout(async () => {
+        if (!isMounted) return;
+
+        setLoading(true);
+        if (session?.user) {
+          await handleAuthenticatedUser(session.user);
+        } else {
+          setCurrentUser(null);
+          setStudentProfile(null);
+          setView('landing');
+        }
+        if (isMounted) {
+          setLoading(false);
+          setAuthReady(true);
+        }
+      }, 0);
     });
 
     initializeSession();
@@ -124,6 +147,15 @@ export default function App() {
       setStatusMessage(null);
     }, 5000);
   };
+
+  // A signed-in user should never remain on public landing/sign-in screens.
+  useEffect(() => {
+    if (!authReady || !currentUser) return;
+
+    if ((view === 'landing' || view === 'signin') && studentProfile) {
+      setView(studentProfile.profileExists === false ? 'onboarding' : 'dashboard');
+    }
+  }, [authReady, currentUser, studentProfile, view]);
 
   const buildProfileFromSupabase = (user: User, data: Record<string, any>): StudentProfile => {
     const createdAt = data.created_at || data.createdAt || new Date().toISOString();
@@ -145,7 +177,8 @@ export default function App() {
       isOnboarded: data.is_onboarded ?? data.isOnboarded ?? true,
       selectedExams,
       subjects: data.subjects || {},
-      targetScores
+      targetScores,
+      profileExists: true
     };
   };
 
@@ -185,7 +218,8 @@ export default function App() {
       isOnboarded: false,
       selectedExams: [],
       subjects: {},
-      targetScores: {}
+      targetScores: {},
+      profileExists: false
     });
     setView('onboarding');
   };
@@ -240,7 +274,8 @@ export default function App() {
       selectedExams: onboardingData.selectedExams,
       subjects: onboardingData.subjects,
       targetScores: onboardingData.targetScores,
-      updatedAt
+      updatedAt,
+      profileExists: true
     } : null);
 
     setView('dashboard');
@@ -366,6 +401,17 @@ export default function App() {
     setAnswered(false);
     setQuizScore(null);
   };
+
+  if (!authReady && loading) {
+    return (
+      <div className="min-h-screen bg-[#0A0F1E] text-white font-sans flex items-center justify-center">
+        <div className="flex items-center gap-3 text-sm text-[#8B9CB8]">
+          <RefreshCw className="w-5 h-5 text-[#FF6B35] animate-spin" />
+          Preparing your ExamReady session...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0A0F1E] text-[#FFFFFF] font-sans overflow-x-hidden relative">
