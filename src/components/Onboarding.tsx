@@ -224,8 +224,8 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
         subjects: finalSubjects
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'An error occurred while saving your profile. Please try again.';
-      setErrorMsg(message);
+      console.error('Onboarding save failed:', err);
+      setErrorMsg('Something went wrong. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -447,7 +447,7 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
       <main className="relative z-10">
         {renderProgress()}
 
-        {errorMsg && (
+        {errorMsg && step !== 2 && (
           <div className="mx-auto mb-4 w-[calc(100%-3rem)] max-w-2xl rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-sans text-sm text-red-300">
             {errorMsg}
           </div>
@@ -486,6 +486,11 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
             {saving ? 'Saving...' : 'Lets Go 🚀'}
             {!saving && <Rocket className="h-4 w-4" />}
           </button>
+          {errorMsg && (
+            <p className="mx-auto mt-3 max-w-2xl text-center font-sans text-sm font-bold text-red-400">
+              {errorMsg}
+            </p>
+          )}
         </div>
       )}
     </div>

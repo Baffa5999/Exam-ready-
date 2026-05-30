@@ -330,27 +330,38 @@ export default function App() {
     const subjectList = [...new Set(Object.values(onboardingData.subjects).flat())];
     const createdAt = new Date().toISOString();
     const updatedAt = createdAt;
-
-    const updates = {
+    const fullName = onboardingData.displayName;
+    const username = onboardingData.username;
+    const examTypes = onboardingData.selectedExams;
+    const subjects = onboardingData.subjects;
+    const profilePayload = {
       id: user.id,
-      full_name: onboardingData.displayName,
-      username: onboardingData.username,
-      exam_types: onboardingData.selectedExams,
-      subjects: onboardingData.subjects,
+      full_name: fullName,
+      username: username,
+      exam_types: examTypes,
+      subjects: subjects,
       streak: 0,
       created_at: createdAt
     };
 
-    console.log('Onboarding profile upsert payload:', updates);
+    console.log('Onboarding profile upsert payload:', profilePayload);
 
     const { error } = await supabase
       .from('profiles')
-      .upsert(updates, { onConflict: 'id' });
+      .upsert({
+        id: user.id,
+        full_name: fullName,
+        username: username,
+        exam_types: examTypes,
+        subjects: subjects,
+        streak: 0,
+        created_at: new Date().toISOString()
+      });
 
     if (error) {
       console.log('Full error:', JSON.stringify(error, null, 2));
       console.error('Supabase profile save failed:', error);
-      throw new Error('Failed saving onboarding answers to Supabase.');
+      throw new Error('Something went wrong. Please try again.');
     }
 
     setStudentProfile(prev => ({
