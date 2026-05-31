@@ -220,8 +220,17 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
         subjects[exam] = examSubjects[exam];
       });
 
+      const examTypesArray = Array.isArray(examTypes)
+        ? examTypes
+        : [examTypes].filter(Boolean);
+      const subjectsArray = Array.isArray(subjects)
+        ? subjects
+        : [subjects].filter(Boolean);
+
       console.log('Saving profile for user:', user.id);
       console.log('Data:', { fullName, username: normalizedUsername, examTypes, subjects });
+      console.log('exam_types type:', typeof examTypesArray, examTypesArray);
+      console.log('subjects type:', typeof subjectsArray, subjectsArray);
 
       const { data, error } = await supabase
         .from('profiles')
@@ -229,8 +238,8 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
           id: user.id,
           full_name: fullName,
           username: normalizedUsername,
-          exam_types: examTypes,
-          subjects: subjects,
+          exam_types: examTypesArray,
+          subjects: subjectsArray,
           streak: 0,
           created_at: new Date().toISOString()
         }, {
