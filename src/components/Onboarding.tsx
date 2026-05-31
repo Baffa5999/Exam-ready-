@@ -363,7 +363,7 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
   );
 
   const renderStepTwo = () => (
-    <section className="flex min-h-[calc(100vh-168px)] flex-col px-6 pb-32">
+    <section className="flex min-h-[calc(100vh-168px)] flex-col px-4 pb-32 sm:px-6">
       <div className="mx-auto w-full max-w-2xl flex-1 space-y-7">
         <div className="space-y-3 text-center">
           <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-5xl">
@@ -384,14 +384,14 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
                 <button
                   type="button"
                   onClick={() => toggleExam(exam.id)}
-                  className={`relative w-full rounded-3xl border bg-[#111827] p-5 text-left transition-all duration-300 ${
+                  className={`relative w-full rounded-3xl border bg-[#111827] p-4 text-left transition-all duration-300 sm:p-5 ${
                     isSelected
                       ? 'border-[#FF6B35] shadow-[0_0_28px_rgba(255,107,53,0.16)]'
                       : 'border-white/10 hover:border-white/20'
                   }`}
                 >
                   <div className="pr-12">
-                    <h2 className="font-heading text-2xl font-extrabold text-white">{exam.title}</h2>
+                    <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">{exam.title}</h2>
                     <p className="mt-1 font-sans text-sm text-[#8B9CB8]">{exam.description}</p>
                   </div>
 

@@ -2520,7 +2520,7 @@ export default function App() {
                 <button 
                   id="cta-start-free-btn"
                   onClick={() => navigateTo('signin')}
-                  className="bg-[#FF6B35] hover:bg-[#ff7c4d] text-white font-sans font-bold text-base md:text-lg py-4 px-8 rounded-xl transition-all duration-300 shadow-md hover:shadow-[0_0_25px_rgba(255,107,53,0.6)] hover:scale-[1.02] active:scale-95 cursor-pointer inline-flex items-center gap-2"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-4 text-base font-bold text-white shadow-md transition-all duration-300 hover:scale-[1.02] hover:bg-[#ff7c4d] hover:shadow-[0_0_25px_rgba(255,107,53,0.6)] active:scale-95 sm:w-auto md:text-lg"
                 >
                   Get Started Free <span className="text-xl">→</span>
                 </button>
