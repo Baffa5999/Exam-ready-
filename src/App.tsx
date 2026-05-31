@@ -21,6 +21,11 @@ import {
   Search,
   BookMarked,
   Share2,
+  Copy,
+  Loader2,
+  Crown,
+  Medal,
+  MessageCircle,
   Target,
   ArrowRight,
   Sparkles,
@@ -99,7 +104,7 @@ const slugify = (value: string) => value.toLowerCase().replace(/&/g, 'and').repl
 const getSubjectFromSlug = (slug: string) => subjectLibrary.find(subject => slugify(subject.name) === slug)?.name || 'Mathematics';
 const getSubtopicFromSlug = (subject: string, slug: string) => subtopicsBySubject[subject]?.find(topic => slugify(topic) === slug) || subtopicsBySubject[subject]?.[0] || 'Algebra';
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'practice' | 'practiceSession' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent';
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'practice' | 'practiceSession' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
@@ -110,7 +115,9 @@ const viewToPath: Record<AppView, string> = {
   practiceSession: '/practice',
   cheatsheet: '/cheatsheet',
   cheatsheetSubject: '/cheatsheet',
-  cheatsheetContent: '/cheatsheet'
+  cheatsheetContent: '/cheatsheet',
+  battle: '/battle',
+  leaderboard: '/leaderboard'
 };
 
 function pathToView(pathname: string): AppView {
@@ -119,6 +126,8 @@ function pathToView(pathname: string): AppView {
   if (pathname === '/dashboard') return 'dashboard';
   if (pathname === '/practice') return 'practice';
   if (pathname.startsWith('/practice/')) return 'practiceSession';
+  if (pathname === '/battle') return 'battle';
+  if (pathname === '/leaderboard') return 'leaderboard';
   if (pathname === '/cheatsheet') return 'cheatsheet';
   if (pathname.startsWith('/cheatsheet/')) {
     return pathname.split('/').filter(Boolean).length >= 3 ? 'cheatsheetContent' : 'cheatsheetSubject';
@@ -147,6 +156,10 @@ export default function App() {
   const [sessionSelectedAnswer, setSessionSelectedAnswer] = useState<number | null>(null);
   const [sessionScore, setSessionScore] = useState<number>(0);
   const [questionTimeLeft, setQuestionTimeLeft] = useState<number>(30);
+  const [battleCode, setBattleCode] = useState<string>('');
+  const [joinBattleCode, setJoinBattleCode] = useState<string>('');
+  const [leaderboardRange, setLeaderboardRange] = useState<'Weekly' | 'Monthly' | 'All Time'>('Weekly');
+  const [leaderboardSubject, setLeaderboardSubject] = useState<string>('All Subjects');
 
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
@@ -250,7 +263,7 @@ export default function App() {
     if (!authReady) return;
 
     const isPublicRoute = view === 'landing' || view === 'signin';
-    const isProtectedRoute = ['onboarding', 'dashboard', 'practice', 'practiceSession', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent'].includes(view);
+    const isProtectedRoute = ['onboarding', 'dashboard', 'practice', 'practiceSession', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'].includes(view);
 
     if (!currentUser) {
       if (isProtectedRoute) {
@@ -1230,6 +1243,224 @@ export default function App() {
     );
   };
 
+  const recentBattles = [
+    { opponent: 'jamb_master', date: 'Today', yours: 16, theirs: 12, result: 'Win' },
+    { opponent: 'bio_queen', date: 'Yesterday', yours: 11, theirs: 15, result: 'Loss' },
+    { opponent: 'math_guru', date: 'May 28', yours: 18, theirs: 14, result: 'Win' }
+  ];
+
+  const leaderboardRows = [
+    { rank: 1, username: 'jamb_master', exam: 'JAMB', score: 9840, streak: 24 },
+    { rank: 2, username: 'naija_scholar', exam: 'WAEC', score: 9320, streak: 19 },
+    { rank: 3, username: 'chemistry_king', exam: 'JAMB', score: 9015, streak: 17 },
+    { rank: 4, username: 'bio_queen', exam: 'NECO', score: 8750, streak: 16 },
+    { rank: 5, username: 'math_guru', exam: 'JAMB', score: 8425, streak: 15 },
+    { rank: 6, username: 'lagos_reader', exam: 'WAEC', score: 8090, streak: 12 },
+    { rank: 7, username: 'physics_pro', exam: 'NECO', score: 7925, streak: 10 },
+    { rank: 8, username: 'abuja_brain', exam: 'JAMB', score: 7650, streak: 9 }
+  ];
+
+  const renderBattlePage = () => {
+    const generateBattleCode = () => {
+      const nextCode = Math.floor(100000 + Math.random() * 900000).toString();
+      setBattleCode(nextCode);
+    };
+
+    const copyBattleCode = async () => {
+      if (!battleCode || !navigator.clipboard) return;
+      await navigator.clipboard.writeText(battleCode);
+      showBanner('success', 'Battle code copied.');
+    };
+
+    const whatsappMessage = battleCode
+      ? `I challenge you to an ExamReady battle! Enter code ${battleCode} to accept. Download at examready.website`
+      : '';
+
+    return (
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-10 text-white md:px-10">
+        <main className="mx-auto max-w-5xl space-y-8 animate-fade-up">
+          <section>
+            <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-6xl">Battle</h1>
+            <p className="mt-3 font-sans text-base text-[#8B9CB8]">Challenge your classmates and see who knows more.</p>
+          </section>
+
+          <section className="grid gap-5 md:grid-cols-2">
+            <div className="rounded-[32px] border border-[#FF6B35]/35 bg-[#111827] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35]">
+                <Swords className="h-7 w-7" />
+              </div>
+              <h2 className="mt-5 font-heading text-2xl font-extrabold text-white">Create Battle</h2>
+              <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Generate a code and share with a friend to challenge them</p>
+
+              {battleCode ? (
+                <div className="mt-6 rounded-3xl border border-white/10 bg-[#0A0F1E] p-5 text-center">
+                  <div className="flex items-center justify-center gap-3">
+                    <p className="font-heading text-3xl font-extrabold tracking-[0.35em] text-[#FF6B35] md:text-4xl">
+                      {battleCode.split('').join(' ')}
+                    </p>
+                    <button type="button" onClick={copyBattleCode} className="rounded-full border border-white/10 p-2 text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]" aria-label="Copy battle code">
+                      <Copy className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <p className="mt-3 text-sm text-[#8B9CB8]">Share this code with your opponent</p>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-5 py-3 font-bold text-white transition hover:bg-[#20bd5a]"
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                    Share on WhatsApp
+                  </a>
+                  <div className="mt-5 flex items-center justify-center gap-2 text-sm font-semibold text-[#8B9CB8]">
+                    <Loader2 className="h-4 w-4 animate-spin text-[#FF6B35]" />
+                    Waiting for opponent to join...
+                  </div>
+                </div>
+              ) : (
+                <button type="button" onClick={generateBattleCode} className="mt-8 w-full rounded-2xl bg-[#FF6B35] px-6 py-4 font-bold text-white transition hover:bg-[#ff7c4d]">
+                  Create Battle
+                </button>
+              )}
+            </div>
+
+            <div className="rounded-[32px] border border-purple-500/35 bg-[#111827] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500/15 text-purple-300">
+                <Target className="h-7 w-7" />
+              </div>
+              <h2 className="mt-5 font-heading text-2xl font-extrabold text-white">Join Battle</h2>
+              <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Enter a code from your friend to accept their challenge</p>
+              <input
+                inputMode="numeric"
+                maxLength={6}
+                value={joinBattleCode}
+                onChange={(event) => setJoinBattleCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Enter 6 digit code"
+                className="mt-8 w-full rounded-2xl border border-white/10 bg-[#0A0F1E] px-5 py-4 text-center font-heading text-xl font-extrabold tracking-[0.2em] text-white outline-none transition placeholder:font-sans placeholder:text-sm placeholder:tracking-normal placeholder:text-[#8B9CB8] focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15)]"
+              />
+              <button type="button" className="mt-4 w-full rounded-2xl bg-[#FF6B35] px-6 py-4 font-bold text-white transition hover:bg-[#ff7c4d]">
+                Join Battle
+              </button>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="font-heading text-2xl font-extrabold text-white">Recent Battles</h2>
+            {recentBattles.length === 0 ? (
+              <div className="mt-4 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] px-6 py-10 text-center">
+                <p className="font-heading text-lg font-extrabold text-white">No battles yet.</p>
+                <p className="mt-2 text-sm text-[#8B9CB8]">Challenge a friend to get started.</p>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {recentBattles.map(battle => (
+                  <div key={`${battle.opponent}-${battle.date}`} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4">
+                    <div>
+                      <p className="font-heading text-base font-extrabold text-white">{battle.opponent}</p>
+                      <p className="mt-1 text-xs text-[#8B9CB8]">{battle.date}</p>
+                    </div>
+                    <p className="font-heading text-sm font-extrabold text-white md:text-lg">{battle.yours}/20 vs {battle.theirs}/20</p>
+                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${battle.result === 'Win' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {battle.result}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </main>
+        {renderBottomNavigation('Battle')}
+      </div>
+    );
+  };
+
+  const renderLeaderboardPage = () => {
+    const currentUsername = (studentProfile?.username || getDashboardUsername()).toString().toLowerCase().replace(/\s+/g, '_');
+    const currentUserRow = { rank: 57, username: currentUsername || 'examready_student', exam: getPrimaryExamLabel(), score: 4210, streak: studentProfile?.streak ?? 0, current: true };
+    const visibleRows = leaderboardRows.slice(3);
+    const filters = ['All Subjects', 'Mathematics', 'Biology', 'Chemistry', 'Physics', 'English'];
+    const podium = [leaderboardRows[1], leaderboardRows[0], leaderboardRows[2]];
+
+    return (
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-10 text-white md:px-10">
+        <main className="mx-auto max-w-5xl space-y-8 animate-fade-up">
+          <section>
+            <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-6xl">Leaderboard</h1>
+            <p className="mt-3 font-sans text-base text-[#8B9CB8]">See how you rank nationally.</p>
+          </section>
+
+          <section className="space-y-4">
+            <div className="grid grid-cols-3 gap-2 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-1">
+              {(['Weekly', 'Monthly', 'All Time'] as const).map(range => (
+                <button key={range} type="button" onClick={() => setLeaderboardRange(range)} className={`rounded-xl px-3 py-3 text-sm font-extrabold transition ${leaderboardRange === range ? 'bg-[#FF6B35] text-white' : 'text-[#8B9CB8] hover:text-white'}`}>
+                  {range}
+                </button>
+              ))}
+            </div>
+            <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0">
+              {filters.map(filter => (
+                <button key={filter} type="button" onClick={() => setLeaderboardSubject(filter)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${leaderboardSubject === filter ? 'bg-[#FF6B35] text-white' : 'bg-[#111827] text-[#8B9CB8] border border-[rgba(255,255,255,0.06)]'}`}>
+                  {filter}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="grid grid-cols-3 items-end gap-3 pt-4">
+            {podium.map(student => {
+              const first = student.rank === 1;
+              const medalColor = student.rank === 1 ? 'text-amber-300' : student.rank === 2 ? 'text-slate-300' : 'text-orange-300';
+              return (
+                <div key={student.username} className={`rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 text-center ${first ? 'pb-8 pt-7' : 'mt-8 pb-5'}`}>
+                  {first ? <Crown className="mx-auto mb-2 h-7 w-7 text-amber-300" /> : <Medal className={`mx-auto mb-2 h-6 w-6 ${medalColor}`} />}
+                  <div className={`mx-auto flex items-center justify-center rounded-full font-heading font-extrabold text-white ${first ? 'h-16 w-16 bg-[#FF6B35]' : 'h-14 w-14 bg-white/10'}`}>
+                    {student.username.charAt(0).toUpperCase()}
+                  </div>
+                  <p className="mt-3 truncate font-heading text-sm font-extrabold text-white">{student.username}</p>
+                  <p className="mt-1 text-xs font-bold text-[#8B9CB8]">{student.score.toLocaleString()} pts</p>
+                </div>
+              );
+            })}
+          </section>
+
+          <section className="space-y-3">
+            {visibleRows.map(student => (
+              <div key={student.username} className="grid grid-cols-[36px_44px_1fr_auto] items-center gap-3 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4">
+                <span className="font-heading text-sm font-extrabold text-[#8B9CB8]">#{student.rank}</span>
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 font-heading font-extrabold text-white">{student.username.charAt(0).toUpperCase()}</div>
+                <div className="min-w-0">
+                  <p className="truncate font-heading text-base font-extrabold text-white">{student.username}</p>
+                  <p className="text-xs text-[#8B9CB8]">{student.exam}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-heading text-base font-extrabold text-white">{student.score.toLocaleString()}</p>
+                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-[#8B9CB8]"><Flame className="h-3.5 w-3.5 text-[#FF6B35]" /> {student.streak}</p>
+                </div>
+              </div>
+            ))}
+
+            <div className="pt-3">
+              <div className="mb-3 h-px bg-white/10" />
+              <div className="grid grid-cols-[36px_44px_1fr_auto] items-center gap-3 rounded-3xl border border-[#FF6B35]/30 bg-[#FF6B35]/10 p-4">
+                <span className="font-heading text-sm font-extrabold text-[#FF6B35]">#{currentUserRow.rank}</span>
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FF6B35] font-heading font-extrabold text-white">{currentUserRow.username.charAt(0).toUpperCase()}</div>
+                <div className="min-w-0">
+                  <p className="truncate font-heading text-base font-extrabold text-white">{currentUserRow.username}</p>
+                  <p className="text-xs text-[#8B9CB8]">{currentUserRow.exam}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-heading text-base font-extrabold text-white">{currentUserRow.score.toLocaleString()}</p>
+                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-[#8B9CB8]"><Flame className="h-3.5 w-3.5 text-[#FF6B35]" /> {currentUserRow.streak}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+        {renderBottomNavigation('Leaderboard')}
+      </div>
+    );
+  };
+
   if (!authReady && loading) {
     return (
       <div className="min-h-screen bg-[#0A0F1E] text-white font-sans flex items-center justify-center">
@@ -1649,6 +1880,13 @@ export default function App() {
 
       {/* CHEATSHEET CONTENT PAGE */}
       {view === 'cheatsheetContent' && studentProfile && renderCheatsheetContentPage()}
+
+
+      {/* BATTLE PAGE */}
+      {view === 'battle' && studentProfile && renderBattlePage()}
+
+      {/* LEADERBOARD PAGE */}
+      {view === 'leaderboard' && studentProfile && renderLeaderboardPage()}
 
       {/* ONBOARDING FLOW */}
       {view === 'onboarding' && studentProfile && (
