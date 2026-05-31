@@ -897,10 +897,10 @@ export default function App() {
                 type="button"
                 onClick={() => navigatePath(tab.href)}
                 aria-current={active ? 'page' : undefined}
-                className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-xs font-bold transition ${active ? 'text-[#FF6B35]' : 'text-[#8B9CB8] hover:text-white'}`}
+                className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-0.5 py-2 text-[10px] font-bold transition sm:px-1 sm:text-xs ${active ? 'text-[#FF6B35]' : 'text-[#8B9CB8] hover:text-white'}`}
               >
                 <TabIcon className="h-5 w-5" />
-                <span>{tab.label}</span>
+                <span className="max-w-full truncate">{tab.label}</span>
               </button>
             );
           })}
@@ -946,10 +946,10 @@ export default function App() {
   };
 
   const renderPracticePage = () => (
-    <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-10 text-white md:px-10">
+    <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
       <main className="mx-auto max-w-4xl space-y-6 animate-fade-up">
         <section>
-          <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-6xl">Practice</h1>
+          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-6xl">Practice</h1>
           <p className="mt-3 font-sans text-base text-[#8B9CB8]">How would you like to practice today?</p>
         </section>
 
@@ -957,13 +957,13 @@ export default function App() {
           <button
             type="button"
             onClick={() => navigatePath('/practice/subjects')}
-            className="group flex w-full items-center gap-4 rounded-[32px] border border-[rgba(255,255,255,0.06)] border-l-[#FF6B35] border-l-4 bg-[#111827] p-6 text-left shadow-[0_20px_70px_rgba(0,0,0,0.28)] transition hover:border-[#FF6B35]/50"
+            className="group flex w-full items-center gap-4 rounded-[28px] border border-[rgba(255,255,255,0.06)] border-l-[#FF6B35] border-l-4 bg-[#111827] p-4 sm:p-6 text-left shadow-[0_20px_70px_rgba(0,0,0,0.28)] transition hover:border-[#FF6B35]/50"
           >
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35]">
+            <div className="flex h-12 w-12 shrink-0 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35]">
               <BookOpen className="h-7 w-7" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="font-heading text-2xl font-extrabold text-white">Subject Practice</h2>
+              <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Subject Practice</h2>
               <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Choose a subject and topic to practice at your own pace. Perfect for targeting specific areas.</p>
             </div>
             <ChevronRight className="h-6 w-6 shrink-0 text-[#FF6B35] transition group-hover:translate-x-1" />
@@ -972,13 +972,13 @@ export default function App() {
           <button
             type="button"
             onClick={() => navigatePath('/practice/exam-type')}
-            className="group flex w-full items-center gap-4 rounded-[32px] border border-[rgba(255,255,255,0.06)] border-l-purple-500 border-l-4 bg-[#111827] p-6 text-left shadow-[0_20px_70px_rgba(0,0,0,0.28)] transition hover:border-purple-400/50"
+            className="group flex w-full items-center gap-4 rounded-[28px] border border-[rgba(255,255,255,0.06)] border-l-purple-500 border-l-4 bg-[#111827] p-4 sm:p-6 text-left shadow-[0_20px_70px_rgba(0,0,0,0.28)] transition hover:border-purple-400/50"
           >
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-purple-500/15 text-purple-300">
+            <div className="flex h-12 w-12 shrink-0 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-purple-500/15 text-purple-300">
               <Clock className="h-7 w-7" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="font-heading text-2xl font-extrabold text-white">Full Mock Exam</h2>
+              <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Full Mock Exam</h2>
               <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Simulate real exam conditions with a full timed exam.</p>
             </div>
             <ChevronRight className="h-6 w-6 shrink-0 text-purple-300 transition group-hover:translate-x-1" />
@@ -997,12 +997,12 @@ export default function App() {
     ];
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-8 text-white md:px-10">
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-8 text-white md:px-10">
         <main className="mx-auto max-w-4xl animate-fade-up">
           <button type="button" onClick={() => navigatePath('/practice')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          <h1 className="font-heading text-4xl font-extrabold text-white md:text-6xl">Select Exam Type</h1>
+          <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl md:text-6xl">Select Exam Type</h1>
           <p className="mt-3 text-base text-[#8B9CB8]">Choose which exam you want to simulate today.</p>
 
           <section className="mt-8 space-y-4">
@@ -1014,11 +1014,11 @@ export default function App() {
                 className="group flex w-full items-center gap-4 rounded-[28px] border border-[rgba(255,255,255,0.06)] border-l-4 bg-[#111827] p-5 text-left transition hover:border-white/15"
                 style={{ borderLeftColor: exam.accent }}
               >
-                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl p-3 ${exam.tint}`}>
+                <div className={`flex h-12 w-12 shrink-0 sm:h-14 sm:w-14 items-center justify-center rounded-2xl p-3 ${exam.tint}`}>
                   <FileText className="h-6 w-6" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-heading text-2xl font-extrabold text-white">{exam.title}</h2>
+                  <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">{exam.title}</h2>
                   <p className="mt-1 text-sm font-semibold text-[#C8D2E4]">{exam.subtitle}</p>
                   <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">{exam.description}</p>
                 </div>
@@ -1046,7 +1046,7 @@ export default function App() {
           <button type="button" onClick={() => navigatePath('/practice')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          <h1 className="font-heading text-4xl font-extrabold text-white md:text-6xl">Select Subject</h1>
+          <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl md:text-6xl">Select Subject</h1>
           <p className="mt-3 text-base text-[#8B9CB8]">Choose a subject then select your topics.</p>
 
           <section className="mt-8 space-y-4">
@@ -1095,7 +1095,7 @@ export default function App() {
           </section>
         </main>
 
-        <div className="fixed inset-x-0 bottom-16 z-40 border-t border-white/10 bg-[#0A0F1E]/95 px-5 py-3 backdrop-blur">
+        <div className="fixed inset-x-0 bottom-[72px] z-40 border-t border-white/10 bg-[#0A0F1E]/95 px-5 py-3 backdrop-blur">
           <p className="text-center font-heading text-sm font-extrabold text-[#FF6B35]">{selectedCount} topics selected</p>
         </div>
         <div className="fixed inset-x-0 bottom-0 z-40 bg-[#0A0F1E] px-5 py-3">
@@ -1135,7 +1135,7 @@ export default function App() {
         <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 py-10 text-white">
           <div className="w-full max-w-md animate-fade-up rounded-[32px] border border-[rgba(255,255,255,0.06)] bg-[#111827] p-8 text-center">
             <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full border-8 border-[#FF6B35]/25 bg-[#0A0F1E]">
-              <span className="font-heading text-4xl font-extrabold text-[#FF6B35]">{percent}%</span>
+              <span className="font-heading text-3xl font-extrabold text-[#FF6B35] sm:text-4xl">{percent}%</span>
             </div>
             <p className="mt-6 font-heading text-3xl font-extrabold text-white">{sessionScore} out of 20</p>
             <p className="mt-2 text-lg font-bold text-[#FF6B35]">{percent}%</p>
@@ -1168,7 +1168,7 @@ export default function App() {
     }
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 text-white md:px-10">
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 text-white md:px-10">
         <header className="sticky top-0 z-30 -mx-5 border-b border-white/10 bg-[#0A0F1E]/95 px-5 py-4 backdrop-blur md:-mx-10 md:px-10">
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
             <button type="button" onClick={() => navigatePath('/practice')} className="rounded-full p-2 text-[#8B9CB8] hover:text-[#FF6B35]" aria-label="Back to practice">
@@ -1252,10 +1252,10 @@ export default function App() {
   };
 
   const renderCheatsheetPage = () => (
-    <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-10 text-white md:px-10">
+    <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
       <main className="mx-auto max-w-5xl animate-fade-up">
         <section>
-          <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-6xl">Cheatsheets</h1>
+          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-6xl">Cheatsheets</h1>
           <p className="mt-3 font-sans text-base text-[#8B9CB8]">Quick revision for every topic.</p>
           <div className="relative mt-6">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#8B9CB8]" />
@@ -1317,12 +1317,12 @@ export default function App() {
     const subject = getSubjectFromSlug(subjectSlug);
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-8 text-white md:px-10">
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-8 text-white md:px-10">
         <main className="mx-auto max-w-4xl animate-fade-up">
           <button type="button" onClick={() => navigatePath('/cheatsheet')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          <h1 className="font-heading text-4xl font-extrabold text-white md:text-6xl">{subject}</h1>
+          <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl md:text-6xl">{subject}</h1>
           <div className="mt-8 divide-y divide-white/10 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-2">
             {(subtopicsBySubject[subject] || []).map(topic => (
               <button key={topic} type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}/${slugify(topic)}`)} className="flex w-full items-center justify-between px-4 py-4 text-left">
@@ -1363,12 +1363,12 @@ export default function App() {
     ];
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-32 pt-8 text-white md:px-10">
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-40 pt-8 text-white md:px-10">
         <main className="mx-auto max-w-4xl animate-fade-up">
           <button type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}`)} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          <h1 className="font-heading text-4xl font-extrabold text-white md:text-6xl">{topic}</h1>
+          <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl md:text-6xl">{topic}</h1>
           <p className="mt-2 text-sm font-semibold text-[#8B9CB8]">{subject}</p>
 
           <div className="mt-8 space-y-5">
@@ -1381,7 +1381,7 @@ export default function App() {
           </div>
         </main>
 
-        <div className="fixed inset-x-0 bottom-16 z-40 px-5 pb-4 md:bottom-0 md:pb-5">
+        <div className="fixed inset-x-0 bottom-[72px] z-40 px-5 pb-4 md:bottom-0 md:pb-5">
           <button type="button" onClick={shareCheatsheet} className="mx-auto flex w-full max-w-4xl items-center justify-center gap-2 rounded-2xl bg-[#FF6B35] px-6 py-4 font-bold text-white shadow-[0_16px_40px_rgba(255,107,53,0.25)] transition hover:bg-[#ff7c4d]">
             <Share2 className="h-5 w-5" /> Share Cheatsheet
           </button>
@@ -1424,25 +1424,25 @@ export default function App() {
       : '';
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-10 text-white md:px-10">
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
         <main className="mx-auto max-w-5xl space-y-8 animate-fade-up">
           <section>
-            <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-6xl">Battle</h1>
+            <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-6xl">Battle</h1>
             <p className="mt-3 font-sans text-base text-[#8B9CB8]">Challenge your classmates and see who knows more.</p>
           </section>
 
           <section className="grid gap-5 md:grid-cols-2">
-            <div className="rounded-[32px] border border-[#FF6B35]/35 bg-[#111827] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
+            <div className="rounded-[28px] border border-[#FF6B35]/35 bg-[#111827] p-4 sm:p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35]">
                 <Swords className="h-7 w-7" />
               </div>
-              <h2 className="mt-5 font-heading text-2xl font-extrabold text-white">Create Battle</h2>
+              <h2 className="mt-5 font-heading text-xl font-extrabold text-white sm:text-2xl">Create Battle</h2>
               <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Generate a code and share with a friend to challenge them</p>
 
               {battleCode ? (
                 <div className="mt-6 rounded-3xl border border-white/10 bg-[#0A0F1E] p-5 text-center">
                   <div className="flex items-center justify-center gap-3">
-                    <p className="font-heading text-3xl font-extrabold tracking-[0.35em] text-[#FF6B35] md:text-4xl">
+                    <p className="font-heading text-2xl font-extrabold tracking-[0.18em] text-[#FF6B35] sm:text-3xl sm:tracking-[0.35em] md:text-4xl">
                       {battleCode.split('').join(' ')}
                     </p>
                     <button type="button" onClick={copyBattleCode} className="rounded-full border border-white/10 p-2 text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]" aria-label="Copy battle code">
@@ -1471,11 +1471,11 @@ export default function App() {
               )}
             </div>
 
-            <div className="rounded-[32px] border border-purple-500/35 bg-[#111827] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
+            <div className="rounded-[28px] border border-purple-500/35 bg-[#111827] p-4 sm:p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500/15 text-purple-300">
                 <Target className="h-7 w-7" />
               </div>
-              <h2 className="mt-5 font-heading text-2xl font-extrabold text-white">Join Battle</h2>
+              <h2 className="mt-5 font-heading text-xl font-extrabold text-white sm:text-2xl">Join Battle</h2>
               <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Enter a code from your friend to accept their challenge</p>
               <input
                 inputMode="numeric"
@@ -1492,7 +1492,7 @@ export default function App() {
           </section>
 
           <section>
-            <h2 className="font-heading text-2xl font-extrabold text-white">Recent Battles</h2>
+            <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Recent Battles</h2>
             {recentBattles.length === 0 ? (
               <div className="mt-4 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] px-6 py-10 text-center">
                 <p className="font-heading text-lg font-extrabold text-white">No battles yet.</p>
@@ -1501,7 +1501,7 @@ export default function App() {
             ) : (
               <div className="mt-4 space-y-3">
                 {recentBattles.map(battle => (
-                  <div key={`${battle.opponent}-${battle.date}`} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4">
+                  <div key={`${battle.opponent}-${battle.date}`} className="flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4">
                     <div>
                       <p className="font-heading text-base font-extrabold text-white">{battle.opponent}</p>
                       <p className="mt-1 text-xs text-[#8B9CB8]">{battle.date}</p>
@@ -1529,10 +1529,10 @@ export default function App() {
     const podium = [leaderboardRows[1], leaderboardRows[0], leaderboardRows[2]];
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-10 text-white md:px-10">
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
         <main className="mx-auto max-w-5xl space-y-8 animate-fade-up">
           <section>
-            <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-6xl">Leaderboard</h1>
+            <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-6xl">Leaderboard</h1>
             <p className="mt-3 font-sans text-base text-[#8B9CB8]">See how you rank nationally.</p>
           </section>
 
@@ -1558,7 +1558,7 @@ export default function App() {
               const first = student.rank === 1;
               const medalColor = student.rank === 1 ? 'text-amber-300' : student.rank === 2 ? 'text-slate-300' : 'text-orange-300';
               return (
-                <div key={student.username} className={`rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 text-center ${first ? 'pb-8 pt-7' : 'mt-8 pb-5'}`}>
+                <div key={student.username} className={`rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4 text-center ${first ? 'pb-8 pt-7' : 'mt-8 pb-5'}`}>
                   {first ? <Crown className="mx-auto mb-2 h-7 w-7 text-amber-300" /> : <Medal className={`mx-auto mb-2 h-6 w-6 ${medalColor}`} />}
                   <div className={`mx-auto flex items-center justify-center rounded-full font-heading font-extrabold text-white ${first ? 'h-16 w-16 bg-[#FF6B35]' : 'h-14 w-14 bg-white/10'}`}>
                     {student.username.charAt(0).toUpperCase()}
@@ -1572,7 +1572,7 @@ export default function App() {
 
           <section className="space-y-3">
             {visibleRows.map(student => (
-              <div key={student.username} className="grid grid-cols-[36px_44px_1fr_auto] items-center gap-3 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4">
+              <div key={student.username} className="grid grid-cols-[28px_36px_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[36px_44px_minmax(0,1fr)_auto] sm:gap-3 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4">
                 <span className="font-heading text-sm font-extrabold text-[#8B9CB8]">#{student.rank}</span>
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 font-heading font-extrabold text-white">{student.username.charAt(0).toUpperCase()}</div>
                 <div className="min-w-0">
@@ -1588,7 +1588,7 @@ export default function App() {
 
             <div className="pt-3">
               <div className="mb-3 h-px bg-white/10" />
-              <div className="grid grid-cols-[36px_44px_1fr_auto] items-center gap-3 rounded-3xl border border-[#FF6B35]/30 bg-[#FF6B35]/10 p-4">
+              <div className="grid grid-cols-[28px_36px_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[36px_44px_minmax(0,1fr)_auto] sm:gap-3 rounded-3xl border border-[#FF6B35]/30 bg-[#FF6B35]/10 p-3 sm:p-4">
                 <span className="font-heading text-sm font-extrabold text-[#FF6B35]">#{currentUserRow.rank}</span>
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FF6B35] font-heading font-extrabold text-white">{currentUserRow.username.charAt(0).toUpperCase()}</div>
                 <div className="min-w-0">
@@ -1626,7 +1626,7 @@ export default function App() {
 
       {/* STICKY STATUS BANNER NOTIFICATIONS */}
       {statusMessage && (
-        <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-xl border font-sans text-sm flex items-center gap-2 shadow-2xl transition-all duration-300 ${
+        <div className={`fixed top-24 left-1/2 z-[100] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 px-4 py-3 sm:px-6 rounded-xl border font-sans text-sm flex items-center gap-2 shadow-2xl transition-all duration-300 ${
           statusMessage.type === 'success' 
             ? 'bg-[#111827] border-emerald-500/30 text-emerald-400' 
             : 'bg-[#111827] border-red-500/30 text-red-400'
@@ -1641,9 +1641,9 @@ export default function App() {
       {/* SIGN IN VIEW */}
       {view === 'signin' && (
         <div className="min-h-screen flex items-center justify-center relative bg-[#0A0F1E] px-4 py-10">
-          <div className="absolute w-[520px] h-[520px] rounded-full bg-[radial-gradient(rgba(255,107,53,0.18),transparent_70%)] blur-3xl pointer-events-none z-0" />
+          <div className="absolute h-[min(520px,90vw)] w-[min(520px,90vw)] rounded-full bg-[radial-gradient(rgba(255,107,53,0.18),transparent_70%)] blur-3xl pointer-events-none z-0" />
 
-          <div className="w-full max-w-md bg-[#111827]/95 border border-white/10 rounded-[28px] p-8 md:p-10 shadow-[0_45px_100px_rgba(0,0,0,0.7),0_0_85px_rgba(255,107,53,0.08)] relative z-10 animate-fade-up">
+          <div className="w-full max-w-md bg-[#111827]/95 border border-white/10 rounded-[24px] p-5 sm:p-8 md:p-10 shadow-[0_45px_100px_rgba(0,0,0,0.7),0_0_85px_rgba(255,107,53,0.08)] relative z-10 animate-fade-up">
             <div className="text-center mb-8">
               <span className="font-heading font-extrabold text-[28px] tracking-tight text-white">
                 Exam<span className="text-[#FF6B35]">Ready</span>
@@ -1657,7 +1657,7 @@ export default function App() {
                   Check your email
                 </h2>
                 <p className="font-sans text-sm leading-6 text-[#8B9CB8]">
-                  We sent a confirmation link to <span className="font-semibold text-white">{pendingConfirmationEmail}</span>. Click the link to activate your account and get started.
+                  We sent a confirmation link to <span className="break-all font-semibold text-white">{pendingConfirmationEmail}</span>. Click the link to activate your account and get started.
                 </p>
                 <p className="mt-5 font-sans text-xs leading-5 text-[#8B9CB8]">
                   Did not receive it? Check your spam folder or click Resend Email.
@@ -1841,6 +1841,7 @@ export default function App() {
       {view === 'dashboard' && studentProfile && (() => {
         const username = getDashboardUsername();
         const avatarLetter = (username || studentProfile.email || 'E').charAt(0).toUpperCase();
+        const greetingUsername = username.length > 15 ? `${username.slice(0, 15)}…` : username;
         return (
           <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-28 text-white font-sans">
             <nav className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-[rgba(255,255,255,0.06)] bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
@@ -1876,10 +1877,10 @@ export default function App() {
               </div>
             </nav>
 
-            <main className="mx-auto max-w-6xl space-y-9 px-5 py-8 md:px-10">
+            <main className="mx-auto max-w-6xl space-y-7 px-4 py-6 sm:px-5 md:px-10 md:py-8">
               <section className="animate-fade-up">
-                <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white md:text-5xl">
-                  {getTimeGreeting()} {username} <span aria-hidden="true">👋</span>
+                <h1 className="font-heading text-2xl font-extrabold tracking-tight text-white sm:text-3xl md:text-5xl">
+                  <span>{getTimeGreeting()} </span><span className="inline-block max-w-[15ch] truncate align-bottom">{greetingUsername}</span> <span aria-hidden="true">👋</span>
                 </h1>
                 <p className="mt-2 font-sans text-sm text-[#8B9CB8] md:text-base">
                   Keep pushing. Your exam is coming.
@@ -1887,19 +1888,19 @@ export default function App() {
               </section>
 
               <section className="grid grid-cols-3 gap-3 md:gap-5 animate-fade-up">
-                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 md:p-6">
+                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4 md:p-6">
                   <div className="text-3xl" aria-hidden="true">🔥</div>
-                  <p className="mt-3 font-heading text-2xl font-extrabold text-white">{studentProfile.streak ?? 0}</p>
+                  <p className="mt-3 font-heading text-xl font-extrabold text-white sm:text-2xl">{studentProfile.streak ?? 0}</p>
                   <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Day Streak</p>
                 </div>
-                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 md:p-6">
+                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4 md:p-6">
                   <BookOpen className="h-7 w-7 text-[#FF6B35]" />
-                  <p className="mt-3 font-heading text-2xl font-extrabold text-white">{dashboardPerformance.questions}</p>
+                  <p className="mt-3 font-heading text-xl font-extrabold text-white sm:text-2xl">{dashboardPerformance.questions}</p>
                   <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Questions</p>
                 </div>
-                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 md:p-6">
+                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4 md:p-6">
                   <Target className="h-7 w-7 text-[#FF6B35]" />
-                  <p className="mt-3 font-heading text-2xl font-extrabold text-white">{dashboardPerformance.accuracy}%</p>
+                  <p className="mt-3 font-heading text-xl font-extrabold text-white sm:text-2xl">{dashboardPerformance.accuracy}%</p>
                   <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Accuracy</p>
                 </div>
               </section>
@@ -1907,7 +1908,7 @@ export default function App() {
               <section className="animate-fade-up">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="font-heading text-2xl font-extrabold text-white">Weakness Assassin <span aria-hidden="true">🎯</span></h2>
+                    <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Weakness Assassin <span aria-hidden="true">🎯</span></h2>
                     <p className="mt-1 text-sm text-[#8B9CB8]">Your weakest areas to fix</p>
                   </div>
                   <button
@@ -1951,7 +1952,7 @@ export default function App() {
               </section>
 
               <section className="animate-fade-up">
-                <h2 className="font-heading text-2xl font-extrabold text-white">Exam Practice</h2>
+                <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Exam Practice</h2>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <button
                     type="button"
@@ -1959,7 +1960,7 @@ export default function App() {
                     className="rounded-3xl border border-[rgba(255,255,255,0.06)] border-b-[#FF6B35] bg-[#111827] p-6 text-left transition hover:border-[#FF6B35]/50"
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-3xl" aria-hidden="true">📚</div>
-                    <h3 className="mt-5 font-heading text-2xl font-extrabold text-white">Topic Practice</h3>
+                    <h3 className="mt-5 font-heading text-xl font-extrabold text-white sm:text-2xl">Topic Practice</h3>
                     <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">
                       Practice specific subjects and subtopics at your own pace
                     </p>
@@ -1970,7 +1971,7 @@ export default function App() {
                     className="rounded-3xl border border-[rgba(255,255,255,0.06)] border-b-purple-500 bg-[#111827] p-6 text-left transition hover:border-purple-400/60"
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/15 text-3xl" aria-hidden="true">⏱️</div>
-                    <h3 className="mt-5 font-heading text-2xl font-extrabold text-white">Mock Exam</h3>
+                    <h3 className="mt-5 font-heading text-xl font-extrabold text-white sm:text-2xl">Mock Exam</h3>
                     <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">
                       Full timed exam simulation. JAMB conditions.
                     </p>
@@ -2069,7 +2070,7 @@ export default function App() {
                 </div>
 
                 {/* Main Headline */}
-                <h1 className="font-heading font-extrabold text-4xl sm:text-5xl md:text-6xl text-white leading-[1.1] tracking-tight">
+                <h1 className="font-heading font-extrabold text-3xl sm:text-5xl md:text-6xl text-white leading-[1.1] tracking-tight">
                   Pass JAMB,<br />
                   WAEC & NECO.<br />
                   <span className="text-[#FF6B35] block mt-1">Stop Guessing.</span>
@@ -2117,12 +2118,12 @@ export default function App() {
               <div className="w-full lg:w-[40%] flex items-center justify-center relative pt-8 lg:pt-0">
                 
                 {/* Background Soft Orange Radial Glow container */}
-                <div className="absolute w-[400px] h-[400px] rounded-full bg-[radial-gradient(rgba(255,107,53,0.15),transparent_70%)] blur-2xl pointer-events-none -z-10" />
+                <div className="absolute h-[min(400px,90vw)] w-[min(400px,90vw)] rounded-full bg-[radial-gradient(rgba(255,107,53,0.15),transparent_70%)] blur-2xl pointer-events-none -z-10" />
 
                 {/* Simulated Phone Mockup */}
                 <div 
                   id="phone-mockup"
-                  className="w-[260px] h-[520px] bg-[#1A1A2E] border-2 border-[rgba(255,255,255,0.1)] rounded-[36px] shadow-[0_40px_80px_rgba(0,0,0,0.6),0_0_60px_rgba(255,107,53,0.15)] overflow-hidden flex flex-col relative rotate-[-5deg] hover:rotate-0 transition-transform duration-500 animate-float"
+                  className="h-[460px] w-[230px] sm:h-[520px] sm:w-[260px] bg-[#1A1A2E] border-2 border-[rgba(255,255,255,0.1)] rounded-[36px] shadow-[0_40px_80px_rgba(0,0,0,0.6),0_0_60px_rgba(255,107,53,0.15)] overflow-hidden flex flex-col relative rotate-[-5deg] hover:rotate-0 transition-transform duration-500 animate-float"
                 >
                   {/* Phone Speaker & Camera Notch */}
                   <div className="w-full h-8 bg-[#1A1A2E] flex justify-between items-center px-6 relative z-10 text-[10px] text-[rgba(255,255,255,0.4)] select-none">
@@ -2164,7 +2165,7 @@ export default function App() {
                         <span className="bg-white/20 px-1.5 py-0.5 rounded text-[8px]">Active</span>
                       </div>
                       <div className="my-1">
-                        <div className="text-2xl font-extrabold text-white leading-none">280</div>
+                        <div className="text-xl font-extrabold text-white sm:text-2xl leading-none">280</div>
                         <span className="text-[8px] text-white/80">Goal Score (Engineering study)</span>
                       </div>
                       <div className="w-full">
@@ -2496,7 +2497,7 @@ export default function App() {
             {/* Decorative background glow behind CTA card */}
             <div className="absolute w-[500px] h-[500px] rounded-full bg-[radial-gradient(rgba(255,107,53,0.08),transparent_70%)] blur-3xl pointer-events-none z-0" />
 
-            <div className="w-full max-w-[700px] bg-gradient-to-br from-[rgba(255,107,53,0.15)] to-[rgba(241,91,181,0.1)] border border-[rgba(255,107,53,0.2)] rounded-[28px] p-8 md:p-[60px_40px] shadow-[0_0_80px_rgba(255,107,53,0.1)] text-center relative z-10 animate-fade-up">
+            <div className="w-full max-w-[700px] w-full bg-gradient-to-br from-[rgba(255,107,53,0.15)] to-[rgba(241,91,181,0.1)] border border-[rgba(255,107,53,0.2)] rounded-[28px] p-8 md:p-[60px_40px] shadow-[0_0_80px_rgba(255,107,53,0.1)] text-center relative z-10 animate-fade-up">
               
               {/* Centered Emoji */}
               <div className="text-4xl md:text-5xl mb-6 select-none animate-bounce">

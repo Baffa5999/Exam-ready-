@@ -284,13 +284,13 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
   );
 
   const renderStepOne = () => (
-    <section className="flex min-h-[calc(100vh-168px)] flex-col justify-center px-6 pb-28">
+    <section className="flex min-h-[calc(100vh-168px)] flex-col justify-center px-4 pb-32 sm:px-6">
       <div className="mx-auto w-full max-w-xl space-y-8 text-center">
         <div className="space-y-3">
-          <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-5xl">
+          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-5xl">
             What should we call you?
           </h1>
-          <p className="font-sans text-base leading-7 text-[#8B9CB8]">
+          <p className="font-sans text-sm leading-6 sm:text-base sm:leading-7 text-[#8B9CB8]">
             Set your display name and unique battle identity.
           </p>
         </div>
@@ -310,7 +310,7 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
                 setErrorMsg(null);
               }}
               placeholder="Enter your full name"
-              className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
+              className="w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 font-sans text-sm sm:px-5 sm:py-4 sm:text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
             />
           </div>
 
@@ -333,7 +333,7 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
               }}
               placeholder="Choose a username e.g. jamb_champion"
               maxLength={21}
-              className="w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
+              className="w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 font-sans text-sm sm:px-5 sm:py-4 sm:text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
             />
             <p className="font-sans text-xs leading-5 text-[#8B9CB8]">
               This is how you will appear on the leaderboard and in battles. Must be unique.
@@ -350,7 +350,7 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
           type="button"
           onClick={handleContinue}
           disabled={!canContinueStepOne}
-          className={`w-full rounded-2xl px-6 py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
+          className={`w-full rounded-2xl px-4 py-3 sm:px-6 sm:py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
             canContinueStepOne
               ? 'bg-[#FF6B35] text-white shadow-[0_18px_40px_rgba(255,107,53,0.32)] hover:bg-[#ff7c4d]'
               : 'cursor-not-allowed bg-[#FF6B35]/25 text-white/40'
@@ -366,7 +366,7 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
     <section className="flex min-h-[calc(100vh-168px)] flex-col px-6 pb-32">
       <div className="mx-auto w-full max-w-2xl flex-1 space-y-7">
         <div className="space-y-3 text-center">
-          <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-5xl">
+          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-5xl">
             Which exams are you preparing for?
           </h1>
           <p className="font-sans text-base text-[#8B9CB8]">
@@ -461,7 +461,7 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
     <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] text-white font-sans">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top,rgba(255,107,53,0.12),transparent_36%)]" />
 
-      <header className="relative z-20 flex items-center justify-between px-6 py-5">
+      <header className="relative z-20 flex items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
         <button
           type="button"
           onClick={step === 1 ? onSignOut : handleBack}
@@ -479,7 +479,7 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
         {renderProgress()}
 
         {errorMsg && step !== 2 && (
-          <div className="mx-auto mb-4 w-[calc(100%-3rem)] max-w-2xl rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-sans text-sm text-red-300">
+          <div className="mx-auto mb-4 w-[calc(100%-2rem)] max-w-2xl rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-3 font-sans text-sm sm:px-4 text-red-300">
             {errorMsg}
           </div>
         )}
@@ -493,7 +493,7 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
               initial="enter"
               animate="center"
               exit="exit"
-              className="absolute inset-0"
+              className="absolute inset-0 min-w-0"
             >
               {step === 1 && renderStepOne()}
               {step === 2 && renderStepTwo()}
@@ -503,12 +503,12 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
       </main>
 
       {step === 2 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0A0F1E]/90 px-6 py-4 backdrop-blur-xl">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0A0F1E]/90 px-4 py-3 sm:px-6 sm:py-4 backdrop-blur-xl">
           <button
             type="button"
             onClick={handleSave}
             disabled={!canFinishStepTwo || saving}
-            className={`mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-2xl px-6 py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
+            className={`mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-2xl px-4 py-3 sm:px-6 sm:py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
               canFinishStepTwo && !saving
                 ? 'bg-[#FF6B35] text-white shadow-[0_18px_40px_rgba(255,107,53,0.32)] hover:bg-[#ff7c4d]'
                 : 'cursor-not-allowed bg-[#FF6B35]/25 text-white/40'

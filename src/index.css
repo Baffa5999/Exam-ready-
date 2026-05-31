@@ -119,3 +119,28 @@ h1, h2, h3, h4, h5, h6 {
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 40px 40px;
 }
+
+
+/* Mobile safety guards */
+body, #root {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+button, input, textarea, select, a {
+  max-width: 100%;
+}
+
+p, h1, h2, h3, h4, h5, h6, span, button, a, input {
+  overflow-wrap: anywhere;
+}
+
+svg {
+  flex-shrink: 0;
+}
