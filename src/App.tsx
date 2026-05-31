@@ -84,6 +84,7 @@ export default function App() {
   const [authErrors, setAuthErrors] = useState<Partial<Record<'fullName' | 'email' | 'password' | 'confirmPassword' | 'general', string>>>({});
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string>('');
+  const [dashboardMenuOpen, setDashboardMenuOpen] = useState<boolean>(false);
 
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
@@ -232,7 +233,7 @@ export default function App() {
       email: data.email || user.email || '',
       examType: data.exam_type || data.examType || selectedExams[0] || 'JAMB',
       targetScore: data.target_score || data.targetScore || targetScores.JAMB || 280,
-      streak: data.streak || 1,
+      streak: data.streak ?? 0,
       questionsPracticed: data.questions_practiced || data.questionsPracticed || 0,
       accuracy: data.accuracy || 70,
       createdAt,
@@ -681,6 +682,30 @@ export default function App() {
     setQuizScore(null);
   };
 
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const getDashboardUsername = () => {
+    const fallback = studentProfile?.displayName || currentUser?.email || 'Student';
+    return studentProfile?.username || studentProfile?.fullName || fallback;
+  };
+
+  const getPrimaryExamLabel = () => {
+    return studentProfile?.examTypes?.[0] || studentProfile?.selectedExams?.[0] || studentProfile?.examType || 'JAMB';
+  };
+
+  const getTargetDisplay = () => {
+    const summary = studentProfile?.targetScoreSummary;
+    if (summary !== undefined && summary !== null && `${summary}`.trim() !== '') {
+      return summary;
+    }
+    return '—';
+  };
+
   if (!authReady && loading) {
     return (
       <div className="min-h-screen bg-[#0A0F1E] text-white font-sans flex items-center justify-center">
@@ -911,40 +936,159 @@ export default function App() {
       )}
 
       {/* STUDENT DASHBOARD INTERFACE */}
-      {view === 'dashboard' && studentProfile && (
-        <div className="min-h-screen bg-[#0A0F1E] text-white font-sans flex flex-col">
-          <nav className="h-20 px-6 md:px-12 flex items-center justify-between border-b border-white/10 bg-[#0A0F1E]/95 backdrop-blur-md">
-            <span className="font-heading font-extrabold text-2xl tracking-tight text-white">
-              Exam<span className="text-[#FF6B35]">Ready</span>
-            </span>
-            <button
-              onClick={handleSignOut}
-              className="rounded-full border border-white/10 px-4 py-2 text-sm text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
-            >
-              Sign Out
-            </button>
-          </nav>
+      {view === 'dashboard' && studentProfile && (() => {
+        const username = getDashboardUsername();
+        const avatarLetter = (username || studentProfile.email || 'E').charAt(0).toUpperCase();
+        const primaryExam = getPrimaryExamLabel();
+        const targetDisplay = getTargetDisplay();
+        const practiceCards = [
+          { subject: 'Chemistry', topic: 'Functional Groups', color: 'bg-emerald-400' },
+          { subject: 'Mathematics', topic: 'Algebra', color: 'bg-sky-400' }
+        ];
+        const quickActions = [
+          { emoji: '🎯', title: 'Weakness Assassin' },
+          { emoji: '⚔️', title: 'Battle a Friend' },
+          { emoji: '📋', title: 'Cheatsheets' },
+          { emoji: '📝', title: 'Mock Exam' }
+        ];
+        const bottomTabs = ['Home', 'Practice', 'Cheatsheet', 'Battle', 'Leaderboard'];
 
-          <main className="flex flex-1 items-center justify-center px-6 py-16">
-            <section className="w-full max-w-2xl text-center">
-              <h1 className="font-heading text-4xl md:text-6xl font-extrabold tracking-tight text-white">
-                Welcome to ExamReady
-              </h1>
-              <p className="mt-5 font-sans text-base md:text-lg text-[#8B9CB8]">
-                Your dashboard is being built. Check back soon.
-              </p>
+        return (
+          <div className="min-h-screen bg-[#0A0F1E] pb-28 text-white font-sans">
+            <nav className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-white/10 bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
+              <span className="font-heading text-2xl font-extrabold tracking-tight text-white">
+                Exam<span className="text-[#FF6B35]">Ready</span>
+              </span>
 
-              <div className="mx-auto mt-10 flex h-28 w-28 items-center justify-center rounded-full bg-[#FF6B35] font-heading text-5xl font-extrabold text-white shadow-[0_24px_60px_rgba(255,107,53,0.35)]">
-                {(studentProfile.displayName || studentProfile.email || 'E').charAt(0).toUpperCase()}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setDashboardMenuOpen(prev => !prev)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF6B35] font-heading text-lg font-extrabold text-white shadow-[0_12px_30px_rgba(255,107,53,0.35)]"
+                  aria-label="Open profile menu"
+                >
+                  {avatarLetter}
+                </button>
+
+                {dashboardMenuOpen && (
+                  <div className="absolute right-0 mt-3 w-36 rounded-2xl border border-white/10 bg-[#111827] p-2 shadow-2xl">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDashboardMenuOpen(false);
+                        handleSignOut();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#8B9CB8] transition hover:bg-white/5 hover:text-[#FF6B35]"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                )}
               </div>
+            </nav>
 
-              <p className="mt-5 font-sans text-sm text-[#8B9CB8]">
-                {studentProfile.email}
-              </p>
-            </section>
-          </main>
-        </div>
-      )}
+            <main className="mx-auto max-w-6xl space-y-7 px-5 py-8 md:px-10">
+              <section>
+                <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white md:text-5xl">
+                  {getTimeGreeting()} {username} <span aria-hidden="true">👋</span>
+                </h1>
+                <p className="mt-2 font-sans text-sm text-[#8B9CB8] md:text-base">
+                  Keep pushing. Your exam is coming.
+                </p>
+              </section>
+
+              <section className="grid grid-cols-3 gap-3 md:gap-5">
+                <div className="rounded-3xl border border-white/10 bg-[#111827] p-4 md:p-6">
+                  <div className="text-2xl">🔥</div>
+                  <p className="mt-3 font-heading text-2xl font-extrabold text-white">{studentProfile.streak ?? 0}</p>
+                  <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Days Streak</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-[#111827] p-4 md:p-6">
+                  <div className="text-2xl">📚</div>
+                  <p className="mt-3 font-heading text-2xl font-extrabold text-white">0</p>
+                  <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Questions</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-[#111827] p-4 md:p-6">
+                  <div className="text-2xl">🎯</div>
+                  <p className="mt-3 font-heading text-2xl font-extrabold text-white">0%</p>
+                  <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Accuracy</p>
+                </div>
+              </section>
+
+              <section className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#FF6B35] via-[#ff7c4d] to-[#ff9a3d] p-6 text-white shadow-[0_24px_70px_rgba(255,107,53,0.25)]">
+                <p className="font-sans text-xs font-bold uppercase tracking-[0.18em] text-white/80">{primaryExam} Target</p>
+                <p className="mt-3 font-heading text-5xl font-extrabold tracking-tight">{targetDisplay}</p>
+                <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/25">
+                  <div className="h-full w-0 rounded-full bg-white" />
+                </div>
+                <div className="mt-3 flex items-center justify-between text-sm font-semibold text-white/85">
+                  <span>0% complete</span>
+                  <span>Start practicing to track your progress</span>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="font-heading text-2xl font-extrabold text-white">Today's Practice</h2>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {practiceCards.map(card => (
+                    <button
+                      key={`${card.subject}-${card.topic}`}
+                      type="button"
+                      className="flex items-center justify-between rounded-3xl border border-white/10 bg-[#111827] p-5 text-left transition hover:border-[#FF6B35]/40"
+                    >
+                      <span className="flex items-center gap-4">
+                        <span className={`h-3 w-3 rounded-full ${card.color}`} />
+                        <span>
+                          <span className="block font-heading text-lg font-extrabold text-white">{card.subject}</span>
+                          <span className="mt-1 block text-sm text-[#8B9CB8]">{card.topic}</span>
+                        </span>
+                      </span>
+                      <ChevronRight className="h-5 w-5 text-[#8B9CB8]" />
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <h2 className="font-heading text-2xl font-extrabold text-white">Quick Actions</h2>
+                <div className="mt-4 grid grid-cols-2 gap-3 md:gap-5">
+                  {quickActions.map(action => (
+                    <button
+                      key={action.title}
+                      type="button"
+                      className="rounded-3xl border border-white/10 bg-[#111827] p-5 text-left transition hover:border-[#FF6B35]/40 hover:bg-[#151f32]"
+                    >
+                      <span className="text-3xl">{action.emoji}</span>
+                      <span className="mt-4 block font-heading text-base font-extrabold text-white md:text-lg">{action.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </main>
+
+            <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0A0F1E]/95 px-2 py-2 backdrop-blur-xl">
+              <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
+                {bottomTabs.map(tab => {
+                  const active = tab === 'Home';
+                  const icon = tab === 'Home' ? '⌂' : tab === 'Practice' ? '▶' : tab === 'Cheatsheet' ? '▤' : tab === 'Battle' ? '⚔' : '♛';
+
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-xs font-bold transition ${active ? 'text-[#FF6B35]' : 'text-[#8B9CB8]'}`}
+                    >
+                      <span className="text-lg leading-none">{icon}</span>
+                      <span>{tab}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </div>
+        );
+      })()}
 
       {/* ONBOARDING FLOW */}
       {view === 'onboarding' && studentProfile && (
