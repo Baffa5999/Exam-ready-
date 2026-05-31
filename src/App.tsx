@@ -61,6 +61,18 @@ interface StudentProfile {
   profileExists?: boolean;
 }
 
+interface WeakArea {
+  subject: string;
+  subtopic: string;
+  accuracy: number;
+}
+
+interface DashboardPerformance {
+  questions: number;
+  accuracy: number;
+  weakAreas: WeakArea[];
+}
+
 type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard';
 
 const viewToPath: Record<AppView, string> = {
@@ -91,6 +103,7 @@ export default function App() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string>('');
   const [dashboardMenuOpen, setDashboardMenuOpen] = useState<boolean>(false);
+  const [dashboardPerformance, setDashboardPerformance] = useState<DashboardPerformance>({ questions: 0, accuracy: 0, weakAreas: [] });
 
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
@@ -222,6 +235,55 @@ export default function App() {
       navigateTo('dashboard', { replace: true });
     }
   }, [authReady, currentUser, studentProfile, view]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDashboardPerformance = async () => {
+      if (!currentUser || studentProfile?.profileExists !== true) {
+        setDashboardPerformance({ questions: 0, accuracy: 0, weakAreas: [] });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('student_performance')
+        .select('subject, subtopic, questions_attempted, accuracy_percentage')
+        .eq('user_id', currentUser.id);
+
+      if (cancelled) return;
+
+      if (error || !data) {
+        console.info('Unable to load student performance; using dashboard defaults.', error);
+        setDashboardPerformance({ questions: 0, accuracy: 0, weakAreas: [] });
+        return;
+      }
+
+      const rows = data as Array<Record<string, any>>;
+      const questions = rows.reduce((sum, row) => sum + (Number(row.questions_attempted) || 0), 0);
+      const accuracyRows = rows
+        .map(row => Number(row.accuracy_percentage))
+        .filter(value => Number.isFinite(value));
+      const accuracy = accuracyRows.length
+        ? Math.round(accuracyRows.reduce((sum, value) => sum + value, 0) / accuracyRows.length)
+        : 0;
+      const weakAreas = rows
+        .map(row => ({
+          subject: row.subject || 'General',
+          subtopic: row.subtopic || 'Practice topic',
+          accuracy: Number(row.accuracy_percentage) || 0
+        }))
+        .sort((a, b) => a.accuracy - b.accuracy)
+        .slice(0, 3);
+
+      setDashboardPerformance({ questions, accuracy, weakAreas });
+    };
+
+    loadDashboardPerformance();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, studentProfile?.profileExists]);
 
   const buildProfileFromSupabase = (user: User, data: Record<string, any>): StudentProfile => {
     const createdAt = data.created_at || data.createdAt || new Date().toISOString();
@@ -945,29 +1007,23 @@ export default function App() {
       {view === 'dashboard' && studentProfile && (() => {
         const username = getDashboardUsername();
         const avatarLetter = (username || studentProfile.email || 'E').charAt(0).toUpperCase();
-        const primaryExam = getPrimaryExamLabel();
-        const targetDisplay = getTargetDisplay();
-        const practiceCards = [
-          { subject: 'Chemistry', topic: 'Functional Groups', color: 'bg-emerald-400' },
-          { subject: 'Mathematics', topic: 'Algebra', color: 'bg-sky-400' }
-        ];
         const quickActions = [
-          { icon: Zap, title: 'Weakness Assassin' },
-          { icon: Swords, title: 'Battle a Friend' },
-          { icon: BookMarked, title: 'Topic Practice' },
-          { icon: Clock, title: 'Mock Exam' }
+          { icon: Zap, title: 'Weakness Assassin', href: '/weakness' },
+          { icon: Swords, title: 'Battle a Friend', href: '/battle' },
+          { icon: BookMarked, title: 'Topic Practice', href: '/practice' },
+          { icon: Clock, title: 'Mock Exam', href: '/mock-exam' }
         ];
         const bottomTabs = [
-          { icon: Home, label: 'Home' },
-          { icon: PenLine, label: 'Practice' },
-          { icon: FileText, label: 'Cheatsheet' },
-          { icon: Swords, label: 'Battle' },
-          { icon: Trophy, label: 'Leaderboard' }
+          { icon: Home, label: 'Home', href: '/dashboard' },
+          { icon: PenLine, label: 'Practice', href: '/practice' },
+          { icon: FileText, label: 'Cheatsheet', href: '/cheatsheet' },
+          { icon: Swords, label: 'Battle', href: '/battle' },
+          { icon: Trophy, label: 'Leaderboard', href: '/leaderboard' }
         ];
 
         return (
-          <div className="min-h-screen bg-[#0A0F1E] pb-28 text-white font-sans">
-            <nav className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-white/10 bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
+          <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-28 text-white font-sans">
+            <nav className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-[rgba(255,255,255,0.06)] bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
               <span className="font-heading text-2xl font-extrabold tracking-tight text-white">
                 Exam<span className="text-[#FF6B35]">Ready</span>
               </span>
@@ -983,7 +1039,7 @@ export default function App() {
                 </button>
 
                 {dashboardMenuOpen && (
-                  <div className="absolute right-0 mt-3 w-36 rounded-2xl border border-white/10 bg-[#111827] p-2 shadow-2xl">
+                  <div className="absolute right-0 mt-3 w-36 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-2 shadow-2xl">
                     <button
                       type="button"
                       onClick={() => {
@@ -1000,8 +1056,8 @@ export default function App() {
               </div>
             </nav>
 
-            <main className="mx-auto max-w-6xl space-y-7 px-5 py-8 md:px-10">
-              <section>
+            <main className="mx-auto max-w-6xl space-y-9 px-5 py-8 md:px-10">
+              <section className="animate-fade-up">
                 <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white md:text-5xl">
                   {getTimeGreeting()} {username} <span aria-hidden="true">👋</span>
                 </h1>
@@ -1010,65 +1066,99 @@ export default function App() {
                 </p>
               </section>
 
-              <section className="grid grid-cols-3 gap-3 md:gap-5">
-                <div className="rounded-3xl border border-white/10 bg-[#111827] p-4 md:p-6">
-                  <Flame className="h-6 w-6 text-[#FF6B35]" />
+              <section className="grid grid-cols-3 gap-3 md:gap-5 animate-fade-up">
+                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 md:p-6">
+                  <div className="text-3xl" aria-hidden="true">🔥</div>
                   <p className="mt-3 font-heading text-2xl font-extrabold text-white">{studentProfile.streak ?? 0}</p>
-                  <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Days Streak</p>
+                  <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Day Streak</p>
                 </div>
-                <div className="rounded-3xl border border-white/10 bg-[#111827] p-4 md:p-6">
-                  <BookOpen className="h-6 w-6 text-[#FF6B35]" />
-                  <p className="mt-3 font-heading text-2xl font-extrabold text-white">0</p>
+                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 md:p-6">
+                  <BookOpen className="h-7 w-7 text-[#FF6B35]" />
+                  <p className="mt-3 font-heading text-2xl font-extrabold text-white">{dashboardPerformance.questions}</p>
                   <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Questions</p>
                 </div>
-                <div className="rounded-3xl border border-white/10 bg-[#111827] p-4 md:p-6">
-                  <Target className="h-6 w-6 text-[#FF6B35]" />
-                  <p className="mt-3 font-heading text-2xl font-extrabold text-white">0%</p>
+                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 md:p-6">
+                  <Target className="h-7 w-7 text-[#FF6B35]" />
+                  <p className="mt-3 font-heading text-2xl font-extrabold text-white">{dashboardPerformance.accuracy}%</p>
                   <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Accuracy</p>
                 </div>
               </section>
 
-              <section className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#FF6B35] via-[#ff7c4d] to-[#ff9a3d] p-6 text-white shadow-[0_24px_70px_rgba(255,107,53,0.25)]">
-                <p className="font-sans text-xs font-bold uppercase tracking-[0.18em] text-white/80">{primaryExam} Target</p>
-                <p className="mt-3 font-heading text-5xl font-extrabold tracking-tight">{targetDisplay}</p>
-                <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/25">
-                  <div className="h-full w-0 rounded-full bg-white" />
-                </div>
-                <div className="mt-3 flex items-center justify-between text-sm font-semibold text-white/85">
-                  <span>0% complete</span>
-                  <span>Start practicing to track your progress</span>
-                </div>
-              </section>
-
-              <section>
-                <div className="flex items-center justify-between gap-4">
-                  <h2 className="font-heading text-2xl font-extrabold text-white">Today's Practice</h2>
-                  <button type="button" className="inline-flex items-center gap-1 text-sm font-bold text-[#FF6B35]">
+              <section className="animate-fade-up">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="font-heading text-2xl font-extrabold text-white">Weakness Assassin <span aria-hidden="true">🎯</span></h2>
+                    <p className="mt-1 text-sm text-[#8B9CB8]">Your weakest areas to fix</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { window.location.href = '/weakness'; }}
+                    className="inline-flex items-center gap-1 pt-1 text-sm font-bold text-[#FF6B35]"
+                  >
                     See All
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {practiceCards.map(card => (
-                    <button
-                      key={`${card.subject}-${card.topic}`}
-                      type="button"
-                      className="flex items-center justify-between rounded-3xl border border-white/10 bg-[#111827] p-5 text-left transition hover:border-[#FF6B35]/40"
+
+                <div className="mt-4 space-y-3">
+                  {dashboardPerformance.weakAreas.length === 0 ? (
+                    <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] px-6 py-10 text-center">
+                      <p className="font-heading text-lg font-extrabold text-white">No weak areas found yet.</p>
+                      <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">
+                        Start practicing to discover where you need help.
+                      </p>
+                    </div>
+                  ) : dashboardPerformance.weakAreas.map(area => (
+                    <div
+                      key={`${area.subject}-${area.subtopic}`}
+                      className="flex items-center justify-between gap-4 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-5"
                     >
-                      <span className="flex items-center gap-4">
-                        <span className={`h-3 w-3 rounded-full ${card.color}`} />
-                        <span>
-                          <span className="block font-heading text-lg font-extrabold text-white">{card.subject}</span>
-                          <span className="mt-1 block text-sm text-[#8B9CB8]">{card.topic}</span>
-                        </span>
-                      </span>
-                      <ChevronRight className="h-5 w-5 text-[#8B9CB8]" />
-                    </button>
+                      <div>
+                        <p className="font-heading text-lg font-extrabold text-white">{area.subject}</p>
+                        <p className="mt-1 text-sm text-[#8B9CB8]">{area.subtopic}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`font-heading text-xl font-extrabold ${area.accuracy < 50 ? 'text-red-400' : 'text-[#FF6B35]'}`}>
+                          {area.accuracy}%
+                        </p>
+                        <button type="button" className="mt-2 rounded-full bg-[#FF6B35] px-3 py-1 text-xs font-bold text-white">
+                          Practice Now
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </section>
 
-              <section>
+              <section className="animate-fade-up">
+                <h2 className="font-heading text-2xl font-extrabold text-white">Exam Practice</h2>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => { window.location.href = '/practice'; }}
+                    className="rounded-3xl border border-[rgba(255,255,255,0.06)] border-b-[#FF6B35] bg-[#111827] p-6 text-left transition hover:border-[#FF6B35]/50"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-3xl" aria-hidden="true">📚</div>
+                    <h3 className="mt-5 font-heading text-2xl font-extrabold text-white">Topic Practice</h3>
+                    <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">
+                      Practice specific subjects and subtopics at your own pace
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { window.location.href = '/mock-exam'; }}
+                    className="rounded-3xl border border-[rgba(255,255,255,0.06)] border-b-purple-500 bg-[#111827] p-6 text-left transition hover:border-purple-400/60"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/15 text-3xl" aria-hidden="true">⏱️</div>
+                    <h3 className="mt-5 font-heading text-2xl font-extrabold text-white">Mock Exam</h3>
+                    <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">
+                      Full timed exam simulation. JAMB conditions.
+                    </p>
+                  </button>
+                </div>
+              </section>
+
+              <section className="animate-fade-up">
                 <h2 className="font-heading text-2xl font-extrabold text-white">Quick Actions</h2>
                 <div className="mt-4 grid grid-cols-2 gap-3 md:gap-5">
                   {quickActions.map(action => {
@@ -1078,7 +1168,8 @@ export default function App() {
                       <button
                         key={action.title}
                         type="button"
-                        className="rounded-3xl border border-white/10 bg-[#111827] p-5 text-left transition hover:border-[#FF6B35]/40 hover:bg-[#151f32]"
+                        onClick={() => { window.location.href = action.href; }}
+                        className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-5 text-left transition hover:border-[#FF6B35]/40 hover:bg-[#151f32]"
                       >
                         <ActionIcon className="h-7 w-7 text-[#FF6B35]" />
                         <span className="mt-4 block font-heading text-base font-extrabold text-white md:text-lg">{action.title}</span>
@@ -1089,7 +1180,7 @@ export default function App() {
               </section>
             </main>
 
-            <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0A0F1E]/95 px-2 py-2 backdrop-blur-xl">
+            <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[rgba(255,255,255,0.06)] bg-[#16161F] px-2 py-2 backdrop-blur-xl">
               <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
                 {bottomTabs.map(tab => {
                   const active = tab.label === 'Home';
@@ -1099,6 +1190,7 @@ export default function App() {
                     <button
                       key={tab.label}
                       type="button"
+                      onClick={() => { window.location.href = tab.href; }}
                       className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-xs font-bold transition ${active ? 'text-[#FF6B35]' : 'text-[#8B9CB8]'}`}
                     >
                       <TabIcon className="h-5 w-5" />
