@@ -22,7 +22,13 @@ import {
   RefreshCw,
   FileText,
   Eye,
-  EyeOff
+  EyeOff,
+  BookMarked,
+  Clock,
+  Home,
+  PenLine,
+  Swords,
+  User as UserIcon
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
 
@@ -946,12 +952,18 @@ export default function App() {
           { subject: 'Mathematics', topic: 'Algebra', color: 'bg-sky-400' }
         ];
         const quickActions = [
-          { emoji: '🎯', title: 'Weakness Assassin' },
-          { emoji: '⚔️', title: 'Battle a Friend' },
-          { emoji: '📋', title: 'Cheatsheets' },
-          { emoji: '📝', title: 'Mock Exam' }
+          { icon: Zap, title: 'Weakness Assassin' },
+          { icon: Swords, title: 'Battle a Friend' },
+          { icon: BookMarked, title: 'Topic Practice' },
+          { icon: Clock, title: 'Mock Exam' }
         ];
-        const bottomTabs = ['Home', 'Practice', 'Cheatsheet', 'Battle', 'Leaderboard'];
+        const bottomTabs = [
+          { icon: Home, label: 'Home' },
+          { icon: PenLine, label: 'Practice' },
+          { icon: FileText, label: 'Cheatsheet' },
+          { icon: Swords, label: 'Battle' },
+          { icon: Trophy, label: 'Leaderboard' }
+        ];
 
         return (
           <div className="min-h-screen bg-[#0A0F1E] pb-28 text-white font-sans">
@@ -967,7 +979,7 @@ export default function App() {
                   className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF6B35] font-heading text-lg font-extrabold text-white shadow-[0_12px_30px_rgba(255,107,53,0.35)]"
                   aria-label="Open profile menu"
                 >
-                  {avatarLetter}
+                  {avatarLetter ? avatarLetter : <UserIcon className="h-5 w-5" />}
                 </button>
 
                 {dashboardMenuOpen && (
@@ -1000,17 +1012,17 @@ export default function App() {
 
               <section className="grid grid-cols-3 gap-3 md:gap-5">
                 <div className="rounded-3xl border border-white/10 bg-[#111827] p-4 md:p-6">
-                  <div className="text-2xl">🔥</div>
+                  <Flame className="h-6 w-6 text-[#FF6B35]" />
                   <p className="mt-3 font-heading text-2xl font-extrabold text-white">{studentProfile.streak ?? 0}</p>
                   <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Days Streak</p>
                 </div>
                 <div className="rounded-3xl border border-white/10 bg-[#111827] p-4 md:p-6">
-                  <div className="text-2xl">📚</div>
+                  <BookOpen className="h-6 w-6 text-[#FF6B35]" />
                   <p className="mt-3 font-heading text-2xl font-extrabold text-white">0</p>
                   <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Questions</p>
                 </div>
                 <div className="rounded-3xl border border-white/10 bg-[#111827] p-4 md:p-6">
-                  <div className="text-2xl">🎯</div>
+                  <Target className="h-6 w-6 text-[#FF6B35]" />
                   <p className="mt-3 font-heading text-2xl font-extrabold text-white">0%</p>
                   <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Accuracy</p>
                 </div>
@@ -1029,7 +1041,13 @@ export default function App() {
               </section>
 
               <section>
-                <h2 className="font-heading text-2xl font-extrabold text-white">Today's Practice</h2>
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="font-heading text-2xl font-extrabold text-white">Today's Practice</h2>
+                  <button type="button" className="inline-flex items-center gap-1 text-sm font-bold text-[#FF6B35]">
+                    See All
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   {practiceCards.map(card => (
                     <button
@@ -1053,16 +1071,20 @@ export default function App() {
               <section>
                 <h2 className="font-heading text-2xl font-extrabold text-white">Quick Actions</h2>
                 <div className="mt-4 grid grid-cols-2 gap-3 md:gap-5">
-                  {quickActions.map(action => (
-                    <button
-                      key={action.title}
-                      type="button"
-                      className="rounded-3xl border border-white/10 bg-[#111827] p-5 text-left transition hover:border-[#FF6B35]/40 hover:bg-[#151f32]"
-                    >
-                      <span className="text-3xl">{action.emoji}</span>
-                      <span className="mt-4 block font-heading text-base font-extrabold text-white md:text-lg">{action.title}</span>
-                    </button>
-                  ))}
+                  {quickActions.map(action => {
+                    const ActionIcon = action.icon;
+
+                    return (
+                      <button
+                        key={action.title}
+                        type="button"
+                        className="rounded-3xl border border-white/10 bg-[#111827] p-5 text-left transition hover:border-[#FF6B35]/40 hover:bg-[#151f32]"
+                      >
+                        <ActionIcon className="h-7 w-7 text-[#FF6B35]" />
+                        <span className="mt-4 block font-heading text-base font-extrabold text-white md:text-lg">{action.title}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </section>
             </main>
@@ -1070,17 +1092,17 @@ export default function App() {
             <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0A0F1E]/95 px-2 py-2 backdrop-blur-xl">
               <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
                 {bottomTabs.map(tab => {
-                  const active = tab === 'Home';
-                  const icon = tab === 'Home' ? '⌂' : tab === 'Practice' ? '▶' : tab === 'Cheatsheet' ? '▤' : tab === 'Battle' ? '⚔' : '♛';
+                  const active = tab.label === 'Home';
+                  const TabIcon = tab.icon;
 
                   return (
                     <button
-                      key={tab}
+                      key={tab.label}
                       type="button"
                       className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-xs font-bold transition ${active ? 'text-[#FF6B35]' : 'text-[#8B9CB8]'}`}
                     >
-                      <span className="text-lg leading-none">{icon}</span>
-                      <span>{tab}</span>
+                      <TabIcon className="h-5 w-5" />
+                      <span>{tab.label}</span>
                     </button>
                   );
                 })}
