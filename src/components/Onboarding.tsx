@@ -60,7 +60,7 @@ const validateUsername = (value: string): string | null => {
   return null;
 };
 
-export default function Onboarding({ initialName, onComplete, onSignOut }: OnboardingProps) {
+export default function Onboarding({ initialName, onSignOut }: OnboardingProps) {
   const [step, setStep] = useState<number>(1);
   const [direction, setDirection] = useState<number>(1);
   const [name, setName] = useState<string>(initialName || '');
@@ -201,33 +201,55 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
     });
   };
 
-  const handleFinish = async () => {
-    setErrorMsg(null);
-
-    if (!canFinishStepTwo) {
-      setErrorMsg('Please select at least one subject for each selected exam.');
-      return;
-    }
-
-    setSaving(true);
+  const handleSave = async () => {
     try {
-      const finalSubjects: Record<string, string[]> = {};
+      const { data: { user }, error: userError } =
+        await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error('No authenticated user:', userError);
+        alert('No user found. Please sign in again.');
+        return;
+      }
+
+      const fullName = name.trim();
+      const examTypes = selectedExams;
+      const subjects: Record<string, string[]> = {};
 
       selectedExams.forEach(exam => {
-        finalSubjects[exam] = examSubjects[exam];
+        subjects[exam] = examSubjects[exam];
       });
 
-      await onComplete({
-        displayName: name.trim(),
-        username: normalizedUsername,
-        selectedExams,
-        subjects: finalSubjects
-      });
+      console.log('Saving profile for user:', user.id);
+      console.log('Data:', { fullName, username: normalizedUsername, examTypes, subjects });
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          full_name: fullName,
+          username: normalizedUsername,
+          exam_types: examTypes,
+          subjects: subjects,
+          streak: 0,
+          created_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
+        });
+
+      if (error) {
+        console.error('Save error:', error);
+        alert('Error: ' + error.message);
+        return;
+      }
+
+      console.log('Save successful:', data);
+      window.location.href = '/dashboard';
+
     } catch (err: unknown) {
-      console.error('Onboarding save failed:', err);
-      setErrorMsg('Something went wrong. Please try again.');
-    } finally {
-      setSaving(false);
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('Unexpected error:', err);
+      alert('Unexpected error: ' + message);
     }
   };
 
@@ -475,7 +497,7 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0A0F1E]/90 px-6 py-4 backdrop-blur-xl">
           <button
             type="button"
-            onClick={handleFinish}
+            onClick={handleSave}
             disabled={!canFinishStepTwo || saving}
             className={`mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-2xl px-6 py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
               canFinishStepTwo && !saving
