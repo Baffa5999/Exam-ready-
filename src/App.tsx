@@ -437,19 +437,12 @@ export default function App() {
     sendUserToOnboarding(user);
   };
 
-  // Saved answers handler from premium onboarding screen.
+  // Save the simplified onboarding profile.
   const handleOnboardingComplete = async (onboardingData: {
     displayName: string;
     username: string;
-    selectedExams: ('JAMB' | 'WAEC' | 'NECO')[];
-    subjects: Record<string, string[]>;
   }) => {
     const { data: { session } } = await supabase.auth.getSession();
-
-    console.log('Current session:', session);
-    console.log('User ID:', session?.user?.id);
-    console.log('Onboarding save user object:', session?.user ?? currentUser);
-
     const user = session?.user ?? currentUser;
 
     if (!user) {
@@ -458,40 +451,22 @@ export default function App() {
 
     setCurrentUser(user);
 
-    const primaryExam = onboardingData.selectedExams[0] || 'JAMB';
-    const subjectList = [...new Set(Object.values(onboardingData.subjects).flat())];
     const createdAt = new Date().toISOString();
     const updatedAt = createdAt;
     const fullName = onboardingData.displayName;
     const username = onboardingData.username;
-    const examTypes = onboardingData.selectedExams;
-    const subjects = onboardingData.subjects;
-    const profilePayload = {
-      id: user.id,
-      full_name: fullName,
-      username: username,
-      exam_types: examTypes,
-      subjects: subjects,
-      streak: 0,
-      created_at: createdAt
-    };
-
-    console.log('Onboarding profile upsert payload:', profilePayload);
 
     const { error } = await supabase
       .from('profiles')
       .upsert({
         id: user.id,
         full_name: fullName,
-        username: username,
-        exam_types: examTypes,
-        subjects: subjects,
+        username,
         streak: 0,
-        created_at: new Date().toISOString()
+        created_at: createdAt
       });
 
     if (error) {
-      console.log('Full error:', JSON.stringify(error, null, 2));
       console.error('Supabase profile save failed:', error);
       throw new Error('Something went wrong. Please try again.');
     }
@@ -499,9 +474,9 @@ export default function App() {
     setStudentProfile(prev => ({
       ...(prev ?? {
         uid: user.id,
-        displayName: onboardingData.displayName,
+        displayName: fullName,
         email: user.email || '',
-        examType: primaryExam,
+        examType: 'JAMB',
         targetScore: 280,
         streak: 0,
         questionsPracticed: 0,
@@ -509,37 +484,36 @@ export default function App() {
         createdAt,
         updatedAt,
         isOnboarded: true,
-        selectedExams: onboardingData.selectedExams,
-        subjects: onboardingData.subjects,
+        selectedExams: [],
+        subjects: {},
         targetScores: {},
-        fullName: onboardingData.displayName,
-        username: onboardingData.username,
-        examTypes: onboardingData.selectedExams,
-        subjectList,
+        fullName,
+        username,
+        examTypes: [],
+        subjectList: [],
         targetScoreSummary: '',
         profileExists: true
       }),
       uid: user.id,
-      displayName: onboardingData.displayName,
+      displayName: fullName,
       email: user.email || prev?.email || '',
-      examType: primaryExam,
       streak: 0,
       isOnboarded: true,
-      selectedExams: onboardingData.selectedExams,
-      subjects: onboardingData.subjects,
-      targetScores: {},
-      fullName: onboardingData.displayName,
-      username: onboardingData.username,
-      examTypes: onboardingData.selectedExams,
-      subjectList,
-      targetScoreSummary: '',
+      selectedExams: prev?.selectedExams || [],
+      subjects: prev?.subjects || {},
+      targetScores: prev?.targetScores || {},
+      fullName,
+      username,
+      examTypes: prev?.examTypes || [],
+      subjectList: prev?.subjectList || [],
+      targetScoreSummary: prev?.targetScoreSummary || '',
       createdAt: prev?.createdAt || createdAt,
       updatedAt,
       profileExists: true
     }));
 
     navigateTo('dashboard', { replace: true });
-    showBanner('success', '🏆 Academy account set up successfully! Welcome!');
+    showBanner('success', 'Profile set up successfully! Welcome!');
   };
 
   // Update target exam & related default score goals.

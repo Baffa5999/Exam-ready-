@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
-import { ArrowLeft, Check, LogOut, Rocket } from 'lucide-react';
+import { Check, LogOut, Loader2 } from 'lucide-react';
 import { supabase } from '../supabase';
 
 interface OnboardingProps {
@@ -8,46 +7,9 @@ interface OnboardingProps {
   onComplete: (data: {
     displayName: string;
     username: string;
-    selectedExams: ('JAMB' | 'WAEC' | 'NECO')[];
-    subjects: Record<string, string[]>;
   }) => Promise<void>;
   onSignOut: () => void;
 }
-
-const SUBJECTS = [
-  'Mathematics',
-  'English Language',
-  'Biology',
-  'Chemistry',
-  'Physics',
-  'Literature',
-  'Government',
-  'Commerce',
-  'Economics',
-  'Geography'
-];
-
-const EXAMS: Array<{
-  id: 'JAMB' | 'WAEC' | 'NECO';
-  title: string;
-  description: string;
-}> = [
-  {
-    id: 'JAMB',
-    title: 'JAMB',
-    description: 'Joint Admissions and Matriculation Board'
-  },
-  {
-    id: 'WAEC',
-    title: 'WAEC',
-    description: 'West African Examinations Council'
-  },
-  {
-    id: 'NECO',
-    title: 'NECO',
-    description: 'National Examinations Council'
-  }
-];
 
 type UsernameStatus = 'idle' | 'invalid' | 'checking' | 'available' | 'taken';
 
@@ -60,23 +22,16 @@ const validateUsername = (value: string): string | null => {
   return null;
 };
 
-export default function Onboarding({ initialName, onSignOut }: OnboardingProps) {
-  const [step, setStep] = useState<number>(1);
-  const [direction, setDirection] = useState<number>(1);
+export default function Onboarding({ initialName, onComplete, onSignOut }: OnboardingProps) {
   const [name, setName] = useState<string>(initialName || '');
   const [username, setUsername] = useState<string>('');
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('idle');
   const [usernameMessage, setUsernameMessage] = useState<string>('');
-  const [selectedExams, setSelectedExams] = useState<('JAMB' | 'WAEC' | 'NECO')[]>([]);
-  const [examSubjects, setExamSubjects] = useState<Record<string, string[]>>({
-    JAMB: [],
-    WAEC: [],
-    NECO: []
-  });
   const [saving, setSaving] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const normalizedUsername = useMemo(() => username.trim().replace(/^@+/, '').toLowerCase(), [username]);
+  const canSubmit = name.trim().length > 0 && usernameStatus === 'available' && !saving;
 
   useEffect(() => {
     const validationMessage = validateUsername(normalizedUsername);
@@ -115,13 +70,13 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
 
       if (data) {
         setUsernameStatus('taken');
-        setUsernameMessage('Username already taken. Try another.');
+        setUsernameMessage('Username already taken');
         return;
       }
 
       setUsernameStatus('available');
       setUsernameMessage('✓ Username available');
-    }, 450);
+    }, 350);
 
     return () => {
       cancelled = true;
@@ -129,333 +84,23 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
     };
   }, [normalizedUsername]);
 
-  const slideVariants = {
-    enter: (dir: number) => ({
-      x: dir > 0 ? 120 : -120,
-      opacity: 0
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      transition: {
-        x: { type: 'spring', stiffness: 280, damping: 30 },
-        opacity: { duration: 0.2 }
-      }
-    },
-    exit: (dir: number) => ({
-      x: dir > 0 ? -120 : 120,
-      opacity: 0,
-      transition: {
-        x: { type: 'spring', stiffness: 280, damping: 30 },
-        opacity: { duration: 0.18 }
-      }
-    })
-  };
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
 
-  const canContinueStepOne = name.trim().length > 0 && usernameStatus === 'available';
-  const canFinishStepTwo = selectedExams.length > 0 && selectedExams.every(exam => examSubjects[exam].length > 0);
-
-  const goToStep = (nextStep: number) => {
+    setSaving(true);
     setErrorMsg(null);
-    setDirection(nextStep > step ? 1 : -1);
-    setStep(nextStep);
-  };
 
-  const handleContinue = () => {
-    if (step === 1) {
-      if (!canContinueStepOne) return;
-      goToStep(2);
-    }
-  };
-
-  const handleBack = () => {
-    if (step === 1) return;
-    goToStep(step - 1);
-  };
-
-  const toggleExam = (exam: 'JAMB' | 'WAEC' | 'NECO') => {
-    setErrorMsg(null);
-    setSelectedExams(prev => {
-      if (prev.includes(exam)) {
-        setExamSubjects(subjects => ({
-          ...subjects,
-          [exam]: []
-        }));
-        return prev.filter(item => item !== exam);
-      }
-
-      return [...prev, exam];
-    });
-  };
-
-  const toggleSubject = (exam: 'JAMB' | 'WAEC' | 'NECO', subject: string) => {
-    setErrorMsg(null);
-    setExamSubjects(prev => {
-      const current = prev[exam] || [];
-      return {
-        ...prev,
-        [exam]: current.includes(subject)
-          ? current.filter(item => item !== subject)
-          : [...current, subject]
-      };
-    });
-  };
-
-  const handleSave = async () => {
     try {
-      const { data: { user }, error: userError } =
-        await supabase.auth.getUser();
-
-      if (userError || !user) {
-        console.error('No authenticated user:', userError);
-        alert('No user found. Please sign in again.');
-        return;
-      }
-
-      const fullName = name.trim();
-      const examTypes = selectedExams;
-      const subjects: Record<string, string[]> = {};
-
-      selectedExams.forEach(exam => {
-        subjects[exam] = examSubjects[exam];
+      await onComplete({
+        displayName: name.trim(),
+        username: normalizedUsername
       });
-
-      const examTypesArray = Array.isArray(examTypes)
-        ? examTypes
-        : [examTypes].filter(Boolean);
-      const subjectsArray = Array.isArray(subjects)
-        ? subjects
-        : [subjects].filter(Boolean);
-
-      console.log('Saving profile for user:', user.id);
-      console.log('Data:', { fullName, username: normalizedUsername, examTypes, subjects });
-      console.log('exam_types type:', typeof examTypesArray, examTypesArray);
-      console.log('subjects type:', typeof subjectsArray, subjectsArray);
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          full_name: fullName,
-          username: normalizedUsername,
-          exam_types: examTypesArray,
-          subjects: subjectsArray,
-          streak: 0,
-          created_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
-        });
-
-      if (error) {
-        console.error('Save error:', error);
-        alert('Error: ' + error.message);
-        return;
-      }
-
-      console.log('Save successful:', data);
-      window.location.href = '/dashboard';
-
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error('Unexpected error:', err);
-      alert('Unexpected error: ' + message);
+    } catch (error) {
+      console.error('Onboarding save failed:', error);
+      setErrorMsg('Something went wrong. Please try again.');
+      setSaving(false);
     }
   };
-
-  const renderProgress = () => (
-    <div className="flex items-center justify-center gap-3 pt-8 pb-10">
-      {[1, 2].map(item => {
-        const isActive = item === step;
-        const isCompleted = item < step;
-
-        return (
-          <div
-            key={item}
-            className={`h-3 w-3 rounded-full transition-all duration-300 ${
-              isActive || isCompleted
-                ? 'bg-[#FF6B35] shadow-[0_0_20px_rgba(255,107,53,0.45)]'
-                : 'bg-slate-600'
-            } ${isActive ? 'scale-125' : ''}`}
-            aria-label={`Step ${item}${isActive ? ' active' : isCompleted ? ' completed' : ' upcoming'}`}
-          />
-        );
-      })}
-    </div>
-  );
-
-  const renderStepOne = () => (
-    <section className="flex min-h-[calc(100vh-168px)] flex-col justify-center px-4 pb-32 sm:px-6">
-      <div className="mx-auto w-full max-w-xl space-y-8 text-center">
-        <div className="space-y-3">
-          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-5xl">
-            What should we call you?
-          </h1>
-          <p className="font-sans text-sm leading-6 sm:text-base sm:leading-7 text-[#8B9CB8]">
-            Set your display name and unique battle identity.
-          </p>
-        </div>
-
-        <div className="space-y-5 text-left">
-          <div className="space-y-2">
-            <label htmlFor="full-name" className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
-              Full Name
-            </label>
-            <p className="font-sans text-xs text-[#8B9CB8]">This is just for display in greetings.</p>
-            <input
-              id="full-name"
-              type="text"
-              value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                setErrorMsg(null);
-              }}
-              placeholder="Enter your full name"
-              className="w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 font-sans text-sm sm:px-5 sm:py-4 sm:text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="username" className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
-              Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(event) => {
-                setUsername(event.target.value.replace(/^@+/, '').toLowerCase());
-                setErrorMsg(null);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && canContinueStepOne) {
-                  handleContinue();
-                }
-              }}
-              placeholder="Choose a username e.g. jamb_champion"
-              maxLength={21}
-              className="w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 font-sans text-sm sm:px-5 sm:py-4 sm:text-base text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)]"
-            />
-            <p className="font-sans text-xs leading-5 text-[#8B9CB8]">
-              This is how you will appear on the leaderboard and in battles. Must be unique.
-            </p>
-            {usernameMessage && (
-              <p className={`font-sans text-xs font-bold ${usernameStatus === 'available' ? 'text-emerald-400' : usernameStatus === 'checking' ? 'text-[#8B9CB8]' : 'text-red-400'}`}>
-                {usernameMessage}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleContinue}
-          disabled={!canContinueStepOne}
-          className={`w-full rounded-2xl px-4 py-3 sm:px-6 sm:py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
-            canContinueStepOne
-              ? 'bg-[#FF6B35] text-white shadow-[0_18px_40px_rgba(255,107,53,0.32)] hover:bg-[#ff7c4d]'
-              : 'cursor-not-allowed bg-[#FF6B35]/25 text-white/40'
-          }`}
-        >
-          Continue
-        </button>
-      </div>
-    </section>
-  );
-
-  const renderStepTwo = () => (
-    <section className="flex min-h-[calc(100vh-168px)] flex-col px-4 pb-32 sm:px-6">
-      <div className="mx-auto w-full max-w-2xl flex-1 space-y-7">
-        <div className="space-y-3 text-center">
-          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-5xl">
-            Which exams are you preparing for?
-          </h1>
-          <p className="font-sans text-base text-[#8B9CB8]">
-            You can select more than one.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          {EXAMS.map(exam => {
-            const isSelected = selectedExams.includes(exam.id);
-            const selectedCount = examSubjects[exam.id].length;
-
-            return (
-              <div key={exam.id} className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => toggleExam(exam.id)}
-                  className={`relative w-full rounded-3xl border bg-[#111827] p-4 text-left transition-all duration-300 sm:p-5 ${
-                    isSelected
-                      ? 'border-[#FF6B35] shadow-[0_0_28px_rgba(255,107,53,0.16)]'
-                      : 'border-white/10 hover:border-white/20'
-                  }`}
-                >
-                  <div className="pr-12">
-                    <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">{exam.title}</h2>
-                    <p className="mt-1 font-sans text-sm text-[#8B9CB8]">{exam.description}</p>
-                  </div>
-
-                  {isSelected && (
-                    <span className="absolute right-5 top-5 flex h-7 w-7 items-center justify-center rounded-full bg-[#FF6B35] text-white">
-                      <Check className="h-4 w-4 stroke-[3]" />
-                    </span>
-                  )}
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {isSelected && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0, y: -8 }}
-                      animate={{ height: 'auto', opacity: 1, y: 0 }}
-                      exit={{ height: 0, opacity: 0, y: -8 }}
-                      transition={{ duration: 0.28, ease: 'easeInOut' }}
-                      className="overflow-hidden rounded-3xl border border-white/10 bg-[#111827]/75"
-                    >
-                      <div className="space-y-4 p-4">
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {SUBJECTS.map(subject => {
-                            const checked = examSubjects[exam.id].includes(subject);
-
-                            return (
-                              <label
-                                key={`${exam.id}-${subject}`}
-                                className="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/5 bg-[#0A0F1E] p-3 font-sans text-sm text-slate-200 transition-colors hover:border-white/15"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={() => toggleSubject(exam.id, subject)}
-                                  className="sr-only"
-                                />
-                                <span
-                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all ${
-                                    checked
-                                      ? 'border-[#FF6B35] bg-[#FF6B35]'
-                                      : 'border-slate-600 bg-transparent'
-                                  }`}
-                                >
-                                  {checked && <Check className="h-3.5 w-3.5 text-white stroke-[3]" />}
-                                </span>
-                                <span>{subject}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-
-                        <p className="font-sans text-sm font-bold text-[#FF6B35]">
-                          {selectedCount} {selectedCount === 1 ? 'subject' : 'subjects'} selected
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] text-white font-sans">
@@ -464,66 +109,101 @@ export default function Onboarding({ initialName, onSignOut }: OnboardingProps) 
       <header className="relative z-20 flex items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
         <button
           type="button"
-          onClick={step === 1 ? onSignOut : handleBack}
+          onClick={onSignOut}
           className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#111827] px-4 py-2 font-sans text-sm text-slate-300 transition hover:border-white/20 hover:text-white"
         >
-          {step === 1 ? <LogOut className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
-          {step === 1 ? 'Sign out' : 'Back'}
+          <LogOut className="h-4 w-4" />
+          Sign out
         </button>
         <div className="font-heading text-xl font-extrabold tracking-tight">
           Exam<span className="text-[#FF6B35]">Ready</span>
         </div>
       </header>
 
-      <main className="relative z-10">
-        {renderProgress()}
-
-        {errorMsg && step !== 2 && (
-          <div className="mx-auto mb-4 w-[calc(100%-2rem)] max-w-2xl rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-3 font-sans text-sm sm:px-4 text-red-300">
-            {errorMsg}
+      <main className="relative z-10 flex min-h-[calc(100vh-88px)] items-center px-4 pb-36 pt-6 sm:px-6">
+        <section className="mx-auto w-full max-w-xl rounded-[28px] border border-white/10 bg-[#111827]/80 p-5 shadow-[0_28px_80px_rgba(0,0,0,0.45)] sm:p-8">
+          <div className="space-y-3 text-center">
+            <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+              Create your profile
+            </h1>
+            <p className="font-sans text-sm leading-6 text-[#8B9CB8] sm:text-base">
+              Choose the name and username students will see across ExamReady.
+            </p>
           </div>
-        )}
 
-        <div className="relative min-h-[calc(100vh-160px)] overflow-x-hidden">
-          <AnimatePresence mode="wait" custom={direction}>
-            <motion.div
-              key={step}
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              className="absolute inset-0 min-w-0"
-            >
-              {step === 1 && renderStepOne()}
-              {step === 2 && renderStepTwo()}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </main>
+          <div className="mt-8 space-y-5 text-left">
+            <div className="space-y-2">
+              <label htmlFor="full-name" className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
+                Full Name
+              </label>
+              <input
+                id="full-name"
+                type="text"
+                value={name}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setErrorMsg(null);
+                }}
+                placeholder="Enter your full name"
+                className="w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 font-sans text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)] sm:px-5 sm:py-4 sm:text-base"
+              />
+            </div>
 
-      {step === 2 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0A0F1E]/90 px-4 py-3 sm:px-6 sm:py-4 backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!canFinishStepTwo || saving}
-            className={`mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-2xl px-4 py-3 sm:px-6 sm:py-4 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 ${
-              canFinishStepTwo && !saving
-                ? 'bg-[#FF6B35] text-white shadow-[0_18px_40px_rgba(255,107,53,0.32)] hover:bg-[#ff7c4d]'
-                : 'cursor-not-allowed bg-[#FF6B35]/25 text-white/40'
-            }`}
-          >
-            {saving ? 'Saving...' : 'Lets Go 🚀'}
-            {!saving && <Rocket className="h-4 w-4" />}
-          </button>
+            <div className="space-y-2">
+              <label htmlFor="username" className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(event) => {
+                  setUsername(event.target.value.replace(/^@+/, '').toLowerCase());
+                  setErrorMsg(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && canSubmit) {
+                    handleSubmit();
+                  }
+                }}
+                placeholder="Choose a username"
+                maxLength={21}
+                className="w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 font-sans text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)] sm:px-5 sm:py-4 sm:text-base"
+              />
+              <p className="font-sans text-xs leading-5 text-[#8B9CB8]">
+                This is how you appear on the leaderboard and in battles.
+              </p>
+              {usernameMessage && (
+                <p className={`font-sans text-xs font-bold ${usernameStatus === 'available' ? 'text-emerald-400' : usernameStatus === 'checking' ? 'text-[#8B9CB8]' : 'text-red-400'}`}>
+                  {usernameMessage}
+                </p>
+              )}
+            </div>
+          </div>
+
           {errorMsg && (
-            <p className="mx-auto mt-3 max-w-2xl text-center font-sans text-sm font-bold text-red-400">
+            <p className="mt-5 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center font-sans text-sm font-bold text-red-400">
               {errorMsg}
             </p>
           )}
-        </div>
-      )}
+        </section>
+      </main>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0A0F1E]/90 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className={`mx-auto flex w-full max-w-xl items-center justify-center gap-2 rounded-2xl px-4 py-3 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 sm:px-6 sm:py-4 ${
+            canSubmit
+              ? 'bg-[#FF6B35] text-white shadow-[0_18px_40px_rgba(255,107,53,0.32)] hover:bg-[#ff7c4d]'
+              : 'cursor-not-allowed bg-slate-700 text-slate-400'
+          }`}
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : canSubmit ? <Check className="h-4 w-4" /> : null}
+          {saving ? 'Saving...' : 'Get Started'}
+        </button>
+      </div>
     </div>
   );
 }
