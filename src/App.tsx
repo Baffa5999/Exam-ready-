@@ -15,6 +15,12 @@ import {
   Users, 
   Trophy, 
   ChevronRight, 
+  ChevronLeft,
+  X,
+  Clock,
+  Search,
+  BookMarked,
+  Share2,
   Target,
   ArrowRight,
   Sparkles,
@@ -70,19 +76,53 @@ interface DashboardPerformance {
   weakAreas: WeakArea[];
 }
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard';
+const subjectLibrary = [
+  { name: 'Mathematics', accent: '#00BBF9', gradient: 'from-[#00BBF9] to-[#006DFF]' },
+  { name: 'English Language', accent: '#2EC4B6', gradient: 'from-[#2EC4B6] to-[#118A7E]' },
+  { name: 'Biology', accent: '#00FF87', gradient: 'from-[#00FF87] to-[#0B8F52]' },
+  { name: 'Chemistry', accent: '#9B5DE5', gradient: 'from-[#9B5DE5] to-[#5D2E91]' },
+  { name: 'Physics', accent: '#FF6B35', gradient: 'from-[#FF6B35] to-[#F7931E]' },
+  { name: 'Literature', accent: '#F15BB5', gradient: 'from-[#F15BB5] to-[#B5179E]' }
+];
+
+const subtopicsBySubject: Record<string, string[]> = {
+  Mathematics: ['Algebra', 'Geometry', 'Statistics', 'Trigonometry', 'Number Theory'],
+  Biology: ['Cell Biology', 'Genetics', 'Ecology', 'Human Biology', 'Plant Biology'],
+  Chemistry: ['Physical Chemistry', 'Organic Chemistry', 'Inorganic Chemistry', 'Electrochemistry'],
+  Physics: ['Mechanics', 'Waves', 'Electricity', 'Modern Physics', 'Thermodynamics'],
+  'English Language': ['Comprehension', 'Grammar', 'Vocabulary', 'Oral English', 'Essay Writing'],
+  Literature: ['Poetry', 'Prose', 'Drama', 'Literary Devices', 'African Literature']
+};
+
+const slugify = (value: string) => value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+const getSubjectFromSlug = (slug: string) => subjectLibrary.find(subject => slugify(subject.name) === slug)?.name || 'Mathematics';
+const getSubtopicFromSlug = (subject: string, slug: string) => subtopicsBySubject[subject]?.find(topic => slugify(topic) === slug) || subtopicsBySubject[subject]?.[0] || 'Algebra';
+
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'practice' | 'practiceSession' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
   signin: '/signin',
   onboarding: '/onboarding',
-  dashboard: '/dashboard'
+  dashboard: '/dashboard',
+  practice: '/practice',
+  practiceSession: '/practice',
+  cheatsheet: '/cheatsheet',
+  cheatsheetSubject: '/cheatsheet',
+  cheatsheetContent: '/cheatsheet'
 };
 
 function pathToView(pathname: string): AppView {
   if (pathname === '/signin') return 'signin';
   if (pathname === '/onboarding') return 'onboarding';
   if (pathname === '/dashboard') return 'dashboard';
+  if (pathname === '/practice') return 'practice';
+  if (pathname.startsWith('/practice/')) return 'practiceSession';
+  if (pathname === '/cheatsheet') return 'cheatsheet';
+  if (pathname.startsWith('/cheatsheet/')) {
+    return pathname.split('/').filter(Boolean).length >= 3 ? 'cheatsheetContent' : 'cheatsheetSubject';
+  }
   return 'landing';
 }
 
@@ -101,6 +141,12 @@ export default function App() {
   const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string>('');
   const [dashboardMenuOpen, setDashboardMenuOpen] = useState<boolean>(false);
   const [dashboardPerformance, setDashboardPerformance] = useState<DashboardPerformance>({ questions: 0, accuracy: 0, weakAreas: [] });
+  const [selectedPracticeSubject, setSelectedPracticeSubject] = useState<string | null>(null);
+  const [expandedCheatsheetSubject, setExpandedCheatsheetSubject] = useState<string | null>(null);
+  const [questionIndex, setQuestionIndex] = useState<number>(0);
+  const [sessionSelectedAnswer, setSessionSelectedAnswer] = useState<number | null>(null);
+  const [sessionScore, setSessionScore] = useState<number>(0);
+  const [questionTimeLeft, setQuestionTimeLeft] = useState<number>(30);
 
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
@@ -204,7 +250,7 @@ export default function App() {
     if (!authReady) return;
 
     const isPublicRoute = view === 'landing' || view === 'signin';
-    const isProtectedRoute = view === 'onboarding' || view === 'dashboard';
+    const isProtectedRoute = ['onboarding', 'dashboard', 'practice', 'practiceSession', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent'].includes(view);
 
     if (!currentUser) {
       if (isProtectedRoute) {
@@ -759,6 +805,35 @@ export default function App() {
     return studentProfile?.username || studentProfile?.fullName || fallback;
   };
 
+
+  useEffect(() => {
+    if (view !== 'practiceSession') return;
+    if (questionIndex >= 20 || sessionSelectedAnswer !== null) return;
+
+    setQuestionTimeLeft(30);
+    const timer = window.setInterval(() => {
+      setQuestionTimeLeft(prev => {
+        if (prev <= 1) {
+          window.clearInterval(timer);
+          setSessionSelectedAnswer(-1);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [view, questionIndex, sessionSelectedAnswer]);
+
+  useEffect(() => {
+    if (view === 'practiceSession') {
+      setQuestionIndex(0);
+      setSessionSelectedAnswer(null);
+      setSessionScore(0);
+      setQuestionTimeLeft(30);
+    }
+  }, [view]);
+
   const getPrimaryExamLabel = () => {
     return studentProfile?.examTypes?.[0] || studentProfile?.selectedExams?.[0] || studentProfile?.examType || 'JAMB';
   };
@@ -769,6 +844,390 @@ export default function App() {
       return summary;
     }
     return '—';
+  };
+
+  const navigatePath = (path: string) => {
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+    setView(pathToView(path));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const renderBottomNavigation = (activeLabel: string) => {
+    const tabs = [
+      { icon: Home, label: 'Home', href: '/dashboard' },
+      { icon: PenLine, label: 'Practice', href: '/practice' },
+      { icon: FileText, label: 'Cheatsheet', href: '/cheatsheet' },
+      { icon: Swords, label: 'Battle', href: '/battle' },
+      { icon: Trophy, label: 'Leaderboard', href: '/leaderboard' }
+    ];
+
+    return (
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[rgba(255,255,255,0.06)] bg-[#16161F] px-2 py-2 backdrop-blur-xl">
+        <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
+          {tabs.map(tab => {
+            const active = tab.label === activeLabel;
+            const TabIcon = tab.icon;
+
+            return (
+              <button
+                key={tab.label}
+                type="button"
+                onClick={() => navigatePath(tab.href)}
+                className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-xs font-bold transition ${active ? 'text-[#FF6B35]' : 'text-[#8B9CB8] hover:text-white'}`}
+              >
+                <TabIcon className="h-5 w-5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    );
+  };
+
+  const renderPracticePage = () => (
+    <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-10 text-white md:px-10">
+      <main className="mx-auto max-w-5xl animate-fade-up">
+        <section>
+          <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-6xl">Practice</h1>
+          <p className="mt-3 font-sans text-base text-[#8B9CB8]">Choose a subject to start practicing.</p>
+        </section>
+
+        <section className="mt-8 grid grid-cols-2 gap-4 md:gap-5">
+          {subjectLibrary.map(subject => (
+            <button
+              key={subject.name}
+              type="button"
+              onClick={() => setSelectedPracticeSubject(subject.name)}
+              className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-5 text-left shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition hover:-translate-y-1 hover:border-white/15"
+              style={{ borderLeftColor: subject.accent, borderLeftWidth: 5 }}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-heading text-base font-extrabold text-white md:text-xl">{subject.name}</h2>
+                  <p className="mt-2 text-xs font-semibold text-[#8B9CB8] md:text-sm">Tap to practice</p>
+                </div>
+                <BookOpen className="h-6 w-6 shrink-0" style={{ color: subject.accent }} />
+              </div>
+            </button>
+          ))}
+        </section>
+      </main>
+
+      {selectedPracticeSubject && (
+        <div className="fixed inset-0 z-[70] flex items-end bg-black/55 backdrop-blur-sm" onClick={() => setSelectedPracticeSubject(null)}>
+          <div
+            className="w-full animate-slide-up rounded-t-[32px] border border-[rgba(255,255,255,0.06)] bg-[#1A1A2E] px-5 pb-8 pt-5 shadow-2xl md:mx-auto md:max-w-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-heading text-2xl font-extrabold text-white">{selectedPracticeSubject}</h2>
+              <button
+                type="button"
+                onClick={() => setSelectedPracticeSubject(null)}
+                className="rounded-full border border-white/10 p-2 text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+                aria-label="Close subtopics"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="divide-y divide-white/10">
+              {(subtopicsBySubject[selectedPracticeSubject] || []).map(subtopic => (
+                <button
+                  key={subtopic}
+                  type="button"
+                  onClick={() => navigatePath(`/practice/${slugify(selectedPracticeSubject)}/${slugify(subtopic)}`)}
+                  className="flex w-full items-center justify-between py-4 text-left transition hover:text-[#FF6B35]"
+                >
+                  <span className="font-heading text-base font-bold text-white">{subtopic}</span>
+                  <ChevronRight className="h-5 w-5 text-[#FF6B35]" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {renderBottomNavigation('Practice')}
+    </div>
+  );
+
+  const renderPracticeSessionPage = () => {
+    const [, subjectSlug = 'mathematics', subtopicSlug = 'algebra'] = window.location.pathname.replace(/^\/practice\/?/, '').split('/');
+    const directSegments = window.location.pathname.split('/').filter(Boolean);
+    const subject = getSubjectFromSlug(directSegments[1] || subjectSlug);
+    const subtopic = getSubtopicFromSlug(subject, directSegments[2] || subtopicSlug);
+    const correctIndex = questionIndex % 4;
+    const options = [
+      `${subtopic} foundation concept`,
+      `${subject} exam shortcut`,
+      `Correct ${subtopic} principle`,
+      `Common ${subject} distractor`
+    ];
+    const answeredSession = sessionSelectedAnswer !== null;
+    const isCorrect = sessionSelectedAnswer === correctIndex;
+    const progress = Math.min(((questionIndex + 1) / 20) * 100, 100);
+
+    if (questionIndex >= 20) {
+      const percent = Math.round((sessionScore / 20) * 100);
+      const message = percent > 70 ? 'Excellent work!' : percent >= 50 ? 'Good effort!' : 'Keep practicing!';
+
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 py-10 text-white">
+          <div className="w-full max-w-md animate-fade-up rounded-[32px] border border-[rgba(255,255,255,0.06)] bg-[#111827] p-8 text-center">
+            <p className="font-heading text-6xl font-extrabold text-white">{sessionScore}/20</p>
+            <p className="mt-3 font-heading text-3xl font-extrabold text-[#FF6B35]">{percent}%</p>
+            <p className="mt-4 text-lg font-bold text-white">{message}</p>
+            <div className="mt-8 space-y-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setQuestionIndex(0);
+                  setSessionSelectedAnswer(null);
+                  setSessionScore(0);
+                  setQuestionTimeLeft(30);
+                }}
+                className="w-full rounded-2xl bg-[#FF6B35] px-5 py-4 font-bold text-white transition hover:bg-[#ff7c4d]"
+              >
+                Practice Again
+              </button>
+              <button
+                type="button"
+                onClick={() => navigatePath('/practice')}
+                className="w-full rounded-2xl border border-white/10 px-5 py-4 font-bold text-white transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+              >
+                Back to Practice
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 text-white md:px-10">
+        <header className="sticky top-0 z-30 -mx-5 border-b border-white/10 bg-[#0A0F1E]/95 px-5 py-4 backdrop-blur md:-mx-10 md:px-10">
+          <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
+            <button type="button" onClick={() => navigatePath('/practice')} className="rounded-full p-2 text-[#8B9CB8] hover:text-[#FF6B35]" aria-label="Back to practice">
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <div className="min-w-0 text-center">
+              <p className="truncate font-heading text-base font-extrabold text-white">{subject}</p>
+              <p className="truncate text-xs text-[#8B9CB8]">{subtopic}</p>
+            </div>
+            <p className="font-heading text-sm font-extrabold text-[#FF6B35]">{questionIndex + 1} / 20</p>
+          </div>
+          <div className="mx-auto mt-4 h-1 max-w-4xl overflow-hidden rounded-full bg-white/10">
+            <div className="h-full rounded-full bg-[#FF6B35] transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-4xl py-8">
+          <div className={`mx-auto mb-6 flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${questionTimeLeft < 10 ? 'border-red-500/40 text-red-400' : 'border-white/10 text-[#8B9CB8]'}`}>
+            <Clock className="h-4 w-4" />
+            {questionTimeLeft}s
+          </div>
+
+          <section className="rounded-[28px] border border-[rgba(255,255,255,0.06)] bg-[#111827] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.25)] md:p-8">
+            <p className="text-lg leading-8 text-white md:text-2xl">
+              Which option best describes {subtopic} in {subject} for exam-ready preparation?
+            </p>
+          </section>
+
+          <section className="mt-6 space-y-3">
+            {options.map((option, index) => {
+              const selected = sessionSelectedAnswer === index;
+              const correct = answeredSession && index === correctIndex;
+              const wrong = answeredSession && selected && index !== correctIndex;
+
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  disabled={answeredSession}
+                  onClick={() => {
+                    setSessionSelectedAnswer(index);
+                    if (index === correctIndex) setSessionScore(prev => prev + 1);
+                  }}
+                  className={`flex w-full items-center gap-4 rounded-2xl border bg-[#111827] p-4 text-left transition ${correct ? 'border-emerald-400 text-emerald-300' : wrong ? 'border-red-400 text-red-300' : answeredSession ? 'border-white/5 opacity-45' : 'border-white/10 text-white hover:border-[#FF6B35]/50'}`}
+                >
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${correct ? 'bg-emerald-500 text-white' : wrong ? 'bg-red-500 text-white' : 'bg-[#0A0F1E] text-[#8B9CB8]'}`}>
+                    {String.fromCharCode(65 + index)}
+                  </span>
+                  <span className="font-sans text-sm md:text-base">{option}</span>
+                </button>
+              );
+            })}
+          </section>
+
+          {answeredSession && (
+            <section className={`mt-6 animate-slide-up rounded-3xl border bg-[#111827] p-5 ${isCorrect ? 'border-emerald-500/50' : 'border-[#FF6B35]/50'}`}>
+              <p className={`font-heading text-sm font-extrabold ${isCorrect ? 'text-emerald-400' : 'text-[#FF6B35]'}`}>{isCorrect ? 'Correct' : 'Explanation'}</p>
+              <p className="mt-2 text-sm leading-6 text-[#C8D2E4]">
+                Focus on the core definition, key formula, and the common distractor for {subtopic}. This placeholder explanation models the quick feedback that will appear after each answer.
+              </p>
+            </section>
+          )}
+        </main>
+
+        {answeredSession && (
+          <div className="fixed inset-x-0 bottom-0 z-40 bg-[#0A0F1E]/90 px-5 py-4 backdrop-blur">
+            <button
+              type="button"
+              onClick={() => {
+                setQuestionIndex(prev => prev + 1);
+                setSessionSelectedAnswer(null);
+              }}
+              className="mx-auto block w-full max-w-4xl rounded-2xl bg-[#FF6B35] px-6 py-4 font-bold text-white transition hover:bg-[#ff7c4d]"
+            >
+              Next Question
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderCheatsheetPage = () => (
+    <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-10 text-white md:px-10">
+      <main className="mx-auto max-w-5xl animate-fade-up">
+        <section>
+          <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-6xl">Cheatsheets</h1>
+          <p className="mt-3 font-sans text-base text-[#8B9CB8]">Quick revision for every topic.</p>
+          <div className="relative mt-6">
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#8B9CB8]" />
+            <input
+              type="search"
+              placeholder="Search topics"
+              className="w-full rounded-2xl border border-white/10 bg-[#111827] px-12 py-4 text-sm text-white outline-none transition placeholder:text-[#8B9CB8] focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15)]"
+            />
+          </div>
+        </section>
+
+        <section className="mt-8 grid grid-cols-2 gap-4 md:gap-5">
+          {subjectLibrary.map(subject => {
+            const expanded = expandedCheatsheetSubject === subject.name;
+            return (
+              <div key={subject.name} className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+                <button
+                  type="button"
+                  onClick={() => setExpandedCheatsheetSubject(expanded ? null : subject.name)}
+                  className="w-full overflow-hidden rounded-3xl text-left"
+                >
+                  <div className={`h-20 bg-gradient-to-br ${subject.gradient} p-4`}>
+                    <BookMarked className="h-7 w-7 text-white" />
+                  </div>
+                  <div className="p-5">
+                    <h2 className="font-heading text-base font-extrabold text-white md:text-xl">{subject.name}</h2>
+                    <p className="mt-2 text-xs font-semibold text-[#8B9CB8] md:text-sm">{subtopicsBySubject[subject.name]?.length || 0} topics</p>
+                  </div>
+                </button>
+                {expanded && (
+                  <div className="border-t border-white/10 px-5 pb-4">
+                    {(subtopicsBySubject[subject.name] || []).map(topic => (
+                      <button
+                        key={topic}
+                        type="button"
+                        onClick={() => navigatePath(`/cheatsheet/${slugify(subject.name)}/${slugify(topic)}`)}
+                        className="flex w-full items-center justify-between border-b border-white/5 py-3 text-left last:border-b-0"
+                      >
+                        <span className="text-sm font-bold text-white">{topic}</span>
+                        <ChevronRight className="h-4 w-4 text-[#FF6B35]" />
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject.name)}`)} className="mt-2 text-sm font-bold text-[#FF6B35]">
+                      View subject page
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      </main>
+      {renderBottomNavigation('Cheatsheet')}
+    </div>
+  );
+
+  const renderCheatsheetSubjectPage = () => {
+    const subjectSlug = window.location.pathname.split('/').filter(Boolean)[1] || 'mathematics';
+    const subject = getSubjectFromSlug(subjectSlug);
+
+    return (
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-8 text-white md:px-10">
+        <main className="mx-auto max-w-4xl animate-fade-up">
+          <button type="button" onClick={() => navigatePath('/cheatsheet')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
+            <ChevronLeft className="h-5 w-5" /> Back
+          </button>
+          <h1 className="font-heading text-4xl font-extrabold text-white md:text-6xl">{subject}</h1>
+          <div className="mt-8 divide-y divide-white/10 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-2">
+            {(subtopicsBySubject[subject] || []).map(topic => (
+              <button key={topic} type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}/${slugify(topic)}`)} className="flex w-full items-center justify-between px-4 py-4 text-left">
+                <span className="font-heading text-base font-bold text-white">{topic}</span>
+                <ChevronRight className="h-5 w-5 text-[#FF6B35]" />
+              </button>
+            ))}
+          </div>
+        </main>
+        {renderBottomNavigation('Cheatsheet')}
+      </div>
+    );
+  };
+
+  const renderCheatsheetContentPage = () => {
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    const subject = getSubjectFromSlug(segments[1] || 'mathematics');
+    const topic = getSubtopicFromSlug(subject, segments[2] || 'algebra');
+    const shareCheatsheet = async () => {
+      const shareData = {
+        title: `${topic} Cheatsheet`,
+        text: `Quick ExamReady revision notes for ${topic} in ${subject}.`,
+        url: window.location.href
+      };
+
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(window.location.href);
+        showBanner('success', 'Cheatsheet link copied.');
+      }
+    };
+    const sections = [
+      { title: 'Key Definitions', body: `${topic} questions usually test whether you understand the core terms, can identify examples quickly, and can avoid similar-looking distractors.` },
+      { title: 'Important Formulas', body: `Write down the main rule for ${topic}, note when each variable changes, and practice substituting values before looking at options.` },
+      { title: 'Must Know Facts', body: `Most exam questions in ${subject} reward speed and accuracy. Memorise the exceptions, standard examples, and common relationships.` },
+      { title: 'Common Exam Tips', body: `Underline keywords, eliminate impossible answers first, and check units, grammar, or definitions before choosing your final option.` }
+    ];
+
+    return (
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-32 pt-8 text-white md:px-10">
+        <main className="mx-auto max-w-4xl animate-fade-up">
+          <button type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}`)} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
+            <ChevronLeft className="h-5 w-5" /> Back
+          </button>
+          <h1 className="font-heading text-4xl font-extrabold text-white md:text-6xl">{topic}</h1>
+          <p className="mt-2 text-sm font-semibold text-[#8B9CB8]">{subject}</p>
+
+          <div className="mt-8 space-y-5">
+            {sections.map(section => (
+              <section key={section.title} className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-5 md:p-6">
+                <h2 className="font-heading text-xl font-extrabold text-white">{section.title}</h2>
+                <p className="mt-3 text-sm leading-7 text-[#C8D2E4] md:text-base">{section.body}</p>
+              </section>
+            ))}
+          </div>
+        </main>
+
+        <div className="fixed inset-x-0 bottom-16 z-40 px-5 pb-4 md:bottom-0 md:pb-5">
+          <button type="button" onClick={shareCheatsheet} className="mx-auto flex w-full max-w-4xl items-center justify-center gap-2 rounded-2xl bg-[#FF6B35] px-6 py-4 font-bold text-white shadow-[0_16px_40px_rgba(255,107,53,0.25)] transition hover:bg-[#ff7c4d]">
+            <Share2 className="h-5 w-5" /> Share Cheatsheet
+          </button>
+        </div>
+      </div>
+    );
   };
 
   if (!authReady && loading) {
@@ -1174,6 +1633,22 @@ export default function App() {
           </div>
         );
       })()}
+
+
+      {/* PRACTICE PAGE */}
+      {view === 'practice' && studentProfile && renderPracticePage()}
+
+      {/* PRACTICE SESSION PAGE */}
+      {view === 'practiceSession' && studentProfile && renderPracticeSessionPage()}
+
+      {/* CHEATSHEET PAGE */}
+      {view === 'cheatsheet' && studentProfile && renderCheatsheetPage()}
+
+      {/* CHEATSHEET SUBJECT PAGE */}
+      {view === 'cheatsheetSubject' && studentProfile && renderCheatsheetSubjectPage()}
+
+      {/* CHEATSHEET CONTENT PAGE */}
+      {view === 'cheatsheetContent' && studentProfile && renderCheatsheetContentPage()}
 
       {/* ONBOARDING FLOW */}
       {view === 'onboarding' && studentProfile && (
