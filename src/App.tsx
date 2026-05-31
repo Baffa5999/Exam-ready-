@@ -16,7 +16,8 @@ import {
   Trophy, 
   ChevronRight, 
   ChevronLeft,
-  X,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Search,
   BookMarked,
@@ -91,11 +92,11 @@ const subjectLibrary = [
 ];
 
 const subtopicsBySubject: Record<string, string[]> = {
-  Mathematics: ['Algebra', 'Geometry', 'Statistics', 'Trigonometry', 'Number Theory'],
-  Biology: ['Cell Biology', 'Genetics', 'Ecology', 'Human Biology', 'Plant Biology'],
-  Chemistry: ['Physical Chemistry', 'Organic Chemistry', 'Inorganic Chemistry', 'Electrochemistry'],
-  Physics: ['Mechanics', 'Waves', 'Electricity', 'Modern Physics', 'Thermodynamics'],
-  'English Language': ['Comprehension', 'Grammar', 'Vocabulary', 'Oral English', 'Essay Writing'],
+  Mathematics: ['Number and Numeration', 'Algebra', 'Geometry and Trigonometry', 'Statistics and Probability', 'Calculus'],
+  Biology: ['Cell Biology', 'Genetics and Evolution', 'Ecology', 'Human Biology and Health', 'Plant Biology'],
+  Chemistry: ['Physical Chemistry', 'Organic Chemistry', 'Inorganic Chemistry', 'Electrochemistry', 'Environmental Chemistry'],
+  Physics: ['Mechanics', 'Waves and Optics', 'Electricity and Magnetism', 'Modern Physics', 'Thermodynamics'],
+  'English Language': ['Comprehension', 'Lexis and Structure', 'Oral English', 'Essay and Letter Writing', 'Figures of Speech'],
   Literature: ['Poetry', 'Prose', 'Drama', 'Literary Devices', 'African Literature']
 };
 
@@ -104,7 +105,7 @@ const slugify = (value: string) => value.toLowerCase().replace(/&/g, 'and').repl
 const getSubjectFromSlug = (slug: string) => subjectLibrary.find(subject => slugify(subject.name) === slug)?.name || 'Mathematics';
 const getSubtopicFromSlug = (subject: string, slug: string) => subtopicsBySubject[subject]?.find(topic => slugify(topic) === slug) || subtopicsBySubject[subject]?.[0] || 'Algebra';
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'practice' | 'practiceSession' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'practice' | 'practiceSubjects' | 'practiceExamType' | 'practiceSession' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
@@ -112,7 +113,9 @@ const viewToPath: Record<AppView, string> = {
   onboarding: '/onboarding',
   dashboard: '/dashboard',
   practice: '/practice',
-  practiceSession: '/practice',
+  practiceSubjects: '/practice/subjects',
+  practiceExamType: '/practice/exam-type',
+  practiceSession: '/practice/session',
   cheatsheet: '/cheatsheet',
   cheatsheetSubject: '/cheatsheet',
   cheatsheetContent: '/cheatsheet',
@@ -125,7 +128,10 @@ function pathToView(pathname: string): AppView {
   if (pathname === '/onboarding') return 'onboarding';
   if (pathname === '/dashboard') return 'dashboard';
   if (pathname === '/practice') return 'practice';
-  if (pathname.startsWith('/practice/')) return 'practiceSession';
+  if (pathname === '/practice/subjects') return 'practiceSubjects';
+  if (pathname === '/practice/exam-type') return 'practiceExamType';
+  if (pathname === '/practice/session') return 'practiceSession';
+  if (pathname.startsWith('/mock-exam/')) return 'practiceSession';
   if (pathname === '/battle') return 'battle';
   if (pathname === '/leaderboard') return 'leaderboard';
   if (pathname === '/cheatsheet') return 'cheatsheet';
@@ -150,7 +156,8 @@ export default function App() {
   const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string>('');
   const [dashboardMenuOpen, setDashboardMenuOpen] = useState<boolean>(false);
   const [dashboardPerformance, setDashboardPerformance] = useState<DashboardPerformance>({ questions: 0, accuracy: 0, weakAreas: [] });
-  const [selectedPracticeSubject, setSelectedPracticeSubject] = useState<string | null>(null);
+  const [expandedPracticeSubjects, setExpandedPracticeSubjects] = useState<string[]>([]);
+  const [selectedPracticeTopics, setSelectedPracticeTopics] = useState<Record<string, string[]>>({});
   const [expandedCheatsheetSubject, setExpandedCheatsheetSubject] = useState<string | null>(null);
   const [questionIndex, setQuestionIndex] = useState<number>(0);
   const [sessionSelectedAnswer, setSessionSelectedAnswer] = useState<number | null>(null);
@@ -263,7 +270,7 @@ export default function App() {
     if (!authReady) return;
 
     const isPublicRoute = view === 'landing' || view === 'signin';
-    const isProtectedRoute = ['onboarding', 'dashboard', 'practice', 'practiceSession', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'].includes(view);
+    const isProtectedRoute = ['onboarding', 'dashboard', 'practice', 'practiceSubjects', 'practiceExamType', 'practiceSession', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'].includes(view);
 
     if (!currentUser) {
       if (isProtectedRoute) {
@@ -902,79 +909,213 @@ export default function App() {
     );
   };
 
+  const getSelectedTopicCount = () => Object.values(selectedPracticeTopics).reduce((sum: number, topics) => sum + (topics as string[]).length, 0);
+
+  const toggleExpandedPracticeSubject = (subject: string) => {
+    setExpandedPracticeSubjects(prev => prev.includes(subject) ? prev.filter(item => item !== subject) : [...prev, subject]);
+  };
+
+  const togglePracticeTopic = (subject: string, topic: string) => {
+    setSelectedPracticeTopics(prev => {
+      const current = prev[subject] || [];
+      const next = current.includes(topic) ? current.filter(item => item !== topic) : [...current, topic];
+      return { ...prev, [subject]: next };
+    });
+  };
+
+  const toggleAllPracticeTopics = (subject: string) => {
+    const allTopics = subtopicsBySubject[subject] || [];
+    setSelectedPracticeTopics(prev => {
+      const current = prev[subject] || [];
+      const allSelected = allTopics.length > 0 && current.length === allTopics.length;
+      return { ...prev, [subject]: allSelected ? [] : allTopics };
+    });
+  };
+
+  const startSelectedPractice = () => {
+    const selectedEntries = Object.entries(selectedPracticeTopics).flatMap(([subject, topics]) => (topics as string[]).map(topic => ({ subject, topic }))); 
+    if (selectedEntries.length === 0) return;
+
+    const first = selectedEntries[0];
+    const params = new URLSearchParams({
+      subject: first.subject,
+      topic: first.topic,
+      topics: JSON.stringify(selectedEntries)
+    });
+    navigatePath(`/practice/session?${params.toString()}`);
+  };
+
   const renderPracticePage = () => (
     <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-10 text-white md:px-10">
-      <main className="mx-auto max-w-5xl animate-fade-up">
+      <main className="mx-auto max-w-4xl space-y-6 animate-fade-up">
         <section>
           <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white md:text-6xl">Practice</h1>
-          <p className="mt-3 font-sans text-base text-[#8B9CB8]">Choose a subject to start practicing.</p>
+          <p className="mt-3 font-sans text-base text-[#8B9CB8]">How would you like to practice today?</p>
         </section>
 
-        <section className="mt-8 grid grid-cols-2 gap-4 md:gap-5">
-          {subjectLibrary.map(subject => (
-            <button
-              key={subject.name}
-              type="button"
-              onClick={() => setSelectedPracticeSubject(subject.name)}
-              className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-5 text-left shadow-[0_20px_60px_rgba(0,0,0,0.25)] transition hover:-translate-y-1 hover:border-white/15"
-              style={{ borderLeftColor: subject.accent, borderLeftWidth: 5 }}
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="font-heading text-base font-extrabold text-white md:text-xl">{subject.name}</h2>
-                  <p className="mt-2 text-xs font-semibold text-[#8B9CB8] md:text-sm">Tap to practice</p>
-                </div>
-                <BookOpen className="h-6 w-6 shrink-0" style={{ color: subject.accent }} />
-              </div>
-            </button>
-          ))}
+        <section className="space-y-4">
+          <button
+            type="button"
+            onClick={() => navigatePath('/practice/subjects')}
+            className="group flex w-full items-center gap-4 rounded-[32px] border border-[rgba(255,255,255,0.06)] border-l-[#FF6B35] border-l-4 bg-[#111827] p-6 text-left shadow-[0_20px_70px_rgba(0,0,0,0.28)] transition hover:border-[#FF6B35]/50"
+          >
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35]">
+              <BookOpen className="h-7 w-7" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-heading text-2xl font-extrabold text-white">Subject Practice</h2>
+              <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Choose a subject and topic to practice at your own pace. Perfect for targeting specific areas.</p>
+            </div>
+            <ChevronRight className="h-6 w-6 shrink-0 text-[#FF6B35] transition group-hover:translate-x-1" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigatePath('/practice/exam-type')}
+            className="group flex w-full items-center gap-4 rounded-[32px] border border-[rgba(255,255,255,0.06)] border-l-purple-500 border-l-4 bg-[#111827] p-6 text-left shadow-[0_20px_70px_rgba(0,0,0,0.28)] transition hover:border-purple-400/50"
+          >
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-purple-500/15 text-purple-300">
+              <Clock className="h-7 w-7" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-heading text-2xl font-extrabold text-white">Full Mock Exam</h2>
+              <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Simulate real exam conditions with a full timed exam.</p>
+            </div>
+            <ChevronRight className="h-6 w-6 shrink-0 text-purple-300 transition group-hover:translate-x-1" />
+          </button>
         </section>
       </main>
-
-      {selectedPracticeSubject && (
-        <div className="fixed inset-0 z-[70] flex items-end bg-black/55 backdrop-blur-sm" onClick={() => setSelectedPracticeSubject(null)}>
-          <div
-            className="w-full animate-slide-up rounded-t-[32px] border border-[rgba(255,255,255,0.06)] bg-[#1A1A2E] px-5 pb-8 pt-5 shadow-2xl md:mx-auto md:max-w-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-heading text-2xl font-extrabold text-white">{selectedPracticeSubject}</h2>
-              <button
-                type="button"
-                onClick={() => setSelectedPracticeSubject(null)}
-                className="rounded-full border border-white/10 p-2 text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
-                aria-label="Close subtopics"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="divide-y divide-white/10">
-              {(subtopicsBySubject[selectedPracticeSubject] || []).map(subtopic => (
-                <button
-                  key={subtopic}
-                  type="button"
-                  onClick={() => navigatePath(`/practice/${slugify(selectedPracticeSubject)}/${slugify(subtopic)}`)}
-                  className="flex w-full items-center justify-between py-4 text-left transition hover:text-[#FF6B35]"
-                >
-                  <span className="font-heading text-base font-bold text-white">{subtopic}</span>
-                  <ChevronRight className="h-5 w-5 text-[#FF6B35]" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {renderBottomNavigation()}
     </div>
   );
 
+  const renderPracticeExamTypePage = () => {
+    const exams = [
+      { key: 'jamb', title: 'JAMB', subtitle: 'Joint Admissions and Matriculation Board', description: '180 questions. 2 hours. All your selected subjects.', accent: '#FF6B35', tint: 'bg-[#FF6B35]/15 text-[#FF6B35]' },
+      { key: 'waec', title: 'WAEC', subtitle: 'West African Examinations Council', description: 'Structured paper format. All your selected subjects.', accent: '#2EC4B6', tint: 'bg-[#2EC4B6]/15 text-[#2EC4B6]' },
+      { key: 'neco', title: 'NECO', subtitle: 'National Examinations Council', description: 'Full paper simulation. All your selected subjects.', accent: '#00FF87', tint: 'bg-[#00FF87]/15 text-[#00FF87]' }
+    ];
+
+    return (
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-28 pt-8 text-white md:px-10">
+        <main className="mx-auto max-w-4xl animate-fade-up">
+          <button type="button" onClick={() => navigatePath('/practice')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
+            <ChevronLeft className="h-5 w-5" /> Back
+          </button>
+          <h1 className="font-heading text-4xl font-extrabold text-white md:text-6xl">Select Exam Type</h1>
+          <p className="mt-3 text-base text-[#8B9CB8]">Choose which exam you want to simulate today.</p>
+
+          <section className="mt-8 space-y-4">
+            {exams.map(exam => (
+              <button
+                key={exam.key}
+                type="button"
+                onClick={() => navigatePath(`/mock-exam/${exam.key}`)}
+                className="group flex w-full items-center gap-4 rounded-[28px] border border-[rgba(255,255,255,0.06)] border-l-4 bg-[#111827] p-5 text-left transition hover:border-white/15"
+                style={{ borderLeftColor: exam.accent }}
+              >
+                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl p-3 ${exam.tint}`}>
+                  <FileText className="h-6 w-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-heading text-2xl font-extrabold text-white">{exam.title}</h2>
+                  <p className="mt-1 text-sm font-semibold text-[#C8D2E4]">{exam.subtitle}</p>
+                  <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">{exam.description}</p>
+                </div>
+                <ChevronRight className="h-6 w-6 shrink-0 transition group-hover:translate-x-1" style={{ color: exam.accent }} />
+              </button>
+            ))}
+          </section>
+
+          <p className="mt-6 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 text-sm leading-6 text-[#8B9CB8]">
+            Your exam simulation will only include subjects you selected during onboarding.
+          </p>
+        </main>
+        {renderBottomNavigation()}
+      </div>
+    );
+  };
+
+  const renderPracticeSubjectsPage = () => {
+    const practiceSubjects = subjectLibrary.filter(subject => subject.name !== 'Literature');
+    const selectedCount = getSelectedTopicCount();
+
+    return (
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-40 pt-8 text-white md:px-10">
+        <main className="mx-auto max-w-4xl animate-fade-up">
+          <button type="button" onClick={() => navigatePath('/practice')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
+            <ChevronLeft className="h-5 w-5" /> Back
+          </button>
+          <h1 className="font-heading text-4xl font-extrabold text-white md:text-6xl">Select Subject</h1>
+          <p className="mt-3 text-base text-[#8B9CB8]">Choose a subject then select your topics.</p>
+
+          <section className="mt-8 space-y-4">
+            {practiceSubjects.map(subject => {
+              const topics = subtopicsBySubject[subject.name] || [];
+              const selectedTopics = selectedPracticeTopics[subject.name] || [];
+              const expanded = expandedPracticeSubjects.includes(subject.name);
+              const allSelected = topics.length > 0 && selectedTopics.length === topics.length;
+              const ExpandIcon = expanded ? ChevronUp : ChevronDown;
+
+              return (
+                <div key={subject.name} className="overflow-hidden rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827]" style={{ borderLeftColor: subject.accent, borderLeftWidth: 5 }}>
+                  <button type="button" onClick={() => toggleExpandedPracticeSubject(subject.name)} className="flex w-full items-center justify-between gap-4 p-5 text-left">
+                    <div>
+                      <h2 className="font-heading text-xl font-extrabold text-white">{subject.name}</h2>
+                      <p className="mt-1 text-sm text-[#8B9CB8]">tap to see topics</p>
+                    </div>
+                    <ExpandIcon className="h-6 w-6 text-[#8B9CB8]" />
+                  </button>
+
+                  {expanded && (
+                    <div className="animate-slide-up border-t border-white/10 px-5 pb-5">
+                      <button type="button" onClick={() => toggleAllPracticeTopics(subject.name)} className="flex w-full items-center gap-3 border-b border-white/10 py-4 text-left">
+                        <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${allSelected ? 'border-[#FF6B35] bg-[#FF6B35]' : 'border-white/20 bg-[#0A0F1E]'}`}>
+                          {allSelected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
+                        </span>
+                        <span className="font-heading text-sm font-extrabold text-[#FF6B35]">Select All Topics</span>
+                      </button>
+
+                      {topics.map(topic => {
+                        const selected = selectedTopics.includes(topic);
+                        return (
+                          <button key={topic} type="button" onClick={() => togglePracticeTopic(subject.name, topic)} className="flex w-full items-center gap-3 border-b border-white/5 py-4 text-left last:border-b-0">
+                            <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${selected ? 'border-[#FF6B35] bg-[#FF6B35]' : 'border-white/20 bg-[#0A0F1E]'}`}>
+                              {selected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
+                            </span>
+                            <span className="text-sm font-semibold text-white">{topic}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </section>
+        </main>
+
+        <div className="fixed inset-x-0 bottom-16 z-40 border-t border-white/10 bg-[#0A0F1E]/95 px-5 py-3 backdrop-blur">
+          <p className="text-center font-heading text-sm font-extrabold text-[#FF6B35]">{selectedCount} topics selected</p>
+        </div>
+        <div className="fixed inset-x-0 bottom-0 z-40 bg-[#0A0F1E] px-5 py-3">
+          <button
+            type="button"
+            disabled={selectedCount === 0}
+            onClick={startSelectedPractice}
+            className={`mx-auto block w-full max-w-4xl rounded-2xl px-6 py-4 font-bold text-white transition ${selectedCount === 0 ? 'cursor-not-allowed bg-slate-700 text-slate-400' : 'bg-[#FF6B35] hover:bg-[#ff7c4d]'}`}
+          >
+            Start Practice
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const renderPracticeSessionPage = () => {
-    const [, subjectSlug = 'mathematics', subtopicSlug = 'algebra'] = window.location.pathname.replace(/^\/practice\/?/, '').split('/');
-    const directSegments = window.location.pathname.split('/').filter(Boolean);
-    const subject = getSubjectFromSlug(directSegments[1] || subjectSlug);
-    const subtopic = getSubtopicFromSlug(subject, directSegments[2] || subtopicSlug);
+    const params = new URLSearchParams(window.location.search);
+    const subject = params.get('subject') || (window.location.pathname.startsWith('/mock-exam/') ? getPrimaryExamLabel() : 'Mathematics');
+    const subtopic = params.get('topic') || (window.location.pathname.startsWith('/mock-exam/') ? 'Full Mock Exam' : 'Algebra');
     const correctIndex = questionIndex % 4;
     const options = [
       `${subtopic} foundation concept`,
@@ -993,9 +1134,13 @@ export default function App() {
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 py-10 text-white">
           <div className="w-full max-w-md animate-fade-up rounded-[32px] border border-[rgba(255,255,255,0.06)] bg-[#111827] p-8 text-center">
-            <p className="font-heading text-6xl font-extrabold text-white">{sessionScore}/20</p>
-            <p className="mt-3 font-heading text-3xl font-extrabold text-[#FF6B35]">{percent}%</p>
+            <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full border-8 border-[#FF6B35]/25 bg-[#0A0F1E]">
+              <span className="font-heading text-4xl font-extrabold text-[#FF6B35]">{percent}%</span>
+            </div>
+            <p className="mt-6 font-heading text-3xl font-extrabold text-white">{sessionScore} out of 20</p>
+            <p className="mt-2 text-lg font-bold text-[#FF6B35]">{percent}%</p>
             <p className="mt-4 text-lg font-bold text-white">{message}</p>
+            <p className="mt-2 text-sm text-[#8B9CB8]">{subject} • {subtopic}</p>
             <div className="mt-8 space-y-3">
               <button
                 type="button"
@@ -1033,7 +1178,7 @@ export default function App() {
               <p className="truncate font-heading text-base font-extrabold text-white">{subject}</p>
               <p className="truncate text-xs text-[#8B9CB8]">{subtopic}</p>
             </div>
-            <p className="font-heading text-sm font-extrabold text-[#FF6B35]">{questionIndex + 1} / 20</p>
+            <p className="font-heading text-sm font-extrabold text-[#FF6B35]">{questionIndex + 1} of 20</p>
           </div>
           <div className="mx-auto mt-4 h-1 max-w-4xl overflow-hidden rounded-full bg-white/10">
             <div className="h-full rounded-full bg-[#FF6B35] transition-all" style={{ width: `${progress}%` }} />
@@ -1079,10 +1224,10 @@ export default function App() {
           </section>
 
           {answeredSession && (
-            <section className={`mt-6 animate-slide-up rounded-3xl border bg-[#111827] p-5 ${isCorrect ? 'border-emerald-500/50' : 'border-[#FF6B35]/50'}`}>
+            <section className={`mt-6 animate-slide-up rounded-3xl border-l-4 bg-[#111827] p-5 ${isCorrect ? 'border-l-emerald-500' : 'border-l-[#FF6B35]'}`}>
               <p className={`font-heading text-sm font-extrabold ${isCorrect ? 'text-emerald-400' : 'text-[#FF6B35]'}`}>{isCorrect ? 'Correct' : 'Explanation'}</p>
               <p className="mt-2 text-sm leading-6 text-[#C8D2E4]">
-                Focus on the core definition, key formula, and the common distractor for {subtopic}. This placeholder explanation models the quick feedback that will appear after each answer.
+                The best answer connects the definition, example, and exam shortcut for {subtopic}. Review why the distractors are close, then move to the next question with confidence.
               </p>
             </section>
           )}
@@ -1821,7 +1966,7 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { window.location.href = '/mock-exam'; }}
+                    onClick={() => navigatePath('/practice/exam-type')}
                     className="rounded-3xl border border-[rgba(255,255,255,0.06)] border-b-purple-500 bg-[#111827] p-6 text-left transition hover:border-purple-400/60"
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/15 text-3xl" aria-hidden="true">⏱️</div>
@@ -1843,6 +1988,12 @@ export default function App() {
 
       {/* PRACTICE PAGE */}
       {view === 'practice' && studentProfile && renderPracticePage()}
+
+      {/* PRACTICE SUBJECT SELECTION PAGE */}
+      {view === 'practiceSubjects' && studentProfile && renderPracticeSubjectsPage()}
+
+      {/* PRACTICE EXAM TYPE PAGE */}
+      {view === 'practiceExamType' && studentProfile && renderPracticeExamTypePage()}
 
       {/* PRACTICE SESSION PAGE */}
       {view === 'practiceSession' && studentProfile && renderPracticeSessionPage()}
