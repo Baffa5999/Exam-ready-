@@ -867,20 +867,21 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const renderBottomNavigation = (activeLabel: string) => {
+  const renderBottomNavigation = () => {
     const tabs = [
-      { icon: Home, label: 'Home', href: '/dashboard' },
-      { icon: PenLine, label: 'Practice', href: '/practice' },
-      { icon: FileText, label: 'Cheatsheet', href: '/cheatsheet' },
-      { icon: Swords, label: 'Battle', href: '/battle' },
-      { icon: Trophy, label: 'Leaderboard', href: '/leaderboard' }
+      { icon: Home, label: 'Home', href: '/dashboard', match: (path: string) => path === '/dashboard' },
+      { icon: PenLine, label: 'Practice', href: '/practice', match: (path: string) => path === '/practice' || path.startsWith('/practice/') },
+      { icon: FileText, label: 'Cheatsheet', href: '/cheatsheet', match: (path: string) => path === '/cheatsheet' || path.startsWith('/cheatsheet/') },
+      { icon: Swords, label: 'Battle', href: '/battle', match: (path: string) => path === '/battle' },
+      { icon: Trophy, label: 'Leaderboard', href: '/leaderboard', match: (path: string) => path === '/leaderboard' }
     ];
+    const currentPath = window.location.pathname;
 
     return (
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[rgba(255,255,255,0.06)] bg-[#16161F] px-2 py-2 backdrop-blur-xl">
         <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
           {tabs.map(tab => {
-            const active = tab.label === activeLabel;
+            const active = tab.match(currentPath);
             const TabIcon = tab.icon;
 
             return (
@@ -888,6 +889,7 @@ export default function App() {
                 key={tab.label}
                 type="button"
                 onClick={() => navigatePath(tab.href)}
+                aria-current={active ? 'page' : undefined}
                 className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-xs font-bold transition ${active ? 'text-[#FF6B35]' : 'text-[#8B9CB8] hover:text-white'}`}
               >
                 <TabIcon className="h-5 w-5" />
@@ -964,7 +966,7 @@ export default function App() {
         </div>
       )}
 
-      {renderBottomNavigation('Practice')}
+      {renderBottomNavigation()}
     </div>
   );
 
@@ -1161,7 +1163,7 @@ export default function App() {
           })}
         </section>
       </main>
-      {renderBottomNavigation('Cheatsheet')}
+      {renderBottomNavigation()}
     </div>
   );
 
@@ -1185,7 +1187,7 @@ export default function App() {
             ))}
           </div>
         </main>
-        {renderBottomNavigation('Cheatsheet')}
+        {renderBottomNavigation()}
       </div>
     );
   };
@@ -1369,7 +1371,7 @@ export default function App() {
             )}
           </section>
         </main>
-        {renderBottomNavigation('Battle')}
+        {renderBottomNavigation()}
       </div>
     );
   };
@@ -1456,7 +1458,7 @@ export default function App() {
             </div>
           </section>
         </main>
-        {renderBottomNavigation('Leaderboard')}
+        {renderBottomNavigation()}
       </div>
     );
   };
@@ -1694,14 +1696,6 @@ export default function App() {
       {view === 'dashboard' && studentProfile && (() => {
         const username = getDashboardUsername();
         const avatarLetter = (username || studentProfile.email || 'E').charAt(0).toUpperCase();
-        const bottomTabs = [
-          { icon: Home, label: 'Home', href: '/dashboard' },
-          { icon: PenLine, label: 'Practice', href: '/practice' },
-          { icon: FileText, label: 'Cheatsheet', href: '/cheatsheet' },
-          { icon: Swords, label: 'Battle', href: '/battle' },
-          { icon: Trophy, label: 'Leaderboard', href: '/leaderboard' }
-        ];
-
         return (
           <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-28 text-white font-sans">
             <nav className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-[rgba(255,255,255,0.06)] bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
@@ -1816,7 +1810,7 @@ export default function App() {
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <button
                     type="button"
-                    onClick={() => { window.location.href = '/practice'; }}
+                    onClick={() => navigatePath('/practice')}
                     className="rounded-3xl border border-[rgba(255,255,255,0.06)] border-b-[#FF6B35] bg-[#111827] p-6 text-left transition hover:border-[#FF6B35]/50"
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-3xl" aria-hidden="true">📚</div>
@@ -1841,26 +1835,7 @@ export default function App() {
 
             </main>
 
-            <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[rgba(255,255,255,0.06)] bg-[#16161F] px-2 py-2 backdrop-blur-xl">
-              <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
-                {bottomTabs.map(tab => {
-                  const active = tab.label === 'Home';
-                  const TabIcon = tab.icon;
-
-                  return (
-                    <button
-                      key={tab.label}
-                      type="button"
-                      onClick={() => { window.location.href = tab.href; }}
-                      className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-xs font-bold transition ${active ? 'text-[#FF6B35]' : 'text-[#8B9CB8]'}`}
-                    >
-                      <TabIcon className="h-5 w-5" />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </nav>
+            {renderBottomNavigation()}
           </div>
         );
       })()}
