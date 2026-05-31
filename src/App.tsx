@@ -14,7 +14,6 @@ import {
   BookOpen, 
   Users, 
   Trophy, 
-  Zap, 
   ChevronRight, 
   Target,
   ArrowRight,
@@ -23,8 +22,6 @@ import {
   FileText,
   Eye,
   EyeOff,
-  BookMarked,
-  Clock,
   Home,
   PenLine,
   Swords,
@@ -1007,12 +1004,6 @@ export default function App() {
       {view === 'dashboard' && studentProfile && (() => {
         const username = getDashboardUsername();
         const avatarLetter = (username || studentProfile.email || 'E').charAt(0).toUpperCase();
-        const quickActions = [
-          { icon: Zap, title: 'Weakness Assassin', href: '/weakness' },
-          { icon: Swords, title: 'Battle a Friend', href: '/battle' },
-          { icon: BookMarked, title: 'Topic Practice', href: '/practice' },
-          { icon: Clock, title: 'Mock Exam', href: '/mock-exam' }
-        ];
         const bottomTabs = [
           { icon: Home, label: 'Home', href: '/dashboard' },
           { icon: PenLine, label: 'Practice', href: '/practice' },
@@ -1158,26 +1149,6 @@ export default function App() {
                 </div>
               </section>
 
-              <section className="animate-fade-up">
-                <h2 className="font-heading text-2xl font-extrabold text-white">Quick Actions</h2>
-                <div className="mt-4 grid grid-cols-2 gap-3 md:gap-5">
-                  {quickActions.map(action => {
-                    const ActionIcon = action.icon;
-
-                    return (
-                      <button
-                        key={action.title}
-                        type="button"
-                        onClick={() => { window.location.href = action.href; }}
-                        className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-5 text-left transition hover:border-[#FF6B35]/40 hover:bg-[#151f32]"
-                      >
-                        <ActionIcon className="h-7 w-7 text-[#FF6B35]" />
-                        <span className="mt-4 block font-heading text-base font-extrabold text-white md:text-lg">{action.title}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
             </main>
 
             <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[rgba(255,255,255,0.06)] bg-[#16161F] px-2 py-2 backdrop-blur-xl">
