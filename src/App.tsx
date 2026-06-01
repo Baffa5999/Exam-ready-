@@ -27,6 +27,7 @@ import {
   Crown,
   Medal,
   MessageCircle,
+  Newspaper,
   Target,
   ArrowRight,
   Sparkles,
@@ -82,6 +83,28 @@ interface DashboardPerformance {
   weakAreas: WeakArea[];
 }
 
+interface DashboardUpdate {
+  category: string;
+  title: string;
+  preview: string;
+  date: string;
+}
+
+const fallbackDashboardUpdates: DashboardUpdate[] = [
+  {
+    category: 'JAMB',
+    title: 'JAMB 2027 Registration Opens November 2026',
+    preview: 'The Joint Admissions and Matriculation Board has announced...',
+    date: 'Nov 2026'
+  },
+  {
+    category: 'Scholarship',
+    title: 'FG Scholarship Applications Now Open for 2026',
+    preview: 'The Federal Government has opened applications for...',
+    date: 'Jun 2026'
+  }
+];
+
 const subjectLibrary = [
   { name: 'Mathematics', accent: '#00BBF9', gradient: 'from-[#00BBF9] to-[#006DFF]' },
   { name: 'English Language', accent: '#2EC4B6', gradient: 'from-[#2EC4B6] to-[#118A7E]' },
@@ -105,13 +128,17 @@ const slugify = (value: string) => value.toLowerCase().replace(/&/g, 'and').repl
 const getSubjectFromSlug = (slug: string) => subjectLibrary.find(subject => slugify(subject.name) === slug)?.name || 'Mathematics';
 const getSubtopicFromSlug = (subject: string, slug: string) => subtopicsBySubject[subject]?.find(topic => slugify(topic) === slug) || subtopicsBySubject[subject]?.[0] || 'Algebra';
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'practice' | 'practiceSubjects' | 'practiceExamType' | 'practiceSession' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceExamType' | 'practiceSession' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
   signin: '/signin',
   onboarding: '/onboarding',
   dashboard: '/dashboard',
+  profile: '/profile',
+  aiTutor: '/ai-tutor',
+  weakness: '/weakness',
+  updates: '/updates',
   practice: '/practice',
   practiceSubjects: '/practice/subjects',
   practiceExamType: '/practice/exam-type',
@@ -127,6 +154,10 @@ function pathToView(pathname: string): AppView {
   if (pathname === '/signin') return 'signin';
   if (pathname === '/onboarding') return 'onboarding';
   if (pathname === '/dashboard') return 'dashboard';
+  if (pathname === '/profile') return 'profile';
+  if (pathname === '/ai-tutor') return 'aiTutor';
+  if (pathname === '/weakness') return 'weakness';
+  if (pathname === '/updates') return 'updates';
   if (pathname === '/practice') return 'practice';
   if (pathname === '/practice/subjects') return 'practiceSubjects';
   if (pathname === '/practice/exam-type') return 'practiceExamType';
@@ -156,6 +187,7 @@ export default function App() {
   const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string>('');
   const [dashboardMenuOpen, setDashboardMenuOpen] = useState<boolean>(false);
   const [dashboardPerformance, setDashboardPerformance] = useState<DashboardPerformance>({ questions: 0, accuracy: 0, weakAreas: [] });
+  const [dashboardUpdates, setDashboardUpdates] = useState<DashboardUpdate[]>(fallbackDashboardUpdates);
   const [expandedPracticeSubjects, setExpandedPracticeSubjects] = useState<string[]>([]);
   const [selectedPracticeTopics, setSelectedPracticeTopics] = useState<Record<string, string[]>>({});
   const [expandedCheatsheetSubject, setExpandedCheatsheetSubject] = useState<string | null>(null);
@@ -270,7 +302,7 @@ export default function App() {
     if (!authReady) return;
 
     const isPublicRoute = view === 'landing' || view === 'signin';
-    const isProtectedRoute = ['onboarding', 'dashboard', 'practice', 'practiceSubjects', 'practiceExamType', 'practiceSession', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'].includes(view);
+    const isProtectedRoute = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceExamType', 'practiceSession', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'].includes(view);
 
     if (!currentUser) {
       if (isProtectedRoute) {
@@ -298,6 +330,48 @@ export default function App() {
       navigateTo('dashboard', { replace: true });
     }
   }, [authReady, currentUser, studentProfile, view]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDashboardUpdates = async () => {
+      const { data, error } = await supabase
+        .from('updates')
+        .select('category, title, preview, content, created_at, published_at')
+        .order('created_at', { ascending: false })
+        .limit(2);
+
+      if (cancelled) return;
+
+      if (error || !data || data.length === 0) {
+        if (error) {
+          console.info('Unable to load dashboard updates; using placeholders.', error);
+        }
+        setDashboardUpdates(fallbackDashboardUpdates);
+        return;
+      }
+
+      const updates = (data as Array<Record<string, any>>).map(row => {
+        const rawDate = row.published_at || row.created_at;
+        return {
+          category: row.category || 'General',
+          title: row.title || 'Exam update',
+          preview: row.preview || row.content || 'Latest exam information will appear here.',
+          date: rawDate
+            ? new Date(rawDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+            : 'Today'
+        };
+      });
+
+      setDashboardUpdates(updates);
+    };
+
+    loadDashboardUpdates();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -918,6 +992,26 @@ export default function App() {
     });
     navigatePath(`/practice/session?${params.toString()}`);
   };
+
+  const renderPlaceholderPage = (title: string, description: string) => (
+    <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans">
+      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 md:px-10">
+        <button
+          type="button"
+          onClick={() => navigatePath('/dashboard')}
+          className="mb-8 inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.06)] bg-[#111827] px-4 py-2 text-sm font-bold text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to Dashboard
+        </button>
+        <section className="rounded-[32px] border border-[rgba(255,255,255,0.06)] bg-[#111827] p-6 sm:p-8">
+          <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">{title}</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#8B9CB8] sm:text-base">{description}</p>
+        </section>
+      </main>
+      {renderBottomNavigation()}
+    </div>
+  );
 
   const renderPracticePage = () => (
     <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
@@ -1813,82 +1907,130 @@ export default function App() {
 
       {/* STUDENT DASHBOARD INTERFACE */}
       {view === 'dashboard' && studentProfile && (() => {
-        const username = getDashboardUsername();
-        const avatarLetter = (username || studentProfile.email || 'E').charAt(0).toUpperCase();
-        const greetingUsername = username.length > 15 ? `${username.slice(0, 15)}…` : username;
+        const username = getDashboardUsername() || 'Student';
+        const actionCards = [
+          {
+            title: 'AI Tutor',
+            description: 'Ask anything about your exam topics instantly',
+            href: '/ai-tutor',
+            icon: Sparkles,
+            accent: '#FF6B35',
+            iconBg: 'rgba(255,107,53,0.15)'
+          },
+          {
+            title: 'Exam Practice',
+            description: 'Practice subjects or take a full mock exam',
+            href: '/practice',
+            icon: PenLine,
+            accent: '#00BBF9',
+            iconBg: 'rgba(0,187,249,0.15)'
+          },
+          {
+            title: 'Weakness Assassin',
+            description: 'Find and fix your weakest exam topics',
+            href: '/weakness',
+            icon: Target,
+            accent: '#FF4D4D',
+            iconBg: 'rgba(255,77,77,0.15)'
+          },
+          {
+            title: 'Exam Updates',
+            description: 'Latest news on exams and scholarships',
+            href: '/updates',
+            icon: Newspaper,
+            accent: '#2EC4B6',
+            iconBg: 'rgba(46,196,182,0.15)'
+          }
+        ];
+        const getUpdateCategoryClass = (category: string) => {
+          const key = category.toLowerCase();
+          if (key === 'jamb') return 'bg-[#FF6B35]';
+          if (key === 'waec') return 'bg-[#2EC4B6]';
+          if (key === 'neco') return 'bg-[#00B871]';
+          if (key.includes('scholarship')) return 'bg-[#9B5DE5]';
+          return 'bg-slate-600';
+        };
+
         return (
-          <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-28 text-white font-sans">
-            <nav className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-[rgba(255,255,255,0.06)] bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
-              <span className="font-heading text-2xl font-extrabold tracking-tight text-white">
+          <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans scroll-smooth">
+            <nav className="sticky top-0 z-40 flex h-20 items-center border-b border-[rgba(255,255,255,0.06)] bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
+              <span className="font-heading text-[22px] font-extrabold tracking-tight text-white">
                 Exam<span className="text-[#FF6B35]">Ready</span>
               </span>
-
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setDashboardMenuOpen(prev => !prev)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF6B35] font-heading text-lg font-extrabold text-white shadow-[0_12px_30px_rgba(255,107,53,0.35)]"
-                  aria-label="Open profile menu"
-                >
-                  {avatarLetter ? avatarLetter : <UserIcon className="h-5 w-5" />}
-                </button>
-
-                {dashboardMenuOpen && (
-                  <div className="absolute right-0 mt-3 w-36 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-2 shadow-2xl">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDashboardMenuOpen(false);
-                        handleSignOut();
-                      }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#8B9CB8] transition hover:bg-white/5 hover:text-[#FF6B35]"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
             </nav>
 
-            <main className="mx-auto max-w-6xl space-y-7 px-4 py-6 sm:px-5 md:px-10 md:py-8">
-              <section className="animate-fade-up">
-                <h1 className="font-heading text-2xl font-extrabold tracking-tight text-white sm:text-3xl md:text-5xl">
-                  <span>{getTimeGreeting()} </span><span className="inline-block max-w-[15ch] truncate align-bottom">{greetingUsername}</span> <span aria-hidden="true">👋</span>
-                </h1>
-                <p className="mt-2 font-sans text-sm text-[#8B9CB8] md:text-base">
-                  Keep pushing. Your exam is coming.
-                </p>
-              </section>
-
-              <section className="grid grid-cols-3 gap-3 md:gap-5 animate-fade-up">
-                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4 md:p-6">
-                  <div className="text-3xl" aria-hidden="true">🔥</div>
-                  <p className="mt-3 font-heading text-xl font-extrabold text-white sm:text-2xl">{studentProfile.streak ?? 0}</p>
-                  <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Day Streak</p>
-                </div>
-                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4 md:p-6">
-                  <BookOpen className="h-7 w-7 text-[#FF6B35]" />
-                  <p className="mt-3 font-heading text-xl font-extrabold text-white sm:text-2xl">{dashboardPerformance.questions}</p>
-                  <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Questions</p>
-                </div>
-                <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4 md:p-6">
-                  <Target className="h-7 w-7 text-[#FF6B35]" />
-                  <p className="mt-3 font-heading text-xl font-extrabold text-white sm:text-2xl">{dashboardPerformance.accuracy}%</p>
-                  <p className="mt-1 text-xs font-semibold text-[#8B9CB8]">Accuracy</p>
-                </div>
-              </section>
-
-              <section className="animate-fade-up">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Weakness Assassin <span aria-hidden="true">🎯</span></h2>
-                    <p className="mt-1 text-sm text-[#8B9CB8]">Your weakest areas to fix</p>
+            <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-5 md:px-10 md:py-8">
+              <section className="animate-fade-up rounded-[32px] border border-[rgba(255,107,53,0.2)] bg-gradient-to-br from-[#1A1A2E] to-[#111827] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:p-6 md:p-8">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                      Hi <span className="inline-block max-w-[16ch] truncate align-bottom">{username}</span> <span aria-hidden="true">👋</span>
+                    </h1>
+                    <p className="mt-2 text-sm leading-6 text-[#8B9CB8] sm:text-base">Ready to study today?</p>
                   </div>
+
                   <button
                     type="button"
-                    onClick={() => { window.location.href = '/weakness'; }}
-                    className="inline-flex items-center gap-1 pt-1 text-sm font-bold text-[#FF6B35]"
+                    onClick={() => navigatePath('/profile')}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.1)] bg-[#111827] px-4 py-3 text-sm font-bold text-white transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35] sm:w-auto"
+                  >
+                    <UserIcon className="h-4 w-4" />
+                    View Profile
+                  </button>
+                </div>
+
+                <div className="mt-6 grid grid-cols-3 gap-3 md:gap-5">
+                  <div className="rounded-3xl bg-black/20 p-3 text-center sm:p-4 md:p-5">
+                    <Flame className="mx-auto h-6 w-6 text-[#FF6B35] sm:h-7 sm:w-7" />
+                    <p className="mt-3 truncate font-heading text-xl font-extrabold text-white sm:text-2xl">{studentProfile.streak ?? 0}</p>
+                    <p className="mt-1 text-[11px] font-semibold text-[#8B9CB8] sm:text-xs">Day Streak</p>
+                  </div>
+                  <div className="rounded-3xl bg-black/20 p-3 text-center sm:p-4 md:p-5">
+                    <BookOpen className="mx-auto h-6 w-6 text-[#00BBF9] sm:h-7 sm:w-7" />
+                    <p className="mt-3 truncate font-heading text-xl font-extrabold text-white sm:text-2xl">{dashboardPerformance.questions}</p>
+                    <p className="mt-1 text-[11px] font-semibold text-[#8B9CB8] sm:text-xs">Questions</p>
+                  </div>
+                  <div className="rounded-3xl bg-black/20 p-3 text-center sm:p-4 md:p-5">
+                    <Target className="mx-auto h-6 w-6 text-[#2EC4B6] sm:h-7 sm:w-7" />
+                    <p className="mt-3 truncate font-heading text-xl font-extrabold text-white sm:text-2xl">{dashboardPerformance.accuracy}%</p>
+                    <p className="mt-1 text-[11px] font-semibold text-[#8B9CB8] sm:text-xs">Accuracy</p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="grid grid-cols-2 gap-4 animate-fade-up">
+                {actionCards.map(card => {
+                  const CardIcon = card.icon;
+                  return (
+                    <button
+                      key={card.title}
+                      type="button"
+                      onClick={() => navigatePath(card.href)}
+                      className="group flex min-h-[190px] cursor-pointer flex-col rounded-[28px] border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 text-left transition duration-200 hover:-translate-y-1 hover:border-white/15 sm:p-5"
+                    >
+                      <div
+                        className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                        style={{ backgroundColor: card.iconBg, color: card.accent }}
+                      >
+                        <CardIcon className="h-5 w-5" />
+                      </div>
+                      <h2 className="mt-4 font-heading text-base font-extrabold text-white sm:text-lg">{card.title}</h2>
+                      <p className="mt-2 flex-1 text-xs leading-5 text-[#8B9CB8] sm:text-sm">{card.description}</p>
+                      <div className="mt-4 flex justify-end">
+                        <ChevronRight className="h-5 w-5 transition group-hover:translate-x-1" style={{ color: card.accent }} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </section>
+
+              <section className="animate-fade-up">
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Latest Updates</h2>
+                  <button
+                    type="button"
+                    onClick={() => navigatePath('/updates')}
+                    className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-[#FF6B35] transition hover:text-[#ff7c4d]"
                   >
                     See All
                     <ChevronRight className="h-4 w-4" />
@@ -1896,69 +2038,43 @@ export default function App() {
                 </div>
 
                 <div className="mt-4 space-y-3">
-                  {dashboardPerformance.weakAreas.length === 0 ? (
-                    <div className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] px-6 py-10 text-center">
-                      <p className="font-heading text-lg font-extrabold text-white">No weak areas found yet.</p>
-                      <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">
-                        Start practicing to discover where you need help.
-                      </p>
-                    </div>
-                  ) : dashboardPerformance.weakAreas.map(area => (
-                    <div
-                      key={`${area.subject}-${area.subtopic}`}
-                      className="flex items-center justify-between gap-4 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-5"
+                  {dashboardUpdates.map((update, index) => (
+                    <button
+                      key={`${update.category}-${update.title}-${index}`}
+                      type="button"
+                      onClick={() => navigatePath('/updates')}
+                      className="w-full rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 text-left transition hover:border-[#FF6B35]/30"
                     >
-                      <div>
-                        <p className="font-heading text-lg font-extrabold text-white">{area.subject}</p>
-                        <p className="mt-1 text-sm text-[#8B9CB8]">{area.subtopic}</p>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold text-white ${getUpdateCategoryClass(update.category)}`}>
+                          {update.category}
+                        </span>
+                        <span className="shrink-0 text-xs font-medium text-[#8B9CB8]">{update.date}</span>
                       </div>
-                      <div className="text-right">
-                        <p className={`font-heading text-xl font-extrabold ${area.accuracy < 50 ? 'text-red-400' : 'text-[#FF6B35]'}`}>
-                          {area.accuracy}%
-                        </p>
-                        <button type="button" className="mt-2 rounded-full bg-[#FF6B35] px-3 py-1 text-xs font-bold text-white">
-                          Practice Now
-                        </button>
-                      </div>
-                    </div>
+                      <h3 className="mt-3 truncate font-heading text-base font-extrabold text-white sm:text-lg">{update.title}</h3>
+                      <p className="mt-2 max-h-12 overflow-hidden text-sm leading-6 text-[#8B9CB8]">{update.preview}</p>
+                    </button>
                   ))}
                 </div>
               </section>
-
-              <section className="animate-fade-up">
-                <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Exam Practice</h2>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => navigatePath('/practice')}
-                    className="rounded-3xl border border-[rgba(255,255,255,0.06)] border-b-[#FF6B35] bg-[#111827] p-6 text-left transition hover:border-[#FF6B35]/50"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-3xl" aria-hidden="true">📚</div>
-                    <h3 className="mt-5 font-heading text-xl font-extrabold text-white sm:text-2xl">Topic Practice</h3>
-                    <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">
-                      Practice specific subjects and subtopics at your own pace
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigatePath('/practice/exam-type')}
-                    className="rounded-3xl border border-[rgba(255,255,255,0.06)] border-b-purple-500 bg-[#111827] p-6 text-left transition hover:border-purple-400/60"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-500/15 text-3xl" aria-hidden="true">⏱️</div>
-                    <h3 className="mt-5 font-heading text-xl font-extrabold text-white sm:text-2xl">Mock Exam</h3>
-                    <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">
-                      Full timed exam simulation. JAMB conditions.
-                    </p>
-                  </button>
-                </div>
-              </section>
-
             </main>
 
             {renderBottomNavigation()}
           </div>
         );
       })()}
+
+      {/* PROFILE PLACEHOLDER PAGE */}
+      {view === 'profile' && studentProfile && renderPlaceholderPage('Profile', 'Your profile settings and account details will appear here soon.')}
+
+      {/* AI TUTOR PLACEHOLDER PAGE */}
+      {view === 'aiTutor' && studentProfile && renderPlaceholderPage('AI Tutor', 'Ask-anything exam help is coming soon for your selected topics.')}
+
+      {/* WEAKNESS PLACEHOLDER PAGE */}
+      {view === 'weakness' && studentProfile && renderPlaceholderPage('Weakness Assassin', 'A dedicated weakness analysis page will appear here soon.')}
+
+      {/* UPDATES PLACEHOLDER PAGE */}
+      {view === 'updates' && studentProfile && renderPlaceholderPage('Exam Updates', 'Latest exam, scholarship, and school news will appear here soon.')}
 
 
       {/* PRACTICE PAGE */}
