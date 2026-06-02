@@ -169,24 +169,32 @@ const viewToPath: Record<AppView, string> = {
   leaderboard: '/leaderboard'
 };
 
+function normalizePathname(pathname: string) {
+  const [withoutHash] = pathname.split('#');
+  const [routePath] = withoutHash.split('?');
+  return routePath || '/';
+}
+
 function pathToView(pathname: string): AppView {
-  if (pathname === '/signin') return 'signin';
-  if (pathname === '/onboarding') return 'onboarding';
-  if (pathname === '/dashboard') return 'dashboard';
-  if (pathname === '/profile') return 'profile';
-  if (pathname === '/ai-tutor') return 'aiTutor';
-  if (pathname === '/weakness') return 'weakness';
-  if (pathname === '/updates') return 'updates';
-  if (pathname === '/practice') return 'practice';
-  if (pathname === '/practice/subjects') return 'practiceSubjects';
-  if (pathname === '/practice/exam-type') return 'practiceExamType';
-  if (pathname === '/practice/session') return 'practiceSession';
-  if (pathname.startsWith('/mock-exam/')) return 'practiceSession';
-  if (pathname === '/battle') return 'battle';
-  if (pathname === '/leaderboard') return 'leaderboard';
-  if (pathname === '/cheatsheet') return 'cheatsheet';
-  if (pathname.startsWith('/cheatsheet/')) {
-    return pathname.split('/').filter(Boolean).length >= 3 ? 'cheatsheetContent' : 'cheatsheetSubject';
+  const routePath = normalizePathname(pathname);
+
+  if (routePath === '/signin') return 'signin';
+  if (routePath === '/onboarding') return 'onboarding';
+  if (routePath === '/dashboard') return 'dashboard';
+  if (routePath === '/profile') return 'profile';
+  if (routePath === '/ai-tutor') return 'aiTutor';
+  if (routePath === '/weakness') return 'weakness';
+  if (routePath === '/updates') return 'updates';
+  if (routePath === '/practice') return 'practice';
+  if (routePath === '/practice/subjects') return 'practiceSubjects';
+  if (routePath === '/practice/exam-type') return 'practiceExamType';
+  if (routePath === '/practice/session') return 'practiceSession';
+  if (routePath.startsWith('/mock-exam/')) return 'practiceSession';
+  if (routePath === '/battle') return 'battle';
+  if (routePath === '/leaderboard') return 'leaderboard';
+  if (routePath === '/cheatsheet') return 'cheatsheet';
+  if (routePath.startsWith('/cheatsheet/')) {
+    return routePath.split('/').filter(Boolean).length >= 3 ? 'cheatsheetContent' : 'cheatsheetSubject';
   }
   return 'landing';
 }
@@ -897,8 +905,33 @@ export default function App() {
     return studentProfile?.username || studentProfile?.fullName || fallback;
   };
 
-  const getPracticeSelectionsFromUrl = (): PracticeSelection[] => {
+  const getPracticeSelectionsFromNavigation = (): PracticeSelection[] => {
+    const navigationState = (window.history.state || {}) as {
+      subjects?: string[];
+      subtopics?: string[];
+      selections?: PracticeSelection[];
+    };
     const params = new URLSearchParams(window.location.search);
+
+    console.log('PracticeSession received navigation state:', {
+      navigationState,
+      search: window.location.search,
+      pathname: window.location.pathname
+    });
+
+    if (Array.isArray(navigationState.selections) && navigationState.selections.length > 0) {
+      return navigationState.selections.filter(item => item.subject && item.topic);
+    }
+
+    if (Array.isArray(navigationState.subjects) && Array.isArray(navigationState.subtopics)) {
+      const selections = navigationState.subtopics.flatMap(subtopic => {
+        const matchingSubject = navigationState.subjects?.find(subject => (subtopicsBySubject[subject] || []).includes(subtopic));
+        return matchingSubject ? [{ subject: matchingSubject, topic: subtopic }] : [];
+      });
+
+      if (selections.length > 0) return selections;
+    }
+
     const rawTopics = params.get('topics');
 
     if (rawTopics) {
@@ -916,7 +949,14 @@ export default function App() {
 
     const subject = params.get('subject');
     const topic = params.get('topic') || params.get('subtopic');
-    return subject && topic ? [{ subject, topic }] : [];
+    if (subject && topic) return [{ subject, topic }];
+
+    if (window.location.pathname.startsWith('/mock-exam/')) {
+      const examSlug = window.location.pathname.split('/').filter(Boolean)[1] || 'jamb';
+      return [{ subject: examSlug.toUpperCase(), topic: 'Full Mock Exam' }];
+    }
+
+    return [];
   };
 
   const shuffleQuestions = (questions: PracticeQuestion[]) => {
@@ -1022,7 +1062,7 @@ export default function App() {
 
   useEffect(() => {
     if (view !== 'practiceSession') return;
-    if (questionIndex >= 20 || sessionSelectedAnswer !== null) return;
+    if (practiceQuestionsLoading || practiceQuestions.length === 0 || questionIndex >= practiceQuestions.length || sessionSelectedAnswer !== null) return;
 
     setQuestionTimeLeft(30);
     const timer = window.setInterval(() => {
@@ -1045,7 +1085,7 @@ export default function App() {
     let cancelled = false;
 
     const loadPracticeQuestions = async () => {
-      const selections = getPracticeSelectionsFromUrl();
+      const selections = getPracticeSelectionsFromNavigation();
       setPracticeQuestionsLoading(true);
       setPracticeQuestions([]);
       setFailedPracticeQuestions([]);
@@ -1057,25 +1097,41 @@ export default function App() {
       setQuestionTimeLeft(30);
 
       if (selections.length === 0) {
-        if (!cancelled) setPracticeQuestionsLoading(false);
+        console.warn('PracticeSession missing selected subjects/subtopics. Redirecting to subject selection.');
+        if (!cancelled) {
+          setPracticeQuestionsLoading(false);
+          navigatePath('/practice/subjects', {}, { replace: true });
+        }
         return;
       }
 
       try {
         const perSelectionQuestions = await Promise.all(selections.map(async selection => {
-          const { data, error } = await supabase
+          console.log('Fetching practice questions from Supabase:', selection);
+
+          const randomOrderedResult = await supabase
             .from('questions')
             .select('*')
             .eq('subject', selection.subject)
             .eq('subtopic', selection.topic)
+            .order('random()')
             .limit(20);
 
-          if (error) {
-            console.warn('Unable to fetch practice questions:', error);
+          const result = randomOrderedResult.error
+            ? await supabase
+              .from('questions')
+              .select('*')
+              .eq('subject', selection.subject)
+              .eq('subtopic', selection.topic)
+              .limit(20)
+            : randomOrderedResult;
+
+          if (result.error) {
+            console.warn('Unable to fetch practice questions:', result.error);
             return [] as PracticeQuestion[];
           }
 
-          return shuffleQuestions((data || []) as PracticeQuestion[]);
+          return shuffleQuestions((result.data || []) as PracticeQuestion[]);
         }));
 
         const spreadQuestions: PracticeQuestion[] = [];
@@ -1120,11 +1176,23 @@ export default function App() {
     return '—';
   };
 
-  const navigatePath = (path: string) => {
-    if (window.location.pathname !== path) {
-      window.history.pushState({}, '', path);
+  const navigatePath = (path: string, state: Record<string, unknown> = {}, options: { replace?: boolean } = {}) => {
+    const currentPath = `${window.location.pathname}${window.location.search}`;
+    const routePath = normalizePathname(path);
+
+    console.log('ExamReady navigation:', { path, routePath, state });
+
+    if (currentPath !== path) {
+      if (options.replace) {
+        window.history.replaceState(state, '', path);
+      } else {
+        window.history.pushState(state, '', path);
+      }
+    } else if (Object.keys(state).length > 0) {
+      window.history.replaceState(state, '', path);
     }
-    setView(pathToView(path));
+
+    setView(pathToView(routePath));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -1187,17 +1255,27 @@ export default function App() {
   };
 
   const startSelectedPractice = () => {
-    const selectedEntries = Object.entries(selectedPracticeTopics).flatMap(([subject, topics]) => (topics as string[]).map(topic => ({ subject, topic }))); 
+    const selectedEntries = Object.entries(selectedPracticeTopics).flatMap(([subject, topics]) => (topics as string[]).map(topic => ({ subject, topic })));
     if (selectedEntries.length === 0) return;
 
+    const selectedSubjects = Array.from(new Set(selectedEntries.map(entry => entry.subject)));
+    const selectedSubtopics = selectedEntries.map(entry => entry.topic);
     const first = selectedEntries[0];
+    const navigationState = {
+      subjects: selectedSubjects,
+      subtopics: selectedSubtopics,
+      selections: selectedEntries
+    };
+
+    console.log('Start Practice navigation state:', navigationState);
+
     setPracticeQuestionsLoading(true);
     const params = new URLSearchParams({
       subject: first.subject,
       topic: first.topic,
       topics: JSON.stringify(selectedEntries)
     });
-    navigatePath(`/practice/session?${params.toString()}`);
+    navigatePath(`/practice/session?${params.toString()}`, navigationState);
   };
 
   const renderPlaceholderPage = (title: string, description: string) => (
