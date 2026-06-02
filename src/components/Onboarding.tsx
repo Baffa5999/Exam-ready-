@@ -110,30 +110,30 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
         <button
           type="button"
           onClick={onSignOut}
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#111827] px-4 py-2 font-sans text-sm text-slate-300 transition hover:border-white/20 hover:text-white"
+          className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827] px-4 py-2 font-sans text-sm text-slate-300 transition hover:border-white/20 hover:text-white"
         >
           <LogOut className="h-4 w-4" />
           Sign out
         </button>
-        <div className="font-heading text-xl font-extrabold tracking-tight">
+        <div className="font-heading text-xl font-bold tracking-tight">
           Exam<span className="text-[#FF6B35]">Ready</span>
         </div>
       </header>
 
       <main className="relative z-10 flex min-h-[calc(100vh-88px)] items-center px-4 pb-36 pt-6 sm:px-6">
-        <section className="mx-auto w-full max-w-xl rounded-[28px] border border-white/10 bg-[#111827]/80 p-5 shadow-[0_28px_80px_rgba(0,0,0,0.45)] sm:p-8">
+        <section className="mx-auto w-full max-w-xl rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827]/80 p-5 shadow-[0_28px_80px_rgba(0,0,0,0.45)] sm:p-8">
           <div className="space-y-3 text-center">
-            <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl">
               Create your profile
             </h1>
-            <p className="font-sans text-sm leading-6 text-[#8B9CB8] sm:text-base">
+            <p className="font-sans text-sm font-normal leading-6 text-[#8B9CB8]">
               Choose the name and username students will see across ExamReady.
             </p>
           </div>
 
           <div className="mt-8 space-y-5 text-left">
             <div className="space-y-2">
-              <label htmlFor="full-name" className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
+              <label htmlFor="full-name" className="font-sans text-sm font-semibold text-white">
                 Full Name
               </label>
               <input
@@ -145,12 +145,12 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
                   setErrorMsg(null);
                 }}
                 placeholder="Enter your full name"
-                className="w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 font-sans text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)] sm:px-5 sm:py-4 sm:text-base"
+                className="w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] px-4 py-3.5 font-sans text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)] sm:px-5 sm:py-4 sm:text-base"
               />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="username" className="font-heading text-sm font-extrabold uppercase tracking-[0.16em] text-white">
+              <label htmlFor="username" className="font-sans text-sm font-semibold text-white">
                 Username
               </label>
               <input
@@ -168,7 +168,7 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
                 }}
                 placeholder="Choose a username"
                 maxLength={21}
-                className="w-full rounded-2xl border border-white/10 bg-[#111827] px-4 py-3.5 font-sans text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)] sm:px-5 sm:py-4 sm:text-base"
+                className="w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] px-4 py-3.5 font-sans text-sm text-white outline-none transition-all duration-300 placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.16),0_0_32px_rgba(255,107,53,0.2)] sm:px-5 sm:py-4 sm:text-base"
               />
               <p className="font-sans text-xs leading-5 text-[#8B9CB8]">
                 This is how you appear on the leaderboard and in battles.
@@ -189,12 +189,12 @@ export default function Onboarding({ initialName, onComplete, onSignOut }: Onboa
         </section>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0A0F1E]/90 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[rgba(255,255,255,0.08)] bg-[#0A0F1E]/90 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`mx-auto flex w-full max-w-xl items-center justify-center gap-2 rounded-2xl px-4 py-3 font-heading text-sm font-extrabold uppercase tracking-[0.18em] transition-all duration-300 sm:px-6 sm:py-4 ${
+          className={`mx-auto flex w-full max-w-xl items-center justify-center gap-2 rounded-2xl px-4 py-3 font-heading text-sm font-bold uppercase tracking-[0.18em] transition-all duration-300 sm:px-6 sm:py-4 ${
             canSubmit
               ? 'bg-[#FF6B35] text-white shadow-[0_18px_40px_rgba(255,107,53,0.32)] hover:bg-[#ff7c4d]'
               : 'cursor-not-allowed bg-slate-700 text-slate-400'

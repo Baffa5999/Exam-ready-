@@ -34,6 +34,7 @@ import {
   FileText,
   Eye,
   EyeOff,
+  Mail,
   Home,
   PenLine,
   Swords,
@@ -617,7 +618,7 @@ export default function App() {
       targetScore, 
       updatedAt
     } : null);
-    showBanner('success', `🎯 Goal changed to ${exam} 2026. Keep Studying!`);
+    showBanner('success', `Goal changed to ${exam} 2026. Keep studying!`);
   };
 
   // Handle mock study sessions.
@@ -654,7 +655,7 @@ export default function App() {
       updatedAt
     } : null);
     
-    showBanner('success', '🔥 Study session saved! 15 syllabus questions completed.');
+    showBanner('success', 'Study session saved! 15 syllabus questions completed.');
   };
 
   const resetAuthFormMessages = () => {
@@ -932,7 +933,7 @@ export default function App() {
     const currentPath = window.location.pathname;
 
     return (
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[rgba(255,255,255,0.06)] bg-[#16161F] px-2 py-2 backdrop-blur-xl">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[rgba(255,255,255,0.08)] bg-[#16161F] px-2 py-2 backdrop-blur-xl">
         <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
           {tabs.map(tab => {
             const active = tab.match(currentPath);
@@ -998,14 +999,14 @@ export default function App() {
         <button
           type="button"
           onClick={() => navigatePath('/dashboard')}
-          className="mb-8 inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.06)] bg-[#111827] px-4 py-2 text-sm font-bold text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+          className="mb-8 inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827] px-4 py-2 text-sm font-bold text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to Dashboard
         </button>
-        <section className="rounded-[32px] border border-[rgba(255,255,255,0.06)] bg-[#111827] p-6 sm:p-8">
-          <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl">{title}</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#8B9CB8] sm:text-base">{description}</p>
+        <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 sm:p-8">
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">{title}</h1>
+          <p className="mt-2 max-w-2xl font-sans text-sm font-normal leading-6 text-[#8B9CB8]">{description}</p>
         </section>
       </main>
       {renderBottomNavigation()}
@@ -1087,32 +1088,32 @@ export default function App() {
           <button type="button" onClick={() => navigatePath('/practice')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl md:text-6xl">Select Exam Type</h1>
-          <p className="mt-3 text-base text-[#8B9CB8]">Choose which exam you want to simulate today.</p>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Select Exam Type</h1>
+          <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Choose which exam you want to simulate today.</p>
 
-          <section className="mt-8 space-y-4">
+          <section className="mt-6 space-y-3">
             {exams.map(exam => (
               <button
                 key={exam.key}
                 type="button"
                 onClick={() => navigatePath(`/mock-exam/${exam.key}`)}
-                className="group flex w-full items-center gap-4 rounded-[28px] border border-[rgba(255,255,255,0.06)] border-l-4 bg-[#111827] p-5 text-left transition hover:border-white/15"
+                className="group flex w-full items-center gap-4 rounded-2xl border border-[rgba(255,255,255,0.08)] border-l-4 bg-[#111827] p-4 text-left transition hover:border-white/15 sm:p-5"
                 style={{ borderLeftColor: exam.accent }}
               >
-                <div className={`flex h-12 w-12 shrink-0 sm:h-14 sm:w-14 items-center justify-center rounded-2xl p-3 ${exam.tint}`}>
-                  <FileText className="h-6 w-6" />
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl p-3 ${exam.tint}`}>
+                  <FileText className="h-[22px] w-[22px]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-heading text-lg font-bold text-white sm:text-xl">{exam.title}</h2>
-                  <p className="mt-1 text-sm font-semibold text-[#C8D2E4]">{exam.subtitle}</p>
-                  <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">{exam.description}</p>
+                  <h2 className="font-heading text-base font-semibold text-white">{exam.title}</h2>
+                  <p className="mt-1 font-sans text-[13px] font-normal text-[#C8D2E4]">{exam.subtitle}</p>
+                  <p className="mt-1 font-sans text-[13px] font-normal leading-5 text-[#8B9CB8]">{exam.description}</p>
                 </div>
                 <ChevronRight className="h-6 w-6 shrink-0 transition group-hover:translate-x-1" style={{ color: exam.accent }} />
               </button>
             ))}
           </section>
 
-          <p className="mt-6 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 text-sm leading-6 text-[#8B9CB8]">
+          <p className="mt-6 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4 text-sm leading-6 text-[#8B9CB8]">
             Your exam simulation will only include subjects you selected during onboarding.
           </p>
         </main>
@@ -1131,10 +1132,10 @@ export default function App() {
           <button type="button" onClick={() => navigatePath('/practice')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl md:text-6xl">Select Subject</h1>
-          <p className="mt-3 text-base text-[#8B9CB8]">Choose a subject then select your topics.</p>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Select Subject</h1>
+          <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Choose a subject then select your topics.</p>
 
-          <section className="mt-8 space-y-4">
+          <section className="mt-6 space-y-3">
             {practiceSubjects.map(subject => {
               const topics = subtopicsBySubject[subject.name] || [];
               const selectedTopics = selectedPracticeTopics[subject.name] || [];
@@ -1143,13 +1144,13 @@ export default function App() {
               const ExpandIcon = expanded ? ChevronUp : ChevronDown;
 
               return (
-                <div key={subject.name} className="overflow-hidden rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827]" style={{ borderLeftColor: subject.accent, borderLeftWidth: 5 }}>
-                  <button type="button" onClick={() => toggleExpandedPracticeSubject(subject.name)} className="flex w-full items-center justify-between gap-4 p-5 text-left">
-                    <div>
-                      <h2 className="font-heading text-xl font-extrabold text-white">{subject.name}</h2>
-                      <p className="mt-1 text-sm text-[#8B9CB8]">tap to see topics</p>
+                <div key={subject.name} className="overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827]" style={{ borderLeftColor: subject.accent, borderLeftWidth: 4 }}>
+                  <button type="button" onClick={() => toggleExpandedPracticeSubject(subject.name)} className="flex w-full items-center justify-between gap-4 p-4 text-left">
+                    <div className="min-w-0">
+                      <h2 className="break-words font-heading text-base font-semibold leading-5 text-white sm:text-lg">{subject.name}</h2>
+                      <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">tap to see topics</p>
                     </div>
-                    <ExpandIcon className="h-6 w-6 text-[#8B9CB8]" />
+                    <ExpandIcon className="h-5 w-5 shrink-0 text-[#8B9CB8]" />
                   </button>
 
                   {expanded && (
@@ -1158,7 +1159,7 @@ export default function App() {
                         <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${allSelected ? 'border-[#FF6B35] bg-[#FF6B35]' : 'border-white/20 bg-[#0A0F1E]'}`}>
                           {allSelected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
                         </span>
-                        <span className="font-heading text-sm font-extrabold text-[#FF6B35]">Select All Topics</span>
+                        <span className="font-heading text-sm font-semibold text-[#FF6B35]">Select All Topics</span>
                       </button>
 
                       {topics.map(topic => {
@@ -1181,7 +1182,7 @@ export default function App() {
         </main>
 
         <div className="fixed inset-x-0 bottom-[72px] z-40 border-t border-white/10 bg-[#0A0F1E]/95 px-5 py-3 backdrop-blur">
-          <p className="text-center font-heading text-sm font-extrabold text-[#FF6B35]">{selectedCount} topics selected</p>
+          <p className="text-center font-heading text-sm font-bold text-[#FF6B35]">{selectedCount} topics selected</p>
         </div>
         <div className="fixed inset-x-0 bottom-0 z-40 bg-[#0A0F1E] px-5 py-3">
           <button
@@ -1218,11 +1219,11 @@ export default function App() {
 
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 py-10 text-white">
-          <div className="w-full max-w-md animate-fade-up rounded-[32px] border border-[rgba(255,255,255,0.06)] bg-[#111827] p-8 text-center">
+          <div className="w-full max-w-md animate-fade-up rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-8 text-center">
             <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full border-8 border-[#FF6B35]/25 bg-[#0A0F1E]">
-              <span className="font-heading text-3xl font-extrabold text-[#FF6B35] sm:text-4xl">{percent}%</span>
+              <span className="font-heading text-3xl font-bold text-[#FF6B35] sm:text-4xl">{percent}%</span>
             </div>
-            <p className="mt-6 font-heading text-3xl font-extrabold text-white">{sessionScore} out of 20</p>
+            <p className="mt-6 font-heading text-3xl font-bold text-white">{sessionScore} out of 20</p>
             <p className="mt-2 text-lg font-bold text-[#FF6B35]">{percent}%</p>
             <p className="mt-4 text-lg font-bold text-white">{message}</p>
             <p className="mt-2 text-sm text-[#8B9CB8]">{subject} • {subtopic}</p>
@@ -1260,10 +1261,10 @@ export default function App() {
               <ChevronLeft className="h-6 w-6" />
             </button>
             <div className="min-w-0 text-center">
-              <p className="truncate font-heading text-base font-extrabold text-white">{subject}</p>
+              <p className="truncate font-heading text-base font-bold text-white">{subject}</p>
               <p className="truncate text-xs text-[#8B9CB8]">{subtopic}</p>
             </div>
-            <p className="font-heading text-sm font-extrabold text-[#FF6B35]">{questionIndex + 1} of 20</p>
+            <p className="font-heading text-sm font-bold text-[#FF6B35]">{questionIndex + 1} of 20</p>
           </div>
           <div className="mx-auto mt-4 h-1 max-w-4xl overflow-hidden rounded-full bg-white/10">
             <div className="h-full rounded-full bg-[#FF6B35] transition-all" style={{ width: `${progress}%` }} />
@@ -1276,7 +1277,7 @@ export default function App() {
             {questionTimeLeft}s
           </div>
 
-          <section className="rounded-[28px] border border-[rgba(255,255,255,0.06)] bg-[#111827] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.25)] md:p-8">
+          <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.25)] md:p-8">
             <p className="text-lg leading-8 text-white md:text-2xl">
               Which option best describes {subtopic} in {subject} for exam-ready preparation?
             </p>
@@ -1299,7 +1300,7 @@ export default function App() {
                   }}
                   className={`flex w-full items-center gap-4 rounded-2xl border bg-[#111827] p-4 text-left transition ${correct ? 'border-emerald-400 text-emerald-300' : wrong ? 'border-red-400 text-red-300' : answeredSession ? 'border-white/5 opacity-45' : 'border-white/10 text-white hover:border-[#FF6B35]/50'}`}
                 >
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold ${correct ? 'bg-emerald-500 text-white' : wrong ? 'bg-red-500 text-white' : 'bg-[#0A0F1E] text-[#8B9CB8]'}`}>
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${correct ? 'bg-emerald-500 text-white' : wrong ? 'bg-red-500 text-white' : 'bg-[#0A0F1E] text-[#8B9CB8]'}`}>
                     {String.fromCharCode(65 + index)}
                   </span>
                   <span className="font-sans text-sm md:text-base">{option}</span>
@@ -1309,8 +1310,8 @@ export default function App() {
           </section>
 
           {answeredSession && (
-            <section className={`mt-6 animate-slide-up rounded-3xl border-l-4 bg-[#111827] p-5 ${isCorrect ? 'border-l-emerald-500' : 'border-l-[#FF6B35]'}`}>
-              <p className={`font-heading text-sm font-extrabold ${isCorrect ? 'text-emerald-400' : 'text-[#FF6B35]'}`}>{isCorrect ? 'Correct' : 'Explanation'}</p>
+            <section className={`mt-6 animate-slide-up rounded-2xl border-l-4 bg-[#111827] p-5 ${isCorrect ? 'border-l-emerald-500' : 'border-l-[#FF6B35]'}`}>
+              <p className={`font-heading text-sm font-bold ${isCorrect ? 'text-emerald-400' : 'text-[#FF6B35]'}`}>{isCorrect ? 'Correct' : 'Explanation'}</p>
               <p className="mt-2 text-sm leading-6 text-[#C8D2E4]">
                 The best answer connects the definition, example, and exam shortcut for {subtopic}. Review why the distractors are close, then move to the next question with confidence.
               </p>
@@ -1394,8 +1395,8 @@ export default function App() {
           <button type="button" onClick={() => navigatePath('/cheatsheet')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl md:text-6xl">{subject}</h1>
-          <div className="mt-8 divide-y divide-white/10 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-2">
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">{subject}</h1>
+          <div className="mt-8 divide-y divide-white/10 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-2">
             {(subtopicsBySubject[subject] || []).map(topic => (
               <button key={topic} type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}/${slugify(topic)}`)} className="flex w-full items-center justify-between px-4 py-4 text-left">
                 <span className="font-heading text-base font-bold text-white">{topic}</span>
@@ -1440,14 +1441,14 @@ export default function App() {
           <button type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}`)} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          <h1 className="font-heading text-3xl font-extrabold text-white sm:text-4xl md:text-6xl">{topic}</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">{topic}</h1>
           <p className="mt-2 text-sm font-semibold text-[#8B9CB8]">{subject}</p>
 
           <div className="mt-8 space-y-5">
             {sections.map(section => (
-              <section key={section.title} className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-5 md:p-6">
-                <h2 className="font-heading text-xl font-extrabold text-white">{section.title}</h2>
-                <p className="mt-3 text-sm leading-7 text-[#C8D2E4] md:text-base">{section.body}</p>
+              <section key={section.title} className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-5 md:p-6">
+                <h2 className="font-heading text-lg font-bold text-white">{section.title}</h2>
+                <p className="mt-3 font-sans text-sm font-normal leading-7 text-[#C8D2E4] md:text-base">{section.body}</p>
               </section>
             ))}
           </div>
@@ -1499,7 +1500,7 @@ export default function App() {
       <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
         <main className="mx-auto max-w-5xl space-y-7 animate-fade-up">
           <section>
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-5xl">Battle</h1>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Battle</h1>
             <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8] sm:text-base">Challenge your classmates and see who knows more.</p>
           </section>
 
@@ -1640,19 +1641,19 @@ export default function App() {
       <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
         <main className="mx-auto max-w-5xl space-y-7 animate-fade-up">
           <section>
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-5xl">Leaderboard</h1>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Leaderboard</h1>
             <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8] sm:text-base">See how you rank nationally.</p>
           </section>
 
           <section className="space-y-4">
-            <div className="flex items-end gap-6 border-b border-[rgba(255,255,255,0.06)]">
+            <div className="flex items-end gap-6 border-b border-[rgba(255,255,255,0.08)]">
               {(['Weekly', 'Monthly', 'All Time'] as const).map(range => (
                 <button key={range} type="button" onClick={() => setLeaderboardRange(range)} className={`border-b-2 px-0 pb-3 font-sans text-sm font-normal transition ${leaderboardRange === range ? 'border-[#FF6B35] text-white' : 'border-transparent text-[#8B9CB8] hover:text-white'}`}>
                   {range}
                 </button>
               ))}
             </div>
-            <div className="-mx-5 flex gap-5 overflow-x-auto border-b border-[rgba(255,255,255,0.06)] px-5 md:mx-0 md:px-0">
+            <div className="-mx-5 flex gap-5 overflow-x-auto border-b border-[rgba(255,255,255,0.08)] px-5 md:mx-0 md:px-0">
               {filters.map(filter => (
                 <button key={filter} type="button" onClick={() => setLeaderboardSubject(filter)} className={`shrink-0 border-b-2 pb-3 font-sans text-sm font-normal transition ${leaderboardSubject === filter ? 'border-[#FF6B35] text-white' : 'border-transparent text-[#8B9CB8] hover:text-white'}`}>
                   {filter}
@@ -1720,15 +1721,15 @@ export default function App() {
 
           <div className="w-full max-w-md bg-[#111827]/95 border border-white/10 rounded-[24px] p-5 sm:p-8 md:p-10 shadow-[0_45px_100px_rgba(0,0,0,0.7),0_0_85px_rgba(255,107,53,0.08)] relative z-10 animate-fade-up">
             <div className="text-center mb-8">
-              <span className="font-heading font-extrabold text-[28px] tracking-tight text-white">
+              <span className="font-heading font-bold text-[28px] tracking-tight text-white">
                 Exam<span className="text-[#FF6B35]">Ready</span>
               </span>
             </div>
 
             {pendingConfirmationEmail ? (
               <div className="text-center py-4">
-                <div className="mb-5 text-6xl" aria-hidden="true">📧</div>
-                <h2 className="font-heading font-extrabold text-3xl text-white tracking-tight mb-3">
+                <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35]" aria-hidden="true"><Mail className="h-7 w-7" /></div>
+                <h2 className="font-heading font-bold text-2xl text-white tracking-tight mb-3">
                   Check your email
                 </h2>
                 <p className="font-sans text-sm leading-6 text-[#8B9CB8]">
@@ -1783,7 +1784,7 @@ export default function App() {
             </div>
 
             <div className="text-center mb-8">
-              <h2 className="font-heading font-extrabold text-2xl md:text-3xl text-white tracking-tight mb-2">
+              <h2 className="font-heading font-bold text-2xl md:text-3xl text-white tracking-tight mb-2">
                 {authMode === 'signin' ? 'Welcome Back' : 'Create Account'}
               </h2>
               <p className="font-sans text-sm text-[#8B9CB8] max-w-xs mx-auto">
@@ -1944,7 +1945,7 @@ export default function App() {
 
         return (
           <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans scroll-smooth">
-            <nav className="sticky top-0 z-40 flex h-20 items-center border-b border-[rgba(255,255,255,0.06)] bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
+            <nav className="sticky top-0 z-40 flex h-20 items-center border-b border-[rgba(255,255,255,0.08)] bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
               <span className="font-heading text-[22px] font-bold tracking-tight text-white">
                 Exam<span className="text-[#FF6B35]">Ready</span>
               </span>
@@ -2041,16 +2042,16 @@ export default function App() {
                       key={`${update.category}-${update.title}-${index}`}
                       type="button"
                       onClick={() => navigatePath('/updates')}
-                      className="w-full rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 text-left transition hover:border-[#FF6B35]/30"
+                      className="w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4 text-left transition hover:border-[#FF6B35]/30"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold text-white ${getUpdateCategoryClass(update.category)}`}>
+                        <span className={`rounded-full px-3 py-1 text-[11px] font-bold text-white ${getUpdateCategoryClass(update.category)}`}>
                           {update.category}
                         </span>
                         <span className="shrink-0 text-xs font-medium text-[#8B9CB8]">{update.date}</span>
                       </div>
-                      <h3 className="mt-3 truncate font-heading text-base font-extrabold text-white sm:text-lg">{update.title}</h3>
-                      <p className="mt-2 max-h-12 overflow-hidden text-sm leading-6 text-[#8B9CB8]">{update.preview}</p>
+                      <h3 className="mt-3 truncate font-heading text-sm font-bold leading-5 text-white sm:text-base">{update.title}</h3>
+                      <p className="mt-2 overflow-hidden font-sans text-[13px] font-normal leading-5 text-[#8B9CB8]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{update.preview}</p>
                     </button>
                   ))}
                 </div>
@@ -2118,7 +2119,7 @@ export default function App() {
         <div className="animate-fade-up">
 
           {/* SECTION 1: NAVBAR */}
-          <nav id="navbar" className="fixed top-0 left-0 right-0 h-20 bg-[rgba(10,15,30,0.95)] backdrop-blur-md border-b border-[rgba(255,255,255,0.06)] z-50 flex items-center justify-between px-6 md:px-12">
+          <nav id="navbar" className="fixed top-0 left-0 right-0 h-20 bg-[rgba(10,15,30,0.95)] backdrop-blur-md border-b border-[rgba(255,255,255,0.08)] z-50 flex items-center justify-between px-6 md:px-12">
             {/* Left Side: Logo */}
             <div className="flex items-center">
               <span className="font-heading font-bold text-[22px] tracking-tight">
@@ -2154,11 +2155,11 @@ export default function App() {
                 
                 {/* Small pill badge */}
                 <div id="student-badge" className="inline-flex items-center gap-1.5 bg-[rgba(255,107,53,0.12)] border border-[rgba(255,107,53,0.3)] text-[#FF6B35] text-xs font-semibold px-3 py-1.5 rounded-full select-none">
-                  <span>🇳🇬</span> Built for Nigerian Students
+                  <CheckCircle className="h-3.5 w-3.5" /> Built for Nigerian Students
                 </div>
 
                 {/* Main Headline */}
-                <h1 className="font-heading font-extrabold text-3xl sm:text-5xl md:text-6xl text-white leading-[1.1] tracking-tight">
+                <h1 className="font-heading font-bold text-3xl sm:text-4xl md:text-4xl text-white leading-[1.1] tracking-tight">
                   Pass JAMB,<br />
                   WAEC & NECO.<br />
                   <span className="text-[#FF6B35] block mt-1">Stop Guessing.</span>
@@ -2239,7 +2240,7 @@ export default function App() {
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <span className="text-[10px] text-[rgba(255,255,255,0.4)] block">Good morning</span>
-                        <span className="text-xs font-bold text-white">Chidera 👋</span>
+                        <span className="text-xs font-bold text-white">Chidera</span>
                       </div>
                       <div className="w-6 h-6 bg-gradient-to-tr from-[#FF6B35] to-[#FF9500] rounded-full flex items-center justify-center text-[10px] font-bold text-white">
                         C
@@ -2253,7 +2254,7 @@ export default function App() {
                         <span className="bg-white/20 px-1.5 py-0.5 rounded text-[8px]">Active</span>
                       </div>
                       <div className="my-1">
-                        <div className="text-xl font-extrabold text-white sm:text-2xl leading-none">280</div>
+                        <div className="text-xl font-bold text-white sm:text-2xl leading-none">280</div>
                         <span className="text-[8px] text-white/80">Goal Score (Engineering study)</span>
                       </div>
                       <div className="w-full">
@@ -2266,7 +2267,7 @@ export default function App() {
                     {/* Quick Stats Grid */}
                     <div className="grid grid-cols-3 gap-2 mb-3">
                       <div className="bg-[#111827] border border-[rgba(255,255,255,0.05)] p-2 rounded-xl text-center">
-                        <span className="text-xs font-semibold text-white block">9🔥</span>
+                        <span className="flex items-center justify-center gap-1 text-xs font-semibold text-white"><Flame className="h-3 w-3 text-[#FF6B35]" />9</span>
                         <span className="text-[8px] text-[rgba(255,255,255,0.4)] uppercase">Streak</span>
                       </div>
                       <div className="bg-[#111827] border border-[rgba(255,255,255,0.05)] p-2 rounded-xl text-center">
@@ -2313,15 +2314,15 @@ export default function App() {
                     {/* Simulated Bottom Navigation */}
                     <div className="h-8 border-t border-[rgba(255,255,255,0.05)] mt-3 pt-2 flex justify-around items-center text-[8px] text-[rgba(255,255,255,0.4)]">
                       <span className="text-[#FF6B35] font-semibold flex flex-col items-center">
-                        <span>🏠</span>
+                        <Home className="h-3 w-3" />
                         <span>Home</span>
                       </span>
                       <span className="flex flex-col items-center">
-                        <span>⚔️</span>
+                        <Swords className="h-3 w-3" />
                         <span>Battle</span>
                       </span>
                       <span className="flex flex-col items-center">
-                        <span>📋</span>
+                        <FileText className="h-3 w-3" />
                         <span>Syllabus</span>
                       </span>
                     </div>
@@ -2335,26 +2336,26 @@ export default function App() {
           </section>
 
           {/* SECTION 3: STATS BAR */}
-          <section id="stats-bar" className="w-full bg-[#111827] border-y border-[rgba(255,255,255,0.06)] relative z-20">
+          <section id="stats-bar" className="w-full bg-[#111827] border-y border-[rgba(255,255,255,0.08)] relative z-20">
             <div className="max-w-7xl mx-auto py-8 px-6 md:px-12">
               {/* Grid layout - Horizontal row on desktop, Vertical stacked on mobile with dividers */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-4 divide-y md:divide-y-0 md:divide-x divide-[rgba(255,255,255,0.06)]">
                 
                 {/* Stat 1 */}
                 <div className="flex flex-col items-center justify-center text-center pb-6 md:pb-0">
-                  <span className="font-heading font-extrabold text-4xl lg:text-5xl text-[#FF6B35]">10,000+</span>
+                  <span className="font-heading font-bold text-4xl lg:text-4xl text-[#FF6B35]">10,000+</span>
                   <span className="font-sans text-[13px] md:text-sm text-[#8B9CB8] mt-2 uppercase tracking-wide">Practice Questions</span>
                 </div>
 
                 {/* Stat 2 */}
                 <div className="flex flex-col items-center justify-center text-center py-6 md:py-0">
-                  <span className="font-heading font-extrabold text-4xl lg:text-5xl text-[#FF6B35]">5</span>
+                  <span className="font-heading font-bold text-4xl lg:text-4xl text-[#FF6B35]">5</span>
                   <span className="font-sans text-[13px] md:text-sm text-[#8B9CB8] mt-2 uppercase tracking-wide">Core Subjects</span>
                 </div>
 
                 {/* Stat 3 */}
                 <div className="flex flex-col items-center justify-center text-center pt-6 md:pt-0">
-                  <span className="font-heading font-extrabold text-4xl lg:text-5xl text-[#FF6B35]">Free</span>
+                  <span className="font-heading font-bold text-4xl lg:text-4xl text-[#FF6B35]">Free</span>
                   <span className="font-sans text-[13px] md:text-sm text-[#8B9CB8] mt-2 uppercase tracking-wide">To Get Started</span>
                 </div>
 
@@ -2370,7 +2371,7 @@ export default function App() {
               <span className="text-xs font-semibold text-[#8B9CB8] tracking-widest uppercase block">
                 WHAT YOU GET
               </span>
-              <h2 className="font-heading font-extrabold text-3xl md:text-5xl text-white tracking-tight leading-tight">
+              <h2 className="font-heading font-bold text-3xl md:text-4xl text-white tracking-tight leading-tight">
                 Everything you need to pass
               </h2>
             </div>
@@ -2379,9 +2380,9 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
               
               {/* Card 1 */}
-              <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-2xl p-7 lg:p-8 hover:border-[rgba(255,107,53,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-start gap-5">
-                <div className="w-12 h-12 bg-[rgba(255,107,53,0.1)] rounded-xl flex items-center justify-center text-2xl select-none">
-                  🎯
+              <div className="bg-[#111827] border border-[rgba(255,255,255,0.08)] rounded-2xl p-7 lg:p-8 hover:border-[rgba(255,107,53,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-start gap-5">
+                <div className="w-12 h-12 bg-[rgba(255,107,53,0.1)] rounded-xl flex items-center justify-center text-[#FF6B35]">
+                  <Target className="h-6 w-6" />
                 </div>
                 <div>
                   <h3 className="font-heading font-bold text-xl text-white mb-2">Weakness Assassin</h3>
@@ -2392,9 +2393,9 @@ export default function App() {
               </div>
 
               {/* Card 2 */}
-              <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-2xl p-7 lg:p-8 hover:border-[rgba(255,107,53,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-start gap-5">
-                <div className="w-12 h-12 bg-[rgba(139,92,246,0.1)] rounded-xl flex items-center justify-center text-2xl select-none">
-                  ⚔️
+              <div className="bg-[#111827] border border-[rgba(255,255,255,0.08)] rounded-2xl p-7 lg:p-8 hover:border-[rgba(255,107,53,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-start gap-5">
+                <div className="w-12 h-12 bg-[rgba(139,92,246,0.1)] rounded-xl flex items-center justify-center text-purple-300">
+                  <Swords className="h-6 w-6" />
                 </div>
                 <div>
                   <h3 className="font-heading font-bold text-xl text-white mb-2">Battle a Friend</h3>
@@ -2405,9 +2406,9 @@ export default function App() {
               </div>
 
               {/* Card 3 */}
-              <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-2xl p-7 lg:p-8 hover:border-[rgba(255,107,53,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-start gap-5">
-                <div className="w-12 h-12 bg-[rgba(20,184,166,0.1)] rounded-xl flex items-center justify-center text-2xl select-none">
-                  📋
+              <div className="bg-[#111827] border border-[rgba(255,255,255,0.08)] rounded-2xl p-7 lg:p-8 hover:border-[rgba(255,107,53,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-start gap-5">
+                <div className="w-12 h-12 bg-[rgba(20,184,166,0.1)] rounded-xl flex items-center justify-center text-[#2EC4B6]">
+                  <BookMarked className="h-6 w-6" />
                 </div>
                 <div>
                   <h3 className="font-heading font-bold text-xl text-white mb-2">Smart Cheatsheets</h3>
@@ -2418,9 +2419,9 @@ export default function App() {
               </div>
 
               {/* Card 4 */}
-              <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-2xl p-7 lg:p-8 hover:border-[rgba(255,107,53,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-start gap-5">
-                <div className="w-12 h-12 bg-[rgba(245,158,11,0.1)] rounded-xl flex items-center justify-center text-2xl select-none">
-                  🏆
+              <div className="bg-[#111827] border border-[rgba(255,255,255,0.08)] rounded-2xl p-7 lg:p-8 hover:border-[rgba(255,107,53,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col items-start gap-5">
+                <div className="w-12 h-12 bg-[rgba(245,158,11,0.1)] rounded-xl flex items-center justify-center text-amber-300">
+                  <Trophy className="h-6 w-6" />
                 </div>
                 <div>
                   <h3 className="font-heading font-bold text-xl text-white mb-2">National Leaderboard</h3>
@@ -2434,14 +2435,14 @@ export default function App() {
           </section>
 
           {/* SECTION 5: HOW IT WORKS */}
-          <section id="how-it-works" className="py-20 md:py-28 px-6 md:px-12 max-w-7xl mx-auto relative z-10 border-t border-[rgba(255,255,255,0.06)] font-sans">
+          <section id="how-it-works" className="py-20 md:py-28 px-6 md:px-12 max-w-7xl mx-auto relative z-10 border-t border-[rgba(255,255,255,0.08)] font-sans">
             
             {/* Centered Heading */}
             <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
               <span className="text-xs font-semibold text-[#8B9CB8] tracking-widest uppercase block">
                 THE PROCESS
               </span>
-              <h2 className="font-heading font-extrabold text-3xl md:text-5xl text-white tracking-tight leading-tight">
+              <h2 className="font-heading font-bold text-3xl md:text-4xl text-white tracking-tight leading-tight">
                 Start in 3 simple steps
               </h2>
             </div>
@@ -2454,7 +2455,7 @@ export default function App() {
                 {/* Dashed orange line connector on desktop */}
                 <div className="hidden md:block absolute left-14 top-6 w-[calc(100%-2.5rem)] border-t border-dashed border-[#FF6B35]/50 -z-10" />
                 
-                <div className="w-12 h-12 bg-[#FF6B35] rounded-full flex items-center justify-center text-white font-heading font-extrabold text-lg shadow-[0_0_15px_rgba(255,107,53,0.3)]">
+                <div className="w-12 h-12 bg-[#FF6B35] rounded-full flex items-center justify-center text-white font-heading font-bold text-lg shadow-[0_0_15px_rgba(255,107,53,0.3)]">
                   1
                 </div>
                 <h3 className="font-heading font-bold text-xl text-white">Sign In With Gmail</h3>
@@ -2468,7 +2469,7 @@ export default function App() {
                 {/* Dashed orange line connector on desktop */}
                 <div className="hidden md:block absolute left-14 top-6 w-[calc(100%-2.5rem)] border-t border-dashed border-[#FF6B35]/50 -z-10" />
                 
-                <div className="w-12 h-12 bg-[#FF6B35] rounded-full flex items-center justify-center text-white font-heading font-extrabold text-lg shadow-[0_0_15px_rgba(255,107,53,0.3)]">
+                <div className="w-12 h-12 bg-[#FF6B35] rounded-full flex items-center justify-center text-white font-heading font-bold text-lg shadow-[0_0_15px_rgba(255,107,53,0.3)]">
                   2
                 </div>
                 <h3 className="font-heading font-bold text-xl text-white">Pick Your Subjects</h3>
@@ -2479,7 +2480,7 @@ export default function App() {
 
               {/* Step 3 */}
               <div className="relative flex flex-col items-start space-y-4">
-                <div className="w-12 h-12 bg-[#FF6B35] rounded-full flex items-center justify-center text-white font-heading font-extrabold text-lg shadow-[0_0_15px_rgba(255,107,53,0.3)]">
+                <div className="w-12 h-12 bg-[#FF6B35] rounded-full flex items-center justify-center text-white font-heading font-bold text-lg shadow-[0_0_15px_rgba(255,107,53,0.3)]">
                   3
                 </div>
                 <h3 className="font-heading font-bold text-xl text-white">Start Practicing</h3>
@@ -2492,14 +2493,14 @@ export default function App() {
           </section>
 
           {/* SECTION 6: TESTIMONIALS */}
-          <section id="testimonials" className="py-20 md:py-28 px-6 md:px-12 max-w-7xl mx-auto relative z-10 border-t border-[rgba(255,255,255,0.06)] font-sans">
+          <section id="testimonials" className="py-20 md:py-28 px-6 md:px-12 max-w-7xl mx-auto relative z-10 border-t border-[rgba(255,255,255,0.08)] font-sans">
             
             {/* Centered Heading */}
             <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
               <span className="text-xs font-semibold text-[#8B9CB8] tracking-widest uppercase block">
                 STUDENT STORIES
               </span>
-              <h2 className="font-heading font-extrabold text-3xl md:text-5xl text-white tracking-tight leading-tight">
+              <h2 className="font-heading font-bold text-3xl md:text-4xl text-white tracking-tight leading-tight">
                 Students are already winning
               </h2>
             </div>
@@ -2508,9 +2509,9 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
               
               {/* Testimonial Card 1 */}
-              <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6 lg:p-8 flex flex-col justify-between hover:border-[rgba(255,107,53,0.2)] transition-all duration-300">
+              <div className="bg-[#111827] border border-[rgba(255,255,255,0.08)] rounded-2xl p-6 lg:p-8 flex flex-col justify-between hover:border-[rgba(255,107,53,0.2)] transition-all duration-300">
                 <div>
-                  <span className="font-heading font-extrabold text-6xl text-[#FF6B35] leading-none select-none block -mt-4 mb-2">
+                  <span className="font-heading font-bold text-4xl text-[#FF6B35] leading-none select-none block -mt-4 mb-2">
                     &ldquo;
                   </span>
                   <p className="font-sans text-sm md:text-base text-white/90 leading-relaxed italic mb-6">
@@ -2519,8 +2520,8 @@ export default function App() {
                 </div>
                 
                 {/* Student Info */}
-                <div className="flex items-center gap-3 border-t border-[rgba(255,255,255,0.06)] pt-4 mt-auto">
-                  <div className="w-10 h-10 bg-gradient-to-tr from-[#FF6B35] to-[#FF9500] rounded-full flex items-center justify-center font-heading font-extrabold text-sm text-white select-none">
+                <div className="flex items-center gap-3 border-t border-[rgba(255,255,255,0.08)] pt-4 mt-auto">
+                  <div className="w-10 h-10 bg-gradient-to-tr from-[#FF6B35] to-[#FF9500] rounded-full flex items-center justify-center font-heading font-bold text-sm text-white select-none">
                     A
                   </div>
                   <div>
@@ -2531,9 +2532,9 @@ export default function App() {
               </div>
 
               {/* Testimonial Card 2 */}
-              <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6 lg:p-8 flex flex-col justify-between hover:border-[rgba(255,107,53,0.2)] transition-all duration-300">
+              <div className="bg-[#111827] border border-[rgba(255,255,255,0.08)] rounded-2xl p-6 lg:p-8 flex flex-col justify-between hover:border-[rgba(255,107,53,0.2)] transition-all duration-300">
                 <div>
-                  <span className="font-heading font-extrabold text-6xl text-[#FF6B35] leading-none select-none block -mt-4 mb-2">
+                  <span className="font-heading font-bold text-4xl text-[#FF6B35] leading-none select-none block -mt-4 mb-2">
                     &ldquo;
                   </span>
                   <p className="font-sans text-sm md:text-base text-white/90 leading-relaxed italic mb-6">
@@ -2542,8 +2543,8 @@ export default function App() {
                 </div>
                 
                 {/* Student Info */}
-                <div className="flex items-center gap-3 border-t border-[rgba(255,255,255,0.06)] pt-4 mt-auto">
-                  <div className="w-10 h-10 bg-gradient-to-tr from-[#8B5CF6] to-[#EC4899] rounded-full flex items-center justify-center font-heading font-extrabold text-sm text-white select-none">
+                <div className="flex items-center gap-3 border-t border-[rgba(255,255,255,0.08)] pt-4 mt-auto">
+                  <div className="w-10 h-10 bg-gradient-to-tr from-[#8B5CF6] to-[#EC4899] rounded-full flex items-center justify-center font-heading font-bold text-sm text-white select-none">
                     C
                   </div>
                   <div>
@@ -2554,9 +2555,9 @@ export default function App() {
               </div>
 
               {/* Testimonial Card 3 */}
-              <div className="bg-[#111827] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6 lg:p-8 flex flex-col justify-between hover:border-[rgba(255,107,53,0.2)] transition-all duration-300">
+              <div className="bg-[#111827] border border-[rgba(255,255,255,0.08)] rounded-2xl p-6 lg:p-8 flex flex-col justify-between hover:border-[rgba(255,107,53,0.2)] transition-all duration-300">
                 <div>
-                  <span className="font-heading font-extrabold text-6xl text-[#FF6B35] leading-none select-none block -mt-4 mb-2">
+                  <span className="font-heading font-bold text-4xl text-[#FF6B35] leading-none select-none block -mt-4 mb-2">
                     &ldquo;
                   </span>
                   <p className="font-sans text-sm md:text-base text-white/90 leading-relaxed italic mb-6">
@@ -2565,8 +2566,8 @@ export default function App() {
                 </div>
                 
                 {/* Student Info */}
-                <div className="flex items-center gap-3 border-t border-[rgba(255,255,255,0.06)] pt-4 mt-auto">
-                  <div className="w-10 h-10 bg-gradient-to-tr from-[#06B6D4] to-[#10B981] rounded-full flex items-center justify-center font-heading font-extrabold text-sm text-white select-none">
+                <div className="flex items-center gap-3 border-t border-[rgba(255,255,255,0.08)] pt-4 mt-auto">
+                  <div className="w-10 h-10 bg-gradient-to-tr from-[#06B6D4] to-[#10B981] rounded-full flex items-center justify-center font-heading font-bold text-sm text-white select-none">
                     F
                   </div>
                   <div>
@@ -2580,20 +2581,19 @@ export default function App() {
           </section>
 
           {/* SECTION 7: FINAL CTA */}
-          <section id="cta" className="py-20 md:py-28 px-6 md:px-12 bg-[#0A0F1E] flex justify-center items-center relative z-10 font-sans border-t border-[rgba(255,255,255,0.06)] overflow-hidden">
+          <section id="cta" className="py-20 md:py-28 px-6 md:px-12 bg-[#0A0F1E] flex justify-center items-center relative z-10 font-sans border-t border-[rgba(255,255,255,0.08)] overflow-hidden">
             
             {/* Decorative background glow behind CTA card */}
             <div className="absolute w-[500px] h-[500px] rounded-full bg-[radial-gradient(rgba(255,107,53,0.08),transparent_70%)] blur-3xl pointer-events-none z-0" />
 
-            <div className="w-full max-w-[700px] w-full bg-gradient-to-br from-[rgba(255,107,53,0.15)] to-[rgba(241,91,181,0.1)] border border-[rgba(255,107,53,0.2)] rounded-[28px] p-8 md:p-[60px_40px] shadow-[0_0_80px_rgba(255,107,53,0.1)] text-center relative z-10 animate-fade-up">
+            <div className="w-full max-w-[700px] w-full bg-gradient-to-br from-[rgba(255,107,53,0.15)] to-[rgba(241,91,181,0.1)] border border-[rgba(255,107,53,0.2)] rounded-2xl p-8 md:p-[60px_40px] shadow-[0_0_80px_rgba(255,107,53,0.1)] text-center relative z-10 animate-fade-up">
               
-              {/* Centered Emoji */}
-              <div className="text-4xl md:text-5xl mb-6 select-none animate-bounce">
-                🎯
+              <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35]">
+                <Target className="h-7 w-7" />
               </div>
 
               {/* Heading */}
-              <h2 className="font-heading font-extrabold text-3xl md:text-5xl text-white tracking-tight leading-tight mb-4">
+              <h2 className="font-heading font-bold text-3xl md:text-4xl text-white tracking-tight leading-tight mb-4">
                 Your exam is coming.<br />
                 <span className="text-[#FF6B35]">Are you ready?</span>
               </h2>
@@ -2610,7 +2610,7 @@ export default function App() {
                   onClick={() => navigateTo('signin')}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-4 text-base font-bold text-white shadow-md transition-all duration-300 hover:scale-[1.02] hover:bg-[#ff7c4d] hover:shadow-[0_0_25px_rgba(255,107,53,0.6)] active:scale-95 sm:w-auto md:text-lg"
                 >
-                  Get Started Free <span className="text-xl">→</span>
+                  Get Started Free <ChevronRight className="h-5 w-5" />
                 </button>
               </div>
 
@@ -2631,7 +2631,7 @@ export default function App() {
           </section>
 
           {/* SECTION 8: FOOTER */}
-          <footer className="bg-[#080D1A] border-t border-[rgba(255,255,255,0.06)] py-12 md:py-16 px-6 md:px-12 relative z-10 font-sans">
+          <footer className="bg-[#080D1A] border-t border-[rgba(255,255,255,0.08)] py-12 md:py-16 px-6 md:px-12 relative z-10 font-sans">
             <div className="max-w-7xl mx-auto flex flex-col gap-10">
               
               {/* Row 1 */}
@@ -2659,7 +2659,7 @@ export default function App() {
               {/* Row 2 (Separator and Copyright) */}
               <div className="border-t border-[rgba(255,255,255,0.04)] pt-8 text-center">
                 <p className="font-sans text-xs md:text-sm text-[#8B9CB8]/65">
-                  © 2026 ExamReady — Built for Nigerian Students 🇳🇬
+                  © 2026 ExamReady — Built for Nigerian Students
                 </p>
               </div>
 
