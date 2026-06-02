@@ -110,6 +110,11 @@ interface PracticeSelection {
   topic: string;
 }
 
+interface PracticeTopicAvailability {
+  topic: string;
+  subtopic: string;
+}
+
 const fallbackDashboardUpdates: DashboardUpdate[] = [
   {
     category: 'JAMB',
@@ -141,6 +146,16 @@ const subtopicsBySubject: Record<string, string[]> = {
   Physics: ['Mechanics', 'Waves and Optics', 'Electricity and Magnetism', 'Modern Physics', 'Thermodynamics'],
   'English Language': ['Comprehension', 'Lexis and Structure', 'Oral English', 'Essay and Letter Writing', 'Figures of Speech'],
   Literature: ['Poetry', 'Prose', 'Drama', 'Literary Devices', 'African Literature']
+};
+
+const fallbackPracticeSubtopicsByTopic: Record<string, Record<string, string[]>> = {
+  Mathematics: {
+    'Number and Numeration': ['Number Bases', 'Fractions Decimals and Percentages'],
+    Algebra: [],
+    'Geometry and Trigonometry': [],
+    'Statistics and Probability': [],
+    Calculus: []
+  }
 };
 
 const slugify = (value: string) => value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -218,6 +233,9 @@ export default function App() {
   const [dashboardUpdates, setDashboardUpdates] = useState<DashboardUpdate[]>(fallbackDashboardUpdates);
   const [expandedPracticeSubjects, setExpandedPracticeSubjects] = useState<string[]>([]);
   const [selectedPracticeTopics, setSelectedPracticeTopics] = useState<Record<string, string[]>>({});
+  const [expandedPracticeTopics, setExpandedPracticeTopics] = useState<Record<string, string[]>>({});
+  const [availablePracticeSubtopics, setAvailablePracticeSubtopics] = useState<Record<string, PracticeTopicAvailability[]>>({});
+  const [loadingPracticeAvailability, setLoadingPracticeAvailability] = useState<boolean>(false);
   const [expandedCheatsheetSubject, setExpandedCheatsheetSubject] = useState<string | null>(null);
   const [questionIndex, setQuestionIndex] = useState<number>(0);
   const [sessionSelectedAnswer, setSessionSelectedAnswer] = useState<number | null>(null);
@@ -926,7 +944,12 @@ export default function App() {
 
     if (Array.isArray(navigationState.subjects) && Array.isArray(navigationState.subtopics)) {
       const selections = navigationState.subtopics.flatMap(subtopic => {
-        const matchingSubject = navigationState.subjects?.find(subject => (subtopicsBySubject[subject] || []).includes(subtopic));
+        const matchingSubject = navigationState.subjects?.find(subject => {
+          const availableRows = availablePracticeSubtopics[subject] || [];
+          const fallbackRows = Object.values(fallbackPracticeSubtopicsByTopic[subject] || {}).flat();
+          return availableRows.some(row => row.subtopic === subtopic) || fallbackRows.includes(subtopic);
+        }) || navigationState.subjects?.[0];
+
         return matchingSubject ? [{ subject: matchingSubject, topic: subtopic }] : [];
       });
 
@@ -1081,6 +1104,54 @@ export default function App() {
   }, [view, questionIndex, sessionSelectedAnswer, practiceQuestions]);
 
   useEffect(() => {
+    if (view !== 'practiceSubjects') return;
+
+    let cancelled = false;
+
+    const loadAvailablePracticeSubtopics = async () => {
+      setLoadingPracticeAvailability(true);
+
+      const subjects = subjectLibrary.filter(subject => subject.name !== 'Literature');
+      const nextAvailability: Record<string, PracticeTopicAvailability[]> = {};
+
+      await Promise.all(subjects.map(async subject => {
+        const { data, error } = await supabase
+          .from('questions')
+          .select('topic, subtopic')
+          .eq('subject', subject.name);
+
+        if (error) {
+          console.warn('Unable to load available practice subtopics:', { subject: subject.name, error });
+          nextAvailability[subject.name] = [];
+          return;
+        }
+
+        const uniqueRows = new Map<string, PracticeTopicAvailability>();
+        (data || []).forEach(row => {
+          const topic = `${row.topic || ''}`.trim();
+          const subtopic = `${row.subtopic || ''}`.trim();
+          if (!topic || !subtopic) return;
+          uniqueRows.set(`${topic}::${subtopic}`, { topic, subtopic });
+        });
+
+        nextAvailability[subject.name] = Array.from(uniqueRows.values());
+      }));
+
+      if (!cancelled) {
+        console.log('Available practice subtopics:', nextAvailability);
+        setAvailablePracticeSubtopics(nextAvailability);
+        setLoadingPracticeAvailability(false);
+      }
+    };
+
+    void loadAvailablePracticeSubtopics();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [view]);
+
+  useEffect(() => {
     if (view !== 'practiceSession') return;
 
     let cancelled = false;
@@ -1107,47 +1178,33 @@ export default function App() {
       }
 
       try {
-        const perSelectionQuestions = await Promise.all(selections.map(async selection => {
-          console.log('Fetching practice questions from Supabase:', selection);
+        const selectedSubtopics = Array.from(new Set(selections.map(selection => selection.topic).filter(Boolean)));
+        console.log('Fetching practice questions from Supabase for subtopics:', selectedSubtopics);
 
-          const randomOrderedResult = await supabase
+        const randomOrderedResult = await supabase
+          .from('questions')
+          .select('*')
+          .in('subtopic', selectedSubtopics)
+          .order('random()')
+          .limit(20);
+
+        const result = randomOrderedResult.error
+          ? await supabase
             .from('questions')
             .select('*')
-            .eq('subject', selection.subject)
-            .eq('subtopic', selection.topic)
-            .order('random()')
-            .limit(20);
+            .in('subtopic', selectedSubtopics)
+            .limit(20)
+          : randomOrderedResult;
 
-          const result = randomOrderedResult.error
-            ? await supabase
-              .from('questions')
-              .select('*')
-              .eq('subject', selection.subject)
-              .eq('subtopic', selection.topic)
-              .limit(20)
-            : randomOrderedResult;
-
-          if (result.error) {
-            console.warn('Unable to fetch practice questions:', result.error);
-            return [] as PracticeQuestion[];
-          }
-
-          return shuffleQuestions((result.data || []) as PracticeQuestion[]);
-        }));
-
-        const spreadQuestions: PracticeQuestion[] = [];
-        const maxGroupLength = Math.max(0, ...perSelectionQuestions.map(group => group.length));
-
-        for (let questionOffset = 0; questionOffset < maxGroupLength && spreadQuestions.length < 20; questionOffset += 1) {
-          for (const group of perSelectionQuestions) {
-            const question = group[questionOffset];
-            if (question) spreadQuestions.push(question);
-            if (spreadQuestions.length >= 20) break;
-          }
+        if (result.error) {
+          console.warn('Unable to fetch practice questions:', result.error);
+          if (!cancelled) setPracticeQuestions([]);
+          return;
         }
 
         if (!cancelled) {
-          const uniqueQuestions = spreadQuestions.filter((question, index, allQuestions) => {
+          const shuffledQuestions = shuffleQuestions((result.data || []) as PracticeQuestion[]);
+          const uniqueQuestions = shuffledQuestions.filter((question, index, allQuestions) => {
             if (!question.id) return true;
             return allQuestions.findIndex(item => item.id === question.id) === index;
           });
@@ -1234,24 +1291,57 @@ export default function App() {
 
   const getSelectedTopicCount = () => Object.values(selectedPracticeTopics).reduce((sum: number, topics) => sum + (topics as string[]).length, 0);
 
+  const getAvailableSubtopicRows = (subject: string, topic: string) => {
+    const rows = availablePracticeSubtopics[subject] || [];
+    const fallbackSubtopics = fallbackPracticeSubtopicsByTopic[subject]?.[topic] || [];
+    const availableSubtopics = rows
+      .filter(row => row.topic === topic)
+      .map(row => row.subtopic)
+      .filter(Boolean);
+    const merged = Array.from(new Set([...fallbackSubtopics, ...availableSubtopics]));
+
+    return merged.map(subtopic => ({
+      name: subtopic,
+      available: availableSubtopics.includes(subtopic)
+    }));
+  };
+
+  const getSelectableSubtopics = (subject: string, topic: string) => getAvailableSubtopicRows(subject, topic)
+    .filter(subtopic => subtopic.available)
+    .map(subtopic => subtopic.name);
+
   const toggleExpandedPracticeSubject = (subject: string) => {
     setExpandedPracticeSubjects(prev => prev.includes(subject) ? prev.filter(item => item !== subject) : [...prev, subject]);
   };
 
-  const togglePracticeTopic = (subject: string, topic: string) => {
-    setSelectedPracticeTopics(prev => {
+  const toggleExpandedPracticeTopic = (subject: string, topic: string) => {
+    setExpandedPracticeTopics(prev => {
       const current = prev[subject] || [];
       const next = current.includes(topic) ? current.filter(item => item !== topic) : [...current, topic];
       return { ...prev, [subject]: next };
     });
   };
 
-  const toggleAllPracticeTopics = (subject: string) => {
-    const allTopics = subtopicsBySubject[subject] || [];
+  const togglePracticeTopic = (subject: string, subtopic: string) => {
     setSelectedPracticeTopics(prev => {
       const current = prev[subject] || [];
-      const allSelected = allTopics.length > 0 && current.length === allTopics.length;
-      return { ...prev, [subject]: allSelected ? [] : allTopics };
+      const next = current.includes(subtopic) ? current.filter(item => item !== subtopic) : [...current, subtopic];
+      return { ...prev, [subject]: next };
+    });
+  };
+
+  const toggleAllPracticeTopics = (subject: string, topic: string) => {
+    const selectableSubtopics = getSelectableSubtopics(subject, topic);
+    if (selectableSubtopics.length === 0) return;
+
+    setSelectedPracticeTopics(prev => {
+      const current = prev[subject] || [];
+      const allSelected = selectableSubtopics.every(subtopic => current.includes(subtopic));
+      const withoutTopicSubtopics = current.filter(subtopic => !selectableSubtopics.includes(subtopic));
+      return {
+        ...prev,
+        [subject]: allSelected ? withoutTopicSubtopics : Array.from(new Set([...current, ...selectableSubtopics]))
+      };
     });
   };
 
@@ -1419,14 +1509,20 @@ export default function App() {
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Select Subject</h1>
-          <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Choose a subject then select your topics.</p>
+          <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Choose a subject, then select available subtopics.</p>
+          {loadingPracticeAvailability && (
+            <p className="mt-2 inline-flex items-center gap-2 font-sans text-xs font-normal text-[#8B9CB8]">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#FF6B35]" />
+              Checking available questions...
+            </p>
+          )}
 
           <section className="mt-6 space-y-3">
             {practiceSubjects.map(subject => {
               const topics = subtopicsBySubject[subject.name] || [];
-              const selectedTopics = selectedPracticeTopics[subject.name] || [];
+              const selectedSubtopics = selectedPracticeTopics[subject.name] || [];
               const expanded = expandedPracticeSubjects.includes(subject.name);
-              const allSelected = topics.length > 0 && selectedTopics.length === topics.length;
+              const expandedTopics = expandedPracticeTopics[subject.name] || [];
               const ExpandIcon = expanded ? ChevronUp : ChevronDown;
 
               return (
@@ -1440,23 +1536,60 @@ export default function App() {
                   </button>
 
                   {expanded && (
-                    <div className="animate-slide-up border-t border-white/10 px-5 pb-5">
-                      <button type="button" onClick={() => toggleAllPracticeTopics(subject.name)} className="flex w-full items-center gap-3 border-b border-white/10 py-4 text-left">
-                        <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${allSelected ? 'border-[#FF6B35] bg-[#FF6B35]' : 'border-white/20 bg-[#0A0F1E]'}`}>
-                          {allSelected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
-                        </span>
-                        <span className="font-heading text-sm font-semibold text-[#FF6B35]">Select All Topics</span>
-                      </button>
-
+                    <div className="animate-slide-up border-t border-white/10 px-4 pb-4">
                       {topics.map(topic => {
-                        const selected = selectedTopics.includes(topic);
+                        const topicSubtopics = getAvailableSubtopicRows(subject.name, topic);
+                        const selectableSubtopics = topicSubtopics.filter(subtopic => subtopic.available);
+                        const topicExpanded = expandedTopics.includes(topic);
+                        const TopicExpandIcon = topicExpanded ? ChevronUp : ChevronDown;
+                        const allSelected = selectableSubtopics.length > 0 && selectableSubtopics.every(subtopic => selectedSubtopics.includes(subtopic.name));
+                        const hasAvailableSubtopics = selectableSubtopics.length > 0;
+
+                        if (!hasAvailableSubtopics && topicSubtopics.length === 0) {
+                          return (
+                            <div key={topic} className="flex w-full items-center justify-between gap-3 border-b border-white/5 py-4 last:border-b-0">
+                              <span className="font-sans text-sm font-semibold text-[#8B9CB8]">{topic}</span>
+                              <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 font-sans text-[11px] font-semibold text-[#8B9CB8]">Coming Soon</span>
+                            </div>
+                          );
+                        }
+
                         return (
-                          <button key={topic} type="button" onClick={() => togglePracticeTopic(subject.name, topic)} className="flex w-full items-center gap-3 border-b border-white/5 py-4 text-left last:border-b-0">
-                            <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${selected ? 'border-[#FF6B35] bg-[#FF6B35]' : 'border-white/20 bg-[#0A0F1E]'}`}>
-                              {selected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
-                            </span>
-                            <span className="text-sm font-semibold text-white">{topic}</span>
-                          </button>
+                          <div key={topic} className="border-b border-white/5 py-3 last:border-b-0">
+                            <button type="button" onClick={() => hasAvailableSubtopics && toggleExpandedPracticeTopic(subject.name, topic)} disabled={!hasAvailableSubtopics} className={`flex w-full items-center justify-between gap-3 text-left ${hasAvailableSubtopics ? 'text-white' : 'cursor-not-allowed text-[#8B9CB8]'}`}>
+                              <div className="min-w-0">
+                                <p className="font-heading text-sm font-semibold leading-5">{topic}</p>
+                                <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">
+                                  {hasAvailableSubtopics ? `${selectableSubtopics.length} available subtopic${selectableSubtopics.length === 1 ? '' : 's'}` : 'Coming Soon'}
+                                </p>
+                              </div>
+                              {hasAvailableSubtopics ? <TopicExpandIcon className="h-4 w-4 shrink-0 text-[#FF6B35]" /> : <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 font-sans text-[11px] font-semibold text-[#8B9CB8]">Coming Soon</span>}
+                            </button>
+
+                            {topicExpanded && hasAvailableSubtopics && (
+                              <div className="mt-3 rounded-2xl border border-white/10 bg-[#0A0F1E]/70 px-4">
+                                <button type="button" onClick={() => toggleAllPracticeTopics(subject.name, topic)} className="flex w-full items-center gap-3 border-b border-white/10 py-4 text-left">
+                                  <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${allSelected ? 'border-[#FF6B35] bg-[#FF6B35]' : 'border-white/20 bg-[#0A0F1E]'}`}>
+                                    {allSelected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
+                                  </span>
+                                  <span className="font-heading text-sm font-semibold text-[#FF6B35]">Select All Topics</span>
+                                </button>
+
+                                {topicSubtopics.map(subtopic => {
+                                  const selected = selectedSubtopics.includes(subtopic.name);
+                                  return (
+                                    <button key={subtopic.name} type="button" disabled={!subtopic.available} onClick={() => subtopic.available && togglePracticeTopic(subject.name, subtopic.name)} className={`flex w-full items-center gap-3 border-b border-white/5 py-4 text-left last:border-b-0 ${subtopic.available ? '' : 'cursor-not-allowed opacity-50'}`}>
+                                      <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${selected ? 'border-[#FF6B35] bg-[#FF6B35]' : 'border-white/20 bg-[#0A0F1E]'}`}>
+                                        {selected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
+                                      </span>
+                                      <span className={`text-sm font-semibold ${subtopic.available ? 'text-white' : 'text-[#8B9CB8]'}`}>{subtopic.name}</span>
+                                      {!subtopic.available && <span className="ml-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 font-sans text-[10px] font-semibold text-[#8B9CB8]">Coming Soon</span>}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -1468,7 +1601,7 @@ export default function App() {
         </main>
 
         <div className="fixed inset-x-0 bottom-[72px] z-40 border-t border-white/10 bg-[#0A0F1E]/95 px-5 py-3 backdrop-blur">
-          <p className="text-center font-heading text-sm font-bold text-[#FF6B35]">{selectedCount} topics selected</p>
+          <p className="text-center font-heading text-sm font-bold text-[#FF6B35]">{selectedCount} subtopics selected</p>
         </div>
         <div className="fixed inset-x-0 bottom-0 z-40 bg-[#0A0F1E] px-5 py-3">
           <button
