@@ -24,8 +24,6 @@ import {
   Share2,
   Copy,
   Loader2,
-  Crown,
-  Medal,
   MessageCircle,
   Newspaper,
   Target,
@@ -1493,89 +1491,106 @@ export default function App() {
 
     return (
       <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
-        <main className="mx-auto max-w-5xl space-y-8 animate-fade-up">
+        <main className="mx-auto max-w-5xl space-y-7 animate-fade-up">
           <section>
-            <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-6xl">Battle</h1>
-            <p className="mt-3 font-sans text-base text-[#8B9CB8]">Challenge your classmates and see who knows more.</p>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-5xl">Battle</h1>
+            <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8] sm:text-base">Challenge your classmates and see who knows more.</p>
           </section>
 
-          <section className="grid gap-5 md:grid-cols-2">
-            <div className="rounded-[28px] border border-[#FF6B35]/35 bg-[#111827] p-4 sm:p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35]">
-                <Swords className="h-7 w-7" />
+          <section className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#FF6B35]/15 text-[#FF6B35]">
+                  <Swords className="h-[22px] w-[22px]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-heading text-base font-semibold text-white">Create Battle</h2>
+                  <p className="mt-1 overflow-hidden font-sans text-[13px] font-normal leading-5 text-[#8B9CB8]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    Generate a code and share with a friend to challenge them
+                  </p>
+                </div>
               </div>
-              <h2 className="mt-5 font-heading text-xl font-extrabold text-white sm:text-2xl">Create Battle</h2>
-              <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Generate a code and share with a friend to challenge them</p>
 
-              {battleCode ? (
-                <div className="mt-6 rounded-3xl border border-white/10 bg-[#0A0F1E] p-5 text-center">
-                  <div className="flex items-center justify-center gap-3">
-                    <p className="font-heading text-2xl font-extrabold tracking-[0.18em] text-[#FF6B35] sm:text-3xl sm:tracking-[0.35em] md:text-4xl">
+              {battleCode && (
+                <div className="mt-5 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A0F1E] p-4 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <p className="font-heading text-xl font-bold tracking-[0.2em] text-[#FF6B35] sm:text-2xl">
                       {battleCode.split('').join(' ')}
                     </p>
                     <button type="button" onClick={copyBattleCode} className="rounded-full border border-white/10 p-2 text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]" aria-label="Copy battle code">
-                      <Copy className="h-5 w-5" />
+                      <Copy className="h-4 w-4" />
                     </button>
                   </div>
-                  <p className="mt-3 text-sm text-[#8B9CB8]">Share this code with your opponent</p>
+                  <p className="mt-2 font-sans text-xs font-normal text-[#8B9CB8]">Share this code with your opponent</p>
                   <a
                     href={`https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-5 py-3 font-bold text-white transition hover:bg-[#20bd5a]"
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#20bd5a]"
                   >
-                    <MessageCircle className="h-5 w-5" />
+                    <MessageCircle className="h-4 w-4" />
                     Share on WhatsApp
                   </a>
-                  <div className="mt-5 flex items-center justify-center gap-2 text-sm font-semibold text-[#8B9CB8]">
+                  <div className="mt-4 flex items-center justify-center gap-2 font-sans text-xs font-normal text-[#8B9CB8]">
                     <Loader2 className="h-4 w-4 animate-spin text-[#FF6B35]" />
                     Waiting for opponent to join...
                   </div>
                 </div>
-              ) : (
-                <button type="button" onClick={generateBattleCode} className="mt-8 w-full rounded-2xl bg-[#FF6B35] px-6 py-4 font-bold text-white transition hover:bg-[#ff7c4d]">
-                  Create Battle
-                </button>
               )}
+
+              <div className="mt-5 flex justify-end">
+                <button type="button" onClick={generateBattleCode} className="font-sans text-sm font-semibold text-[#FF6B35] transition hover:text-[#ff7c4d]">
+                  Create Battle →
+                </button>
+              </div>
             </div>
 
-            <div className="rounded-[28px] border border-purple-500/35 bg-[#111827] p-4 sm:p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-500/15 text-purple-300">
-                <Target className="h-7 w-7" />
+            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 text-purple-300">
+                  <Target className="h-[22px] w-[22px]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-heading text-base font-semibold text-white">Join Battle</h2>
+                  <p className="mt-1 overflow-hidden font-sans text-[13px] font-normal leading-5 text-[#8B9CB8]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    Enter a code from your friend to accept their challenge
+                  </p>
+                </div>
               </div>
-              <h2 className="mt-5 font-heading text-xl font-extrabold text-white sm:text-2xl">Join Battle</h2>
-              <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Enter a code from your friend to accept their challenge</p>
-              <input
-                inputMode="numeric"
-                maxLength={6}
-                value={joinBattleCode}
-                onChange={(event) => setJoinBattleCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="Enter 6 digit code"
-                className="mt-8 w-full rounded-2xl border border-white/10 bg-[#0A0F1E] px-5 py-4 text-center font-heading text-xl font-extrabold tracking-[0.2em] text-white outline-none transition placeholder:font-sans placeholder:text-sm placeholder:tracking-normal placeholder:text-[#8B9CB8] focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15)]"
-              />
-              <button type="button" className="mt-4 w-full rounded-2xl bg-[#FF6B35] px-6 py-4 font-bold text-white transition hover:bg-[#ff7c4d]">
-                Join Battle
-              </button>
+
+              <div className="mt-5 flex items-center gap-3">
+                <input
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={joinBattleCode}
+                  onChange={(event) => setJoinBattleCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="Code"
+                  className="h-10 min-w-0 flex-1 rounded-xl border border-white/10 bg-[#0A0F1E] px-3 text-center font-heading text-base font-semibold tracking-[0.18em] text-white outline-none transition placeholder:font-sans placeholder:text-xs placeholder:font-normal placeholder:tracking-normal placeholder:text-[#8B9CB8] focus:border-[#FF6B35] focus:shadow-[0_0_0_3px_rgba(255,107,53,0.12)]"
+                />
+                <button type="button" className="h-10 shrink-0 rounded-xl bg-[#FF6B35] px-4 font-sans text-sm font-semibold text-white transition hover:bg-[#ff7c4d]">
+                  Join
+                </button>
+              </div>
             </div>
           </section>
 
           <section>
-            <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Recent Battles</h2>
+            <h2 className="font-heading text-lg font-bold text-white sm:text-xl">Recent Battles</h2>
             {recentBattles.length === 0 ? (
-              <div className="mt-4 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] px-6 py-10 text-center">
-                <p className="font-heading text-lg font-extrabold text-white">No battles yet.</p>
-                <p className="mt-2 text-sm text-[#8B9CB8]">Challenge a friend to get started.</p>
+              <div className="mt-4 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] px-6 py-10 text-center">
+                <p className="font-heading text-base font-bold text-white">No battles yet.</p>
+                <p className="mt-2 font-sans text-sm font-normal text-[#8B9CB8]">Challenge a friend to get started.</p>
               </div>
             ) : (
               <div className="mt-4 space-y-3">
                 {recentBattles.map(battle => (
-                  <div key={`${battle.opponent}-${battle.date}`} className="flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4">
-                    <div>
-                      <p className="font-heading text-base font-extrabold text-white">{battle.opponent}</p>
-                      <p className="mt-1 text-xs text-[#8B9CB8]">{battle.date}</p>
+                  <div key={`${battle.opponent}-${battle.date}`} className="flex flex-col gap-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <p className="font-heading text-sm font-semibold text-white">{battle.opponent}</p>
+                      <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{battle.date}</p>
                     </div>
-                    <p className="font-heading text-sm font-extrabold text-white md:text-lg">{battle.yours}/20 vs {battle.theirs}/20</p>
-                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${battle.result === 'Win' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                    <p className="font-heading text-sm font-semibold text-white md:text-base">{battle.yours}/20 vs {battle.theirs}/20</p>
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${battle.result === 'Win' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
                       {battle.result}
                     </span>
                   </div>
@@ -1594,80 +1609,77 @@ export default function App() {
     const currentUserRow = { rank: 57, username: currentUsername || 'examready_student', exam: getPrimaryExamLabel(), score: 4210, streak: studentProfile?.streak ?? 0, current: true };
     const visibleRows = leaderboardRows.slice(3);
     const filters = ['All Subjects', 'Mathematics', 'Biology', 'Chemistry', 'Physics', 'English'];
-    const podium = [leaderboardRows[1], leaderboardRows[0], leaderboardRows[2]];
+    const topThree = leaderboardRows.slice(0, 3);
+    const rankColors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
+    const usernameClass = (username: string, base = 'text-sm') => username.length > 12 ? 'text-[11px] sm:text-xs' : base;
+
+    const renderLeaderboardRow = (student: typeof leaderboardRows[number] | typeof currentUserRow, highlighted = false) => (
+      <div key={`${student.rank}-${student.username}`} className={`grid grid-cols-[28px_40px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-4 ${highlighted ? 'border-[#FF6B35]/30 bg-[#FF6B35]/10' : 'border-[rgba(255,255,255,0.08)] bg-[#111827]'}`}>
+        <span className={`font-sans text-xs font-normal ${highlighted ? 'text-[#FF6B35]' : 'text-[#8B9CB8]'}`}>#{student.rank}</span>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-heading text-sm font-semibold text-white ${highlighted ? 'bg-[#FF6B35]' : 'bg-white/10'}`}>
+          {student.username.charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <p className={`break-words font-heading font-medium leading-tight text-white ${usernameClass(student.username, 'text-sm sm:text-base')}`}>{student.username}</p>
+          <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{student.exam}</p>
+        </div>
+        <div className="text-right">
+          <p className="font-heading text-sm font-semibold text-white sm:text-base">{student.score.toLocaleString()}</p>
+          <p className="mt-1 inline-flex items-center justify-end gap-1 font-sans text-xs font-normal text-[#8B9CB8]"><Flame className="h-3.5 w-3.5 text-[#FF6B35]" /> {student.streak}</p>
+        </div>
+      </div>
+    );
 
     return (
       <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
-        <main className="mx-auto max-w-5xl space-y-8 animate-fade-up">
+        <main className="mx-auto max-w-5xl space-y-7 animate-fade-up">
           <section>
-            <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-6xl">Leaderboard</h1>
-            <p className="mt-3 font-sans text-base text-[#8B9CB8]">See how you rank nationally.</p>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-5xl">Leaderboard</h1>
+            <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8] sm:text-base">See how you rank nationally.</p>
           </section>
 
           <section className="space-y-4">
-            <div className="grid grid-cols-3 gap-2 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-1">
+            <div className="flex items-end gap-6 border-b border-[rgba(255,255,255,0.06)]">
               {(['Weekly', 'Monthly', 'All Time'] as const).map(range => (
-                <button key={range} type="button" onClick={() => setLeaderboardRange(range)} className={`rounded-xl px-3 py-3 text-sm font-extrabold transition ${leaderboardRange === range ? 'bg-[#FF6B35] text-white' : 'text-[#8B9CB8] hover:text-white'}`}>
+                <button key={range} type="button" onClick={() => setLeaderboardRange(range)} className={`border-b-2 px-0 pb-3 font-sans text-sm font-normal transition ${leaderboardRange === range ? 'border-[#FF6B35] text-white' : 'border-transparent text-[#8B9CB8] hover:text-white'}`}>
                   {range}
                 </button>
               ))}
             </div>
-            <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:px-0">
+            <div className="-mx-5 flex gap-5 overflow-x-auto border-b border-[rgba(255,255,255,0.06)] px-5 md:mx-0 md:px-0">
               {filters.map(filter => (
-                <button key={filter} type="button" onClick={() => setLeaderboardSubject(filter)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${leaderboardSubject === filter ? 'bg-[#FF6B35] text-white' : 'bg-[#111827] text-[#8B9CB8] border border-[rgba(255,255,255,0.06)]'}`}>
+                <button key={filter} type="button" onClick={() => setLeaderboardSubject(filter)} className={`shrink-0 border-b-2 pb-3 font-sans text-sm font-normal transition ${leaderboardSubject === filter ? 'border-[#FF6B35] text-white' : 'border-transparent text-[#8B9CB8] hover:text-white'}`}>
                   {filter}
                 </button>
               ))}
             </div>
           </section>
 
-          <section className="grid grid-cols-3 items-end gap-3 pt-4">
-            {podium.map(student => {
-              const first = student.rank === 1;
-              const medalColor = student.rank === 1 ? 'text-amber-300' : student.rank === 2 ? 'text-slate-300' : 'text-orange-300';
+          <section className="space-y-3">
+            {topThree.map(student => {
+              const color = rankColors[student.rank];
               return (
-                <div key={student.username} className={`rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4 text-center ${first ? 'pb-8 pt-7' : 'mt-8 pb-5'}`}>
-                  {first ? <Crown className="mx-auto mb-2 h-7 w-7 text-amber-300" /> : <Medal className={`mx-auto mb-2 h-6 w-6 ${medalColor}`} />}
-                  <div className={`mx-auto flex items-center justify-center rounded-full font-heading font-extrabold text-white ${first ? 'h-16 w-16 bg-[#FF6B35]' : 'h-14 w-14 bg-white/10'}`}>
+                <div key={student.username} className="grid grid-cols-[40px_28px_42px_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4">
+                  <span className="font-heading text-2xl font-bold" style={{ color }}>#{student.rank}</span>
+                  <Award className="h-6 w-6" style={{ color }} />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full font-heading text-sm font-semibold text-white" style={{ backgroundColor: `${color}33` }}>
                     {student.username.charAt(0).toUpperCase()}
                   </div>
-                  <p className="mt-3 truncate font-heading text-sm font-extrabold text-white">{student.username}</p>
-                  <p className="mt-1 text-xs font-bold text-[#8B9CB8]">{student.score.toLocaleString()} pts</p>
+                  <div className="min-w-0">
+                    <p className={`break-words font-heading font-semibold leading-tight text-white ${usernameClass(student.username, 'text-sm sm:text-base')}`}>{student.username}</p>
+                    <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{student.score.toLocaleString()} pts</p>
+                  </div>
                 </div>
               );
             })}
           </section>
 
           <section className="space-y-3">
-            {visibleRows.map(student => (
-              <div key={student.username} className="grid grid-cols-[28px_36px_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[36px_44px_minmax(0,1fr)_auto] sm:gap-3 rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] p-3 sm:p-4">
-                <span className="font-heading text-sm font-extrabold text-[#8B9CB8]">#{student.rank}</span>
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 font-heading font-extrabold text-white">{student.username.charAt(0).toUpperCase()}</div>
-                <div className="min-w-0">
-                  <p className="truncate font-heading text-base font-extrabold text-white">{student.username}</p>
-                  <p className="text-xs text-[#8B9CB8]">{student.exam}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-heading text-base font-extrabold text-white">{student.score.toLocaleString()}</p>
-                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-[#8B9CB8]"><Flame className="h-3.5 w-3.5 text-[#FF6B35]" /> {student.streak}</p>
-                </div>
-              </div>
-            ))}
+            {visibleRows.map(student => renderLeaderboardRow(student))}
 
             <div className="pt-3">
               <div className="mb-3 h-px bg-white/10" />
-              <div className="grid grid-cols-[28px_36px_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[36px_44px_minmax(0,1fr)_auto] sm:gap-3 rounded-3xl border border-[#FF6B35]/30 bg-[#FF6B35]/10 p-3 sm:p-4">
-                <span className="font-heading text-sm font-extrabold text-[#FF6B35]">#{currentUserRow.rank}</span>
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FF6B35] font-heading font-extrabold text-white">{currentUserRow.username.charAt(0).toUpperCase()}</div>
-                <div className="min-w-0">
-                  <p className="truncate font-heading text-base font-extrabold text-white">{currentUserRow.username}</p>
-                  <p className="text-xs text-[#8B9CB8]">{currentUserRow.exam}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-heading text-base font-extrabold text-white">{currentUserRow.score.toLocaleString()}</p>
-                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-[#8B9CB8]"><Flame className="h-3.5 w-3.5 text-[#FF6B35]" /> {currentUserRow.streak}</p>
-                </div>
-              </div>
+              {renderLeaderboardRow(currentUserRow, true)}
             </div>
           </section>
         </main>
@@ -1675,17 +1687,6 @@ export default function App() {
       </div>
     );
   };
-
-  if (!authReady && loading) {
-    return (
-      <div className="min-h-screen bg-[#0A0F1E] text-white font-sans flex items-center justify-center">
-        <div className="flex items-center gap-3 text-sm text-[#8B9CB8]">
-          <RefreshCw className="w-5 h-5 text-[#FF6B35] animate-spin" />
-          Preparing your ExamReady session...
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#0A0F1E] text-[#FFFFFF] font-sans overflow-x-hidden relative">
