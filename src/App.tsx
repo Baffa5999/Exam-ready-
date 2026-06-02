@@ -90,6 +90,25 @@ interface DashboardUpdate {
   date: string;
 }
 
+interface PracticeQuestion {
+  id?: string | number;
+  subject: string;
+  topic?: string | null;
+  subtopic: string;
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_answer: string;
+  explanation?: string | null;
+}
+
+interface PracticeSelection {
+  subject: string;
+  topic: string;
+}
+
 const fallbackDashboardUpdates: DashboardUpdate[] = [
   {
     category: 'JAMB',
@@ -195,6 +214,11 @@ export default function App() {
   const [sessionSelectedAnswer, setSessionSelectedAnswer] = useState<number | null>(null);
   const [sessionScore, setSessionScore] = useState<number>(0);
   const [questionTimeLeft, setQuestionTimeLeft] = useState<number>(30);
+  const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
+  const [practiceQuestionsLoading, setPracticeQuestionsLoading] = useState<boolean>(false);
+  const [failedPracticeQuestions, setFailedPracticeQuestions] = useState<Array<{ question: PracticeQuestion; selectedAnswer: number }>>([]);
+  const [recordedPracticeAnswers, setRecordedPracticeAnswers] = useState<string[]>([]);
+  const [showFailedReview, setShowFailedReview] = useState<boolean>(false);
   const [battleCode, setBattleCode] = useState<string>('');
   const [joinBattleCode, setJoinBattleCode] = useState<string>('');
   const [leaderboardRange, setLeaderboardRange] = useState<'Weekly' | 'Monthly' | 'All Time'>('Weekly');
@@ -873,6 +897,128 @@ export default function App() {
     return studentProfile?.username || studentProfile?.fullName || fallback;
   };
 
+  const getPracticeSelectionsFromUrl = (): PracticeSelection[] => {
+    const params = new URLSearchParams(window.location.search);
+    const rawTopics = params.get('topics');
+
+    if (rawTopics) {
+      try {
+        const parsed = JSON.parse(rawTopics) as Array<{ subject?: string; topic?: string; subtopic?: string }>;
+        const selections = parsed
+          .map(item => ({ subject: item.subject || '', topic: item.topic || item.subtopic || '' }))
+          .filter(item => item.subject && item.topic);
+
+        if (selections.length > 0) return selections;
+      } catch (error) {
+        console.warn('Unable to parse practice topics from URL:', error);
+      }
+    }
+
+    const subject = params.get('subject');
+    const topic = params.get('topic') || params.get('subtopic');
+    return subject && topic ? [{ subject, topic }] : [];
+  };
+
+  const shuffleQuestions = (questions: PracticeQuestion[]) => {
+    const next = [...questions];
+    for (let index = next.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [next[index], next[randomIndex]] = [next[randomIndex], next[index]];
+    }
+    return next;
+  };
+
+  const getAnswerOptions = (question: PracticeQuestion) => [
+    question.option_a,
+    question.option_b,
+    question.option_c,
+    question.option_d
+  ];
+
+  const getCorrectAnswerIndex = (question: PracticeQuestion) => {
+    const normalizedCorrect = `${question.correct_answer || ''}`.trim().toLowerCase();
+    const optionKeys = ['a', 'b', 'c', 'd'];
+    const directKeyIndex = optionKeys.findIndex(key => normalizedCorrect === key || normalizedCorrect === `option_${key}`);
+
+    if (directKeyIndex >= 0) return directKeyIndex;
+
+    return getAnswerOptions(question).findIndex(option => `${option}`.trim().toLowerCase() === normalizedCorrect);
+  };
+
+  const savePracticePerformance = async (question: PracticeQuestion, isCorrect: boolean) => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const activeUser = user || currentUser;
+
+    if (userError || !activeUser) {
+      console.warn('Skipping practice performance save because no authenticated user was found:', userError);
+      return;
+    }
+
+    const { data: existingPerformance, error: lookupError } = await supabase
+      .from('student_performance')
+      .select('id, questions_attempted, questions_correct')
+      .eq('user_id', activeUser.id)
+      .eq('subtopic', question.subtopic)
+      .maybeSingle();
+
+    if (lookupError) {
+      console.warn('Unable to load existing practice performance:', lookupError);
+      return;
+    }
+
+    const previousAttempted = Number(existingPerformance?.questions_attempted) || 0;
+    const previousCorrect = Number(existingPerformance?.questions_correct) || 0;
+    const questionsAttempted = previousAttempted + 1;
+    const questionsCorrect = previousCorrect + (isCorrect ? 1 : 0);
+    const accuracyPercentage = Math.round((questionsCorrect / questionsAttempted) * 100);
+    const payload = {
+      user_id: activeUser.id,
+      subject: question.subject,
+      topic: question.topic || question.subtopic,
+      subtopic: question.subtopic,
+      questions_attempted: questionsAttempted,
+      questions_correct: questionsCorrect,
+      accuracy_percentage: accuracyPercentage,
+      last_practiced: new Date().toISOString()
+    };
+
+    if (existingPerformance) {
+      let updateQuery = supabase.from('student_performance').update(payload);
+      updateQuery = existingPerformance.id
+        ? updateQuery.eq('id', existingPerformance.id)
+        : updateQuery.eq('user_id', activeUser.id).eq('subtopic', question.subtopic);
+
+      const { error } = await updateQuery;
+      if (error) console.warn('Unable to update practice performance:', error);
+      return;
+    }
+
+    const { error } = await supabase.from('student_performance').insert(payload);
+    if (error) console.warn('Unable to insert practice performance:', error);
+  };
+
+  const handlePracticeAnswer = (answerIndex: number) => {
+    if (sessionSelectedAnswer !== null) return;
+
+    const currentQuestion = practiceQuestions[questionIndex];
+    if (!currentQuestion) return;
+
+    const correctAnswerIndex = getCorrectAnswerIndex(currentQuestion);
+    const isCorrect = answerIndex === correctAnswerIndex;
+    const recordKey = `${currentQuestion.id ?? `${currentQuestion.subject}-${currentQuestion.subtopic}-${questionIndex}`}-${questionIndex}`;
+
+    setSessionSelectedAnswer(answerIndex);
+
+    if (!recordedPracticeAnswers.includes(recordKey)) {
+      setRecordedPracticeAnswers(prev => [...prev, recordKey]);
+      if (isCorrect) {
+        setSessionScore(prev => prev + 1);
+      } else {
+        setFailedPracticeQuestions(prev => [...prev, { question: currentQuestion, selectedAnswer: answerIndex }]);
+      }
+      void savePracticePerformance(currentQuestion, isCorrect);
+    }
+  };
 
   useEffect(() => {
     if (view !== 'practiceSession') return;
@@ -883,7 +1029,7 @@ export default function App() {
       setQuestionTimeLeft(prev => {
         if (prev <= 1) {
           window.clearInterval(timer);
-          setSessionSelectedAnswer(-1);
+          handlePracticeAnswer(-1);
           return 0;
         }
         return prev - 1;
@@ -891,15 +1037,75 @@ export default function App() {
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [view, questionIndex, sessionSelectedAnswer]);
+  }, [view, questionIndex, sessionSelectedAnswer, practiceQuestions]);
 
   useEffect(() => {
-    if (view === 'practiceSession') {
+    if (view !== 'practiceSession') return;
+
+    let cancelled = false;
+
+    const loadPracticeQuestions = async () => {
+      const selections = getPracticeSelectionsFromUrl();
+      setPracticeQuestionsLoading(true);
+      setPracticeQuestions([]);
+      setFailedPracticeQuestions([]);
+      setRecordedPracticeAnswers([]);
+      setShowFailedReview(false);
       setQuestionIndex(0);
       setSessionSelectedAnswer(null);
       setSessionScore(0);
       setQuestionTimeLeft(30);
-    }
+
+      if (selections.length === 0) {
+        if (!cancelled) setPracticeQuestionsLoading(false);
+        return;
+      }
+
+      try {
+        const perSelectionQuestions = await Promise.all(selections.map(async selection => {
+          const { data, error } = await supabase
+            .from('questions')
+            .select('*')
+            .eq('subject', selection.subject)
+            .eq('subtopic', selection.topic)
+            .limit(20);
+
+          if (error) {
+            console.warn('Unable to fetch practice questions:', error);
+            return [] as PracticeQuestion[];
+          }
+
+          return shuffleQuestions((data || []) as PracticeQuestion[]);
+        }));
+
+        const spreadQuestions: PracticeQuestion[] = [];
+        const maxGroupLength = Math.max(0, ...perSelectionQuestions.map(group => group.length));
+
+        for (let questionOffset = 0; questionOffset < maxGroupLength && spreadQuestions.length < 20; questionOffset += 1) {
+          for (const group of perSelectionQuestions) {
+            const question = group[questionOffset];
+            if (question) spreadQuestions.push(question);
+            if (spreadQuestions.length >= 20) break;
+          }
+        }
+
+        if (!cancelled) {
+          const uniqueQuestions = spreadQuestions.filter((question, index, allQuestions) => {
+            if (!question.id) return true;
+            return allQuestions.findIndex(item => item.id === question.id) === index;
+          });
+          setPracticeQuestions(uniqueQuestions.slice(0, 20));
+        }
+      } finally {
+        if (!cancelled) setPracticeQuestionsLoading(false);
+      }
+    };
+
+    void loadPracticeQuestions();
+
+    return () => {
+      cancelled = true;
+    };
   }, [view]);
 
   const getPrimaryExamLabel = () => {
@@ -985,6 +1191,7 @@ export default function App() {
     if (selectedEntries.length === 0) return;
 
     const first = selectedEntries[0];
+    setPracticeQuestionsLoading(true);
     const params = new URLSearchParams({
       subject: first.subject,
       topic: first.topic,
@@ -1200,34 +1407,90 @@ export default function App() {
 
   const renderPracticeSessionPage = () => {
     const params = new URLSearchParams(window.location.search);
-    const subject = params.get('subject') || (window.location.pathname.startsWith('/mock-exam/') ? getPrimaryExamLabel() : 'Mathematics');
-    const subtopic = params.get('topic') || (window.location.pathname.startsWith('/mock-exam/') ? 'Full Mock Exam' : 'Algebra');
-    const correctIndex = questionIndex % 4;
-    const options = [
-      `${subtopic} foundation concept`,
-      `${subject} exam shortcut`,
-      `Correct ${subtopic} principle`,
-      `Common ${subject} distractor`
-    ];
+    const fallbackSubject = params.get('subject') || (window.location.pathname.startsWith('/mock-exam/') ? getPrimaryExamLabel() : 'Mathematics');
+    const fallbackSubtopic = params.get('topic') || params.get('subtopic') || (window.location.pathname.startsWith('/mock-exam/') ? 'Full Mock Exam' : 'Algebra');
+    const currentQuestion = practiceQuestions[questionIndex];
+    const totalQuestions = practiceQuestions.length;
+    const subject = currentQuestion?.subject || fallbackSubject;
+    const subtopic = currentQuestion?.subtopic || fallbackSubtopic;
+    const options = currentQuestion ? getAnswerOptions(currentQuestion) : [];
+    const correctIndex = currentQuestion ? getCorrectAnswerIndex(currentQuestion) : -1;
     const answeredSession = sessionSelectedAnswer !== null;
-    const isCorrect = sessionSelectedAnswer === correctIndex;
-    const progress = Math.min(((questionIndex + 1) / 20) * 100, 100);
+    const isCorrect = answeredSession && sessionSelectedAnswer === correctIndex;
+    const progress = totalQuestions > 0 ? Math.min(((Math.min(questionIndex + 1, totalQuestions)) / totalQuestions) * 100, 100) : 0;
 
-    if (questionIndex >= 20) {
-      const percent = Math.round((sessionScore / 20) * 100);
+    if (practiceQuestionsLoading) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 text-white">
+          <div className="animate-fade-up text-center">
+            <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#FF6B35]" />
+            <p className="mt-4 font-sans text-sm font-normal text-[#8B9CB8]">Loading questions...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (totalQuestions === 0) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 text-white">
+          <div className="w-full max-w-md animate-fade-up rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-center">
+            <BookOpen className="mx-auto h-10 w-10 text-[#FF6B35]" />
+            <h1 className="mt-5 font-heading text-2xl font-bold text-white">No questions available for this topic yet.</h1>
+            <p className="mt-3 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Check back soon.</p>
+            <button
+              type="button"
+              onClick={() => navigatePath('/practice/subjects')}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FF6B35] px-5 py-4 font-sans text-sm font-bold text-white transition hover:bg-[#ff7c4d]"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back to Subject Selection
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (questionIndex >= totalQuestions) {
+      const percent = totalQuestions > 0 ? Math.round((sessionScore / totalQuestions) * 100) : 0;
       const message = percent > 70 ? 'Excellent work!' : percent >= 50 ? 'Good effort!' : 'Keep practicing!';
 
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 py-10 text-white">
-          <div className="w-full max-w-md animate-fade-up rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-8 text-center">
+          <div className="w-full max-w-md animate-fade-up rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-center sm:p-8">
             <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full border-8 border-[#FF6B35]/25 bg-[#0A0F1E]">
               <span className="font-heading text-3xl font-bold text-[#FF6B35] sm:text-4xl">{percent}%</span>
             </div>
-            <p className="mt-6 font-heading text-3xl font-bold text-white">{sessionScore} out of 20</p>
-            <p className="mt-2 text-lg font-bold text-[#FF6B35]">{percent}%</p>
-            <p className="mt-4 text-lg font-bold text-white">{message}</p>
-            <p className="mt-2 text-sm text-[#8B9CB8]">{subject} • {subtopic}</p>
+            <p className="mt-6 font-heading text-2xl font-bold text-white">{sessionScore} out of {totalQuestions}</p>
+            <p className="mt-2 font-sans text-lg font-bold text-[#FF6B35]">{percent}%</p>
+            <p className="mt-4 font-heading text-lg font-bold text-white">{message}</p>
+            <p className="mt-2 font-sans text-sm font-normal text-[#8B9CB8]">{subject} • {subtopic}</p>
+
+            {showFailedReview && failedPracticeQuestions.length > 0 && (
+              <div className="mt-6 max-h-72 space-y-3 overflow-y-auto text-left">
+                {failedPracticeQuestions.map(({ question, selectedAnswer }, index) => {
+                  const failedOptions = getAnswerOptions(question);
+                  const failedCorrectIndex = getCorrectAnswerIndex(question);
+                  return (
+                    <div key={`${question.id ?? question.question_text}-${index}`} className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4">
+                      <p className="font-sans text-sm font-semibold leading-6 text-white">{question.question_text}</p>
+                      <p className="mt-2 font-sans text-xs text-red-300">Your answer: {selectedAnswer >= 0 ? failedOptions[selectedAnswer] : 'No answer selected'}</p>
+                      <p className="mt-1 font-sans text-xs text-emerald-300">Correct answer: {failedOptions[failedCorrectIndex] || question.correct_answer}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="mt-8 space-y-3">
+              {failedPracticeQuestions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowFailedReview(prev => !prev)}
+                  className="w-full rounded-2xl border border-red-400/30 px-5 py-4 font-sans text-sm font-bold text-red-300 transition hover:border-red-300 hover:text-red-200"
+                >
+                  {showFailedReview ? 'Hide Failed Questions' : 'Review Failed Questions'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -1235,15 +1498,18 @@ export default function App() {
                   setSessionSelectedAnswer(null);
                   setSessionScore(0);
                   setQuestionTimeLeft(30);
+                  setFailedPracticeQuestions([]);
+                  setRecordedPracticeAnswers([]);
+                  setShowFailedReview(false);
                 }}
-                className="w-full rounded-2xl bg-[#FF6B35] px-5 py-4 font-bold text-white transition hover:bg-[#ff7c4d]"
+                className="w-full rounded-2xl bg-[#FF6B35] px-5 py-4 font-sans text-sm font-bold text-white transition hover:bg-[#ff7c4d]"
               >
                 Practice Again
               </button>
               <button
                 type="button"
                 onClick={() => navigatePath('/practice')}
-                className="w-full rounded-2xl border border-white/10 px-5 py-4 font-bold text-white transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+                className="w-full rounded-2xl border border-white/10 px-5 py-4 font-sans text-sm font-bold text-white transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
               >
                 Back to Practice
               </button>
@@ -1262,9 +1528,9 @@ export default function App() {
             </button>
             <div className="min-w-0 text-center">
               <p className="truncate font-heading text-base font-bold text-white">{subject}</p>
-              <p className="truncate text-xs text-[#8B9CB8]">{subtopic}</p>
+              <p className="truncate font-sans text-xs font-normal text-[#8B9CB8]">{subtopic}</p>
             </div>
-            <p className="font-heading text-sm font-bold text-[#FF6B35]">{questionIndex + 1} of 20</p>
+            <p className="font-heading text-sm font-bold text-[#FF6B35]">{questionIndex + 1} of {totalQuestions}</p>
           </div>
           <div className="mx-auto mt-4 h-1 max-w-4xl overflow-hidden rounded-full bg-white/10">
             <div className="h-full rounded-full bg-[#FF6B35] transition-all" style={{ width: `${progress}%` }} />
@@ -1272,14 +1538,14 @@ export default function App() {
         </header>
 
         <main className="mx-auto max-w-4xl py-8">
-          <div className={`mx-auto mb-6 flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${questionTimeLeft < 10 ? 'border-red-500/40 text-red-400' : 'border-white/10 text-[#8B9CB8]'}`}>
+          <div className={`mx-auto mb-6 flex w-fit items-center gap-2 rounded-full border px-4 py-2 font-sans text-sm font-bold ${questionTimeLeft < 10 ? 'border-red-500/40 text-red-400' : 'border-white/10 text-[#8B9CB8]'}`}>
             <Clock className="h-4 w-4" />
             {questionTimeLeft}s
           </div>
 
           <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.25)] md:p-8">
-            <p className="text-lg leading-8 text-white md:text-2xl">
-              Which option best describes {subtopic} in {subject} for exam-ready preparation?
+            <p className="font-sans text-lg font-normal leading-8 text-white md:text-2xl">
+              {currentQuestion?.question_text}
             </p>
           </section>
 
@@ -1291,13 +1557,10 @@ export default function App() {
 
               return (
                 <button
-                  key={option}
+                  key={`${option}-${index}`}
                   type="button"
                   disabled={answeredSession}
-                  onClick={() => {
-                    setSessionSelectedAnswer(index);
-                    if (index === correctIndex) setSessionScore(prev => prev + 1);
-                  }}
+                  onClick={() => handlePracticeAnswer(index)}
                   className={`flex w-full items-center gap-4 rounded-2xl border bg-[#111827] p-4 text-left transition ${correct ? 'border-emerald-400 text-emerald-300' : wrong ? 'border-red-400 text-red-300' : answeredSession ? 'border-white/5 opacity-45' : 'border-white/10 text-white hover:border-[#FF6B35]/50'}`}
                 >
                   <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${correct ? 'bg-emerald-500 text-white' : wrong ? 'bg-red-500 text-white' : 'bg-[#0A0F1E] text-[#8B9CB8]'}`}>
@@ -1309,11 +1572,11 @@ export default function App() {
             })}
           </section>
 
-          {answeredSession && (
+          {answeredSession && currentQuestion && (
             <section className={`mt-6 animate-slide-up rounded-2xl border-l-4 bg-[#111827] p-5 ${isCorrect ? 'border-l-emerald-500' : 'border-l-[#FF6B35]'}`}>
               <p className={`font-heading text-sm font-bold ${isCorrect ? 'text-emerald-400' : 'text-[#FF6B35]'}`}>{isCorrect ? 'Correct' : 'Explanation'}</p>
-              <p className="mt-2 text-sm leading-6 text-[#C8D2E4]">
-                The best answer connects the definition, example, and exam shortcut for {subtopic}. Review why the distractors are close, then move to the next question with confidence.
+              <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#C8D2E4]">
+                {currentQuestion.explanation || 'No explanation is available for this question yet.'}
               </p>
             </section>
           )}
@@ -1326,10 +1589,11 @@ export default function App() {
               onClick={() => {
                 setQuestionIndex(prev => prev + 1);
                 setSessionSelectedAnswer(null);
+                setQuestionTimeLeft(30);
               }}
-              className="mx-auto block w-full max-w-4xl rounded-2xl bg-[#FF6B35] px-6 py-4 font-bold text-white transition hover:bg-[#ff7c4d]"
+              className="mx-auto block w-full max-w-4xl rounded-2xl bg-[#FF6B35] px-6 py-4 font-sans text-sm font-bold text-white transition hover:bg-[#ff7c4d]"
             >
-              Next Question
+              {questionIndex + 1 >= totalQuestions ? 'See Results' : 'Next Question'}
             </button>
           </div>
         )}
