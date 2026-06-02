@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Timer,
   Search,
   BookMarked,
   Share2,
@@ -1013,41 +1014,59 @@ export default function App() {
 
   const renderPracticePage = () => (
     <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
-      <main className="mx-auto max-w-4xl space-y-6 animate-fade-up">
+      <main className="mx-auto max-w-4xl space-y-5 animate-fade-up">
         <section>
-          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-6xl">Practice</h1>
-          <p className="mt-3 font-sans text-base text-[#8B9CB8]">How would you like to practice today?</p>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Practice</h1>
+          <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">How would you like to practice today?</p>
         </section>
 
         <section className="space-y-4">
           <button
             type="button"
             onClick={() => navigatePath('/practice/subjects')}
-            className="group flex w-full items-center gap-4 rounded-[28px] border border-[rgba(255,255,255,0.06)] border-l-[#FF6B35] border-l-4 bg-[#111827] p-4 sm:p-6 text-left shadow-[0_20px_70px_rgba(0,0,0,0.28)] transition hover:border-[#FF6B35]/50"
+            className="group w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-left transition hover:-translate-y-0.5 hover:border-[#FF6B35]/40"
           >
-            <div className="flex h-12 w-12 shrink-0 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35]">
-              <BookOpen className="h-7 w-7" />
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#FF6B35]/15 text-[#FF6B35]">
+                <BookOpen className="h-[22px] w-[22px]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-heading text-base font-semibold text-white">Subject Practice</h2>
+                <p className="mt-1 overflow-hidden font-sans text-[13px] font-normal leading-5 text-[#8B9CB8]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                  Choose a subject and topic to practice at your own pace. Perfect for targeting specific areas.
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Subject Practice</h2>
-              <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Choose a subject and topic to practice at your own pace. Perfect for targeting specific areas.</p>
+            <div className="mt-5 flex justify-end">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#FF6B35]/10 px-3 py-2 font-sans text-xs font-semibold text-[#FF6B35] transition group-hover:bg-[#FF6B35] group-hover:text-white">
+                Start Mode
+                <ChevronRight className="h-4 w-4" />
+              </span>
             </div>
-            <ChevronRight className="h-6 w-6 shrink-0 text-[#FF6B35] transition group-hover:translate-x-1" />
           </button>
 
           <button
             type="button"
             onClick={() => navigatePath('/practice/exam-type')}
-            className="group flex w-full items-center gap-4 rounded-[28px] border border-[rgba(255,255,255,0.06)] border-l-purple-500 border-l-4 bg-[#111827] p-4 sm:p-6 text-left shadow-[0_20px_70px_rgba(0,0,0,0.28)] transition hover:border-purple-400/50"
+            className="group w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-left transition hover:-translate-y-0.5 hover:border-purple-400/40"
           >
-            <div className="flex h-12 w-12 shrink-0 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-purple-500/15 text-purple-300">
-              <Clock className="h-7 w-7" />
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 text-purple-300">
+                <Timer className="h-[22px] w-[22px]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-heading text-base font-semibold text-white">Full Mock Exam</h2>
+                <p className="mt-1 overflow-hidden font-sans text-[13px] font-normal leading-5 text-[#8B9CB8]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                  Simulate real exam conditions with a full timed exam.
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Full Mock Exam</h2>
-              <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">Simulate real exam conditions with a full timed exam.</p>
+            <div className="mt-5 flex justify-end">
+              <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-3 py-2 font-sans text-xs font-semibold text-purple-200 transition group-hover:bg-purple-500 group-hover:text-white">
+                Take Exam
+                <ChevronRight className="h-4 w-4" />
+              </span>
             </div>
-            <ChevronRight className="h-6 w-6 shrink-0 text-purple-300 transition group-hover:translate-x-1" />
           </button>
         </section>
       </main>
@@ -1084,7 +1103,7 @@ export default function App() {
                   <FileText className="h-6 w-6" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">{exam.title}</h2>
+                  <h2 className="font-heading text-lg font-bold text-white sm:text-xl">{exam.title}</h2>
                   <p className="mt-1 text-sm font-semibold text-[#C8D2E4]">{exam.subtitle}</p>
                   <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">{exam.description}</p>
                 </div>
@@ -1321,57 +1340,44 @@ export default function App() {
     <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
       <main className="mx-auto max-w-5xl animate-fade-up">
         <section>
-          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-6xl">Cheatsheets</h1>
-          <p className="mt-3 font-sans text-base text-[#8B9CB8]">Quick revision for every topic.</p>
-          <div className="relative mt-6">
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Cheatsheets</h1>
+          <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Quick revision for every topic.</p>
+          <div className="relative mt-5">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#8B9CB8]" />
             <input
               type="search"
               placeholder="Search topics"
-              className="w-full rounded-2xl border border-white/10 bg-[#111827] px-12 py-4 text-sm text-white outline-none transition placeholder:text-[#8B9CB8] focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15)]"
+              className="w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] px-12 py-4 font-sans text-sm font-normal text-white outline-none transition placeholder:text-[#8B9CB8] focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15)]"
             />
           </div>
         </section>
 
-        <section className="mt-8 grid grid-cols-2 gap-4 md:gap-5">
-          {subjectLibrary.map(subject => {
-            const expanded = expandedCheatsheetSubject === subject.name;
-            return (
-              <div key={subject.name} className="rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[#111827] shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
-                <button
-                  type="button"
-                  onClick={() => setExpandedCheatsheetSubject(expanded ? null : subject.name)}
-                  className="w-full overflow-hidden rounded-3xl text-left"
-                >
-                  <div className={`h-20 bg-gradient-to-br ${subject.gradient} p-4`}>
-                    <BookMarked className="h-7 w-7 text-white" />
-                  </div>
-                  <div className="p-5">
-                    <h2 className="font-heading text-base font-extrabold text-white md:text-xl">{subject.name}</h2>
-                    <p className="mt-2 text-xs font-semibold text-[#8B9CB8] md:text-sm">{subtopicsBySubject[subject.name]?.length || 0} topics</p>
-                  </div>
-                </button>
-                {expanded && (
-                  <div className="border-t border-white/10 px-5 pb-4">
-                    {(subtopicsBySubject[subject.name] || []).map(topic => (
-                      <button
-                        key={topic}
-                        type="button"
-                        onClick={() => navigatePath(`/cheatsheet/${slugify(subject.name)}/${slugify(topic)}`)}
-                        className="flex w-full items-center justify-between border-b border-white/5 py-3 text-left last:border-b-0"
-                      >
-                        <span className="text-sm font-bold text-white">{topic}</span>
-                        <ChevronRight className="h-4 w-4 text-[#FF6B35]" />
-                      </button>
-                    ))}
-                    <button type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject.name)}`)} className="mt-2 text-sm font-bold text-[#FF6B35]">
-                      View subject page
-                    </button>
-                  </div>
-                )}
+        <section className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {subjectLibrary.map(subject => (
+            <button
+              key={subject.name}
+              type="button"
+              onClick={() => navigatePath(`/cheatsheet/${slugify(subject.name)}`)}
+              className="group flex min-h-[132px] w-full flex-col rounded-2xl border bg-[#111827] p-4 text-left transition hover:-translate-y-0.5 hover:bg-[#141d2c]"
+              style={{ borderColor: subject.accent }}
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${subject.accent}1F`, color: subject.accent }}>
+                  <BookMarked className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="whitespace-normal break-words font-heading text-base font-semibold leading-5 text-white">{subject.name}</h2>
+                  <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">{subtopicsBySubject[subject.name]?.length || 0} topics</p>
+                </div>
               </div>
-            );
-          })}
+              <div className="mt-auto flex justify-end pt-5">
+                <span className="inline-flex items-center gap-1 font-sans text-sm font-semibold text-[#FF6B35] transition group-hover:text-[#ff865f]">
+                  Start Revision
+                  <ChevronRight className="h-4 w-4" />
+                </span>
+              </div>
+            </button>
+          ))}
         </section>
       </main>
       {renderBottomNavigation()}
@@ -1925,22 +1931,6 @@ export default function App() {
             icon: PenLine,
             accent: '#00BBF9',
             iconBg: 'rgba(0,187,249,0.15)'
-          },
-          {
-            title: 'Weakness Assassin',
-            description: 'Find and fix your weakest exam topics',
-            href: '/weakness',
-            icon: Target,
-            accent: '#FF4D4D',
-            iconBg: 'rgba(255,77,77,0.15)'
-          },
-          {
-            title: 'Exam Updates',
-            description: 'Latest news on exams and scholarships',
-            href: '/updates',
-            icon: Newspaper,
-            accent: '#2EC4B6',
-            iconBg: 'rgba(46,196,182,0.15)'
           }
         ];
         const getUpdateCategoryClass = (category: string) => {
@@ -1955,51 +1945,51 @@ export default function App() {
         return (
           <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans scroll-smooth">
             <nav className="sticky top-0 z-40 flex h-20 items-center border-b border-[rgba(255,255,255,0.06)] bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
-              <span className="font-heading text-[22px] font-extrabold tracking-tight text-white">
+              <span className="font-heading text-[22px] font-bold tracking-tight text-white">
                 Exam<span className="text-[#FF6B35]">Ready</span>
               </span>
             </nav>
 
             <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-5 md:px-10 md:py-8">
-              <section className="animate-fade-up rounded-[32px] border border-[rgba(255,107,53,0.2)] bg-gradient-to-br from-[#1A1A2E] to-[#111827] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:p-6 md:p-8">
+              <section className="animate-fade-up rounded-2xl border border-[rgba(255,107,53,0.2)] bg-gradient-to-br from-[#1A1A2E] to-[#111827] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.2)] sm:p-6">
                 <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                    <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl">
                       Hi <span className="inline-block max-w-[16ch] truncate align-bottom">{username}</span> <span aria-hidden="true">👋</span>
                     </h1>
-                    <p className="mt-2 text-sm leading-6 text-[#8B9CB8] sm:text-base">Ready to study today?</p>
+                    <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Ready to study today?</p>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => navigatePath('/profile')}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.1)] bg-[#111827] px-4 py-3 text-sm font-bold text-white transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35] sm:w-auto"
+                    className="inline-flex w-auto items-center justify-center gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-white/5 px-3 py-2 font-sans text-xs font-semibold text-white transition hover:bg-white/10 hover:text-[#FF6B35]"
                   >
                     <UserIcon className="h-4 w-4" />
                     View Profile
                   </button>
                 </div>
 
-                <div className="mt-6 grid grid-cols-3 gap-3 md:gap-5">
-                  <div className="rounded-3xl bg-black/20 p-3 text-center sm:p-4 md:p-5">
+                <div className="mt-5 grid grid-cols-3 gap-3 md:gap-4">
+                  <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-3 text-center sm:p-4">
                     <Flame className="mx-auto h-6 w-6 text-[#FF6B35] sm:h-7 sm:w-7" />
-                    <p className="mt-3 truncate font-heading text-xl font-extrabold text-white sm:text-2xl">{studentProfile.streak ?? 0}</p>
-                    <p className="mt-1 text-[11px] font-semibold text-[#8B9CB8] sm:text-xs">Day Streak</p>
+                    <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{studentProfile.streak ?? 0}</p>
+                    <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Day Streak</p>
                   </div>
-                  <div className="rounded-3xl bg-black/20 p-3 text-center sm:p-4 md:p-5">
+                  <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-3 text-center sm:p-4">
                     <BookOpen className="mx-auto h-6 w-6 text-[#00BBF9] sm:h-7 sm:w-7" />
-                    <p className="mt-3 truncate font-heading text-xl font-extrabold text-white sm:text-2xl">{dashboardPerformance.questions}</p>
-                    <p className="mt-1 text-[11px] font-semibold text-[#8B9CB8] sm:text-xs">Questions</p>
+                    <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{dashboardPerformance.questions}</p>
+                    <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Questions</p>
                   </div>
-                  <div className="rounded-3xl bg-black/20 p-3 text-center sm:p-4 md:p-5">
+                  <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-3 text-center sm:p-4">
                     <Target className="mx-auto h-6 w-6 text-[#2EC4B6] sm:h-7 sm:w-7" />
-                    <p className="mt-3 truncate font-heading text-xl font-extrabold text-white sm:text-2xl">{dashboardPerformance.accuracy}%</p>
-                    <p className="mt-1 text-[11px] font-semibold text-[#8B9CB8] sm:text-xs">Accuracy</p>
+                    <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{dashboardPerformance.accuracy}%</p>
+                    <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Accuracy</p>
                   </div>
                 </div>
               </section>
 
-              <section className="grid grid-cols-2 gap-4 animate-fade-up">
+              <section className="grid grid-cols-1 gap-4 animate-fade-up sm:grid-cols-2">
                 {actionCards.map(card => {
                   const CardIcon = card.icon;
                   return (
@@ -2007,18 +1997,25 @@ export default function App() {
                       key={card.title}
                       type="button"
                       onClick={() => navigatePath(card.href)}
-                      className="group flex min-h-[190px] cursor-pointer flex-col rounded-[28px] border border-[rgba(255,255,255,0.06)] bg-[#111827] p-4 text-left transition duration-200 hover:-translate-y-1 hover:border-white/15 sm:p-5"
+                      className="group flex cursor-pointer flex-col rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-white/15"
                     >
-                      <div
-                        className="flex h-11 w-11 items-center justify-center rounded-2xl"
-                        style={{ backgroundColor: card.iconBg, color: card.accent }}
-                      >
-                        <CardIcon className="h-5 w-5" />
+                      <div className="flex items-start gap-4">
+                        <div
+                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+                          style={{ backgroundColor: card.iconBg, color: card.accent }}
+                        >
+                          <CardIcon className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h2 className="font-heading text-base font-semibold text-white">{card.title}</h2>
+                          <p className="mt-1 overflow-hidden font-sans text-[13px] font-normal leading-5 text-[#8B9CB8]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{card.description}</p>
+                        </div>
                       </div>
-                      <h2 className="mt-4 font-heading text-base font-extrabold text-white sm:text-lg">{card.title}</h2>
-                      <p className="mt-2 flex-1 text-xs leading-5 text-[#8B9CB8] sm:text-sm">{card.description}</p>
                       <div className="mt-4 flex justify-end">
-                        <ChevronRight className="h-5 w-5 transition group-hover:translate-x-1" style={{ color: card.accent }} />
+                        <span className="inline-flex items-center gap-1 rounded-full px-3 py-2 font-sans text-xs font-semibold transition group-hover:bg-white/5" style={{ color: card.accent }}>
+                          Open
+                          <ChevronRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                        </span>
                       </div>
                     </button>
                   );
@@ -2027,7 +2024,7 @@ export default function App() {
 
               <section className="animate-fade-up">
                 <div className="flex items-center justify-between gap-4">
-                  <h2 className="font-heading text-xl font-extrabold text-white sm:text-2xl">Latest Updates</h2>
+                  <h2 className="font-heading text-lg font-bold text-white sm:text-xl">Latest Updates</h2>
                   <button
                     type="button"
                     onClick={() => navigatePath('/updates')}
