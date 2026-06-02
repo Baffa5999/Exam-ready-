@@ -41,6 +41,7 @@ import {
   User as UserIcon
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
+import InstallPrompt from './components/InstallPrompt';
 
 // Fonts link inside styles
 const fontStyles = `
@@ -2041,6 +2042,7 @@ export default function App() {
     <div className="min-h-screen bg-[#0A0F1E] text-[#FFFFFF] font-sans overflow-x-hidden relative">
       {/* Inject custom font styles */}
       <style>{fontStyles}</style>
+      <InstallPrompt />
 
       {/* STICKY STATUS BANNER NOTIFICATIONS */}
       {statusMessage && (
