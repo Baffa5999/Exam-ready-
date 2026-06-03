@@ -1014,10 +1014,24 @@ export default function App() {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     const activeUser = user || currentUser;
 
+    console.log('Practice performance save requested after answer:', {
+      userId: activeUser?.id,
+      questionId: question.id,
+      subject: question.subject,
+      topic: question.topic,
+      subtopic: question.subtopic,
+      isCorrect
+    });
+
     if (userError || !activeUser) {
       console.warn('Skipping practice performance save because no authenticated user was found:', userError);
       return;
     }
+
+    console.log('Checking existing student_performance row:', {
+      userId: activeUser.id,
+      subtopic: question.subtopic
+    });
 
     const { data: existingPerformance, error: lookupError } = await supabase
       .from('student_performance')
@@ -1047,19 +1061,65 @@ export default function App() {
       last_practiced: new Date().toISOString()
     };
 
+    console.log('student_performance payload prepared:', payload);
+
     if (existingPerformance) {
+      console.log('Calling student_performance update:', {
+        existingPerformance,
+        payload
+      });
+
       let updateQuery = supabase.from('student_performance').update(payload);
       updateQuery = existingPerformance.id
         ? updateQuery.eq('id', existingPerformance.id)
         : updateQuery.eq('user_id', activeUser.id).eq('subtopic', question.subtopic);
 
       const { error } = await updateQuery;
-      if (error) console.warn('Unable to update practice performance:', error);
+      if (error) {
+        console.warn('Unable to update practice performance:', error);
+        return;
+      }
+
+      console.log('student_performance update completed successfully:', payload);
       return;
     }
 
+    console.log('Calling student_performance insert:', payload);
     const { error } = await supabase.from('student_performance').insert(payload);
-    if (error) console.warn('Unable to insert practice performance:', error);
+    if (error) {
+      console.warn('Unable to insert practice performance:', error);
+      return;
+    }
+
+    console.log('student_performance insert completed successfully:', payload);
+  };
+
+  const showStudentPerformanceDebug = async () => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const activeUser = user || currentUser;
+
+    if (userError || !activeUser) {
+      console.warn('Unable to fetch debug student_performance rows because no user was found:', userError);
+      window.alert('No authenticated user found for performance debug.');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('student_performance')
+      .select('*')
+      .eq('user_id', activeUser.id);
+
+    if (error) {
+      console.warn('Unable to fetch debug student_performance rows:', error);
+      window.alert(`Unable to fetch student_performance rows: ${error.message}`);
+      return;
+    }
+
+    const rows = data || [];
+    console.log('Dashboard debug student_performance rows:', rows);
+    window.alert(rows.length > 0
+      ? JSON.stringify(rows, null, 2)
+      : 'No student_performance rows found for the current user.');
   };
 
   const handlePracticeAnswer = (answerIndex: number) => {
@@ -1081,6 +1141,14 @@ export default function App() {
       } else {
         setFailedPracticeQuestions(prev => [...prev, { question: currentQuestion, selectedAnswer: answerIndex }]);
       }
+      console.log('Practice answer selected; calling student_performance save:', {
+        questionId: currentQuestion.id,
+        subject: currentQuestion.subject,
+        subtopic: currentQuestion.subtopic,
+        selectedAnswer: answerIndex,
+        correctAnswerIndex,
+        isCorrect
+      });
       void savePracticePerformance(currentQuestion, isCorrect);
     }
   };
@@ -2450,14 +2518,23 @@ export default function App() {
                     <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Ready to study today?</p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => navigatePath('/profile')}
-                    className="inline-flex w-auto items-center justify-center gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-white/5 px-3 py-2 font-sans text-xs font-semibold text-white transition hover:bg-white/10 hover:text-[#FF6B35]"
-                  >
-                    <UserIcon className="h-4 w-4" />
-                    View Profile
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => navigatePath('/profile')}
+                      className="inline-flex w-auto items-center justify-center gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-white/5 px-3 py-2 font-sans text-xs font-semibold text-white transition hover:bg-white/10 hover:text-[#FF6B35]"
+                    >
+                      <UserIcon className="h-4 w-4" />
+                      View Profile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={showStudentPerformanceDebug}
+                      className="inline-flex w-auto items-center justify-center gap-2 rounded-xl border border-[#FF6B35]/25 bg-[#FF6B35]/10 px-3 py-2 font-sans text-xs font-semibold text-[#FF6B35] transition hover:bg-[#FF6B35]/15 hover:text-white"
+                    >
+                      Debug Performance
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-5 grid grid-cols-3 gap-3 md:gap-4">
