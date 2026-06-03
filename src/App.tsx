@@ -231,6 +231,7 @@ export default function App() {
   const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string>('');
   const [dashboardMenuOpen, setDashboardMenuOpen] = useState<boolean>(false);
   const [dashboardPerformance, setDashboardPerformance] = useState<DashboardPerformance>({ questions: 0, accuracy: 0, weakAreas: [] });
+  const [profileBattleWins, setProfileBattleWins] = useState<number>(0);
   const [dashboardUpdates, setDashboardUpdates] = useState<DashboardUpdate[]>(fallbackDashboardUpdates);
   const [expandedPracticeSubjects, setExpandedPracticeSubjects] = useState<string[]>([]);
   const [selectedPracticeTopics, setSelectedPracticeTopics] = useState<Record<string, string[]>>({});
@@ -382,6 +383,48 @@ export default function App() {
       navigateTo('dashboard', { replace: true });
     }
   }, [authReady, currentUser, studentProfile, view]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProfileBattleWins = async () => {
+      if (!currentUser) {
+        setProfileBattleWins(0);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('battles')
+        .select('creator_id, opponent_id, creator_score, opponent_score, status')
+        .eq('status', 'completed')
+        .or(`creator_id.eq.${currentUser.id},opponent_id.eq.${currentUser.id}`);
+
+      if (cancelled) return;
+
+      if (error || !data) {
+        console.info('Unable to load completed battle wins; using zero.', error);
+        setProfileBattleWins(0);
+        return;
+      }
+
+      const wins = (data as Array<Record<string, any>>).reduce((total, battle) => {
+        const creatorScore = Number(battle.creator_score) || 0;
+        const opponentScore = Number(battle.opponent_score) || 0;
+
+        if (battle.creator_id === currentUser.id && creatorScore > opponentScore) return total + 1;
+        if (battle.opponent_id === currentUser.id && opponentScore > creatorScore) return total + 1;
+        return total;
+      }, 0);
+
+      setProfileBattleWins(wins);
+    };
+
+    void loadProfileBattleWins();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1390,6 +1433,58 @@ export default function App() {
     });
     navigatePath(`/practice/session?${params.toString()}`, navigationState);
   };
+
+  const renderProfilePage = () => (
+    <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans">
+      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 md:px-10">
+        <button
+          type="button"
+          onClick={() => navigatePath('/dashboard')}
+          className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827] px-4 py-2 text-sm font-bold text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to Dashboard
+        </button>
+
+        <section className="animate-fade-up rounded-3xl border border-[rgba(255,107,53,0.2)] bg-gradient-to-br from-[#1A1A2E] to-[#111827] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.25)] sm:p-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="font-sans text-xs font-bold uppercase tracking-[0.2em] text-[#FF6B35]">Profile</p>
+              <h1 className="mt-3 break-words font-heading text-2xl font-bold text-white sm:text-3xl">{getDashboardUsername()}</h1>
+              <p className="mt-2 break-words font-sans text-sm font-normal text-[#8B9CB8]">{currentUser?.email || studentProfile?.email || 'No email available'}</p>
+            </div>
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#FF6B35] font-heading text-2xl font-bold text-white">
+              {(studentProfile?.username || studentProfile?.fullName || currentUser?.email || 'S').charAt(0).toUpperCase()}
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4">
+              <Flame className="h-6 w-6 text-[#FF6B35]" />
+              <p className="mt-3 font-heading text-2xl font-bold text-white">{studentProfile?.streak ?? 0}</p>
+              <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">Day Streak</p>
+            </div>
+            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4">
+              <Target className="h-6 w-6 text-[#2EC4B6]" />
+              <p className="mt-3 font-heading text-2xl font-bold text-white">{dashboardPerformance.accuracy}%</p>
+              <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">Overall Accuracy</p>
+            </div>
+            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4">
+              <BookOpen className="h-6 w-6 text-[#00BBF9]" />
+              <p className="mt-3 font-heading text-2xl font-bold text-white">{dashboardPerformance.questions}</p>
+              <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">Questions Answered</p>
+            </div>
+            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4">
+              <Trophy className="h-6 w-6 text-[#FF6B35]" />
+              <p className="mt-3 font-heading text-2xl font-bold text-white">🏆 Battles Won: {profileBattleWins}</p>
+              <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">Completed battle wins</p>
+            </div>
+          </div>
+        </section>
+      </main>
+      {renderBottomNavigation()}
+    </div>
+  );
 
   const renderPlaceholderPage = (title: string, description: string) => (
     <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans">
@@ -2574,7 +2669,7 @@ export default function App() {
       })()}
 
       {/* PROFILE PLACEHOLDER PAGE */}
-      {view === 'profile' && studentProfile && renderPlaceholderPage('Profile', 'Your profile settings and account details will appear here soon.')}
+      {view === 'profile' && studentProfile && renderProfilePage()}
 
       {/* AI TUTOR PLACEHOLDER PAGE */}
       {view === 'aiTutor' && studentProfile && renderPlaceholderPage('AI Tutor', 'Ask-anything exam help is coming soon for your selected topics.')}
