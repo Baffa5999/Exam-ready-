@@ -2,16 +2,43 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Loader2, Target } from 'lucide-react';
 import { supabase } from '../../supabase';
 
-const accuracyTone = accuracy => {
-  if (accuracy === null) return 'text-[#8B9CB8] border-white/10 bg-white/5';
-  if (accuracy < 50) return 'text-red-300 border-red-500/30 bg-red-500/10';
-  if (accuracy <= 70) return 'text-[#FF6B35] border-[#FF6B35]/30 bg-[#FF6B35]/10';
-  return 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10';
+const tabs = [
+  {
+    key: 'urgent',
+    label: 'Needs Urgent',
+    empty: 'No urgent weak areas right now.',
+    countText: count => `${count} subtopic${count === 1 ? '' : 's'} need urgent work`,
+    message: 'Urgent: study this',
+    accentClass: 'text-red-300 border-red-500/30 bg-red-500/10'
+  },
+  {
+    key: 'average',
+    label: 'Average',
+    empty: 'No average topics yet.',
+    countText: count => `${count} average subtopic${count === 1 ? '' : 's'}`,
+    message: 'Keep improving',
+    accentClass: 'text-[#FF6B35] border-[#FF6B35]/30 bg-[#FF6B35]/10'
+  },
+  {
+    key: 'mastered',
+    label: 'Mastered',
+    empty: 'No mastered topics yet.',
+    countText: count => `${count} mastered subtopic${count === 1 ? '' : 's'}`,
+    message: 'Great job, maintain',
+    accentClass: 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
+  }
+];
+
+const getCategoryKey = accuracy => {
+  if (accuracy === null) return 'urgent';
+  if (accuracy < 50) return 'urgent';
+  if (accuracy <= 70) return 'average';
+  return 'mastered';
 };
 
 const formatAccuracy = accuracy => (accuracy === null ? 'Not practised' : `${accuracy}%`);
 
-const groupPerformanceBySubject = rows => {
+const processPerformanceRows = rows => {
   const subtopicMap = new Map();
 
   rows.forEach(row => {
@@ -32,33 +59,43 @@ const groupPerformanceBySubject = rows => {
     subtopicMap.set(key, existing);
   });
 
-  const subjectMap = new Map();
-
-  Array.from(subtopicMap.values()).forEach(item => {
+  return Array.from(subtopicMap.values()).map(item => {
     const accuracy = item.questionsAttempted > 0
       ? Math.round((item.questionsCorrect / item.questionsAttempted) * 100)
       : null;
-    const subtopic = { ...item, accuracy };
-    const subject = subjectMap.get(item.subject) || { subject: item.subject, subtopics: [] };
-    subject.subtopics.push(subtopic);
-    subjectMap.set(item.subject, subject);
+    const failed = Math.max(item.questionsAttempted - item.questionsCorrect, 0);
+
+    return {
+      ...item,
+      failed,
+      accuracy,
+      category: getCategoryKey(accuracy)
+    };
+  }).sort((a, b) => {
+    if (a.accuracy === null && b.accuracy === null) return a.subtopic.localeCompare(b.subtopic);
+    if (a.accuracy === null) return -1;
+    if (b.accuracy === null) return 1;
+    return a.accuracy - b.accuracy;
+  });
+};
+
+const groupSubtopicsBySubject = subtopics => {
+  const subjectMap = new Map();
+
+  subtopics.forEach(item => {
+    const subjectGroup = subjectMap.get(item.subject) || { subject: item.subject, subtopics: [] };
+    subjectGroup.subtopics.push(item);
+    subjectMap.set(item.subject, subjectGroup);
   });
 
-  return Array.from(subjectMap.values()).map(subject => ({
-    ...subject,
-    subtopics: subject.subtopics.sort((a, b) => {
-      if (a.accuracy === null && b.accuracy === null) return a.subtopic.localeCompare(b.subtopic);
-      if (a.accuracy === null) return 1;
-      if (b.accuracy === null) return -1;
-      return a.accuracy - b.accuracy;
-    })
-  })).sort((a, b) => a.subject.localeCompare(b.subject));
+  return Array.from(subjectMap.values()).sort((a, b) => a.subject.localeCompare(b.subject));
 };
 
 export default function WeaknessAssassin({ user, navigatePath, renderBottomNavigation }) {
   const [loading, setLoading] = useState(true);
   const [performanceRows, setPerformanceRows] = useState([]);
-  const [expandedSubjects, setExpandedSubjects] = useState([]);
+  const [activeTab, setActiveTab] = useState('urgent');
+  const [expandedSubjects, setExpandedSubjects] = useState({});
 
   useEffect(() => {
     let cancelled = false;
@@ -75,7 +112,7 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
 
       if (!userId) {
         setPerformanceRows([]);
-        setExpandedSubjects([]);
+        setExpandedSubjects({});
         setLoading(false);
         return;
       }
@@ -90,15 +127,13 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
       if (error) {
         console.info('Unable to load weakness performance; showing empty state.', error);
         setPerformanceRows([]);
-        setExpandedSubjects([]);
+        setExpandedSubjects({});
         setLoading(false);
         return;
       }
 
-      const rows = data || [];
-      const grouped = groupPerformanceBySubject(rows);
-      setPerformanceRows(rows);
-      setExpandedSubjects(grouped[0]?.subject ? [grouped[0].subject] : []);
+      setPerformanceRows(data || []);
+      setExpandedSubjects({});
       setLoading(false);
     };
 
@@ -109,13 +144,24 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
     };
   }, [user?.id]);
 
-  const groupedSubjects = useMemo(() => groupPerformanceBySubject(performanceRows), [performanceRows]);
+  const processedSubtopics = useMemo(() => processPerformanceRows(performanceRows), [performanceRows]);
+  const tabCounts = useMemo(() => tabs.reduce((counts, tab) => ({
+    ...counts,
+    [tab.key]: processedSubtopics.filter(item => item.category === tab.key).length
+  }), {}), [processedSubtopics]);
+  const activeTabConfig = tabs.find(tab => tab.key === activeTab) || tabs[0];
+  const activeSubtopics = useMemo(
+    () => processedSubtopics.filter(item => item.category === activeTab),
+    [activeTab, processedSubtopics]
+  );
+  const activeSubjectGroups = useMemo(() => groupSubtopicsBySubject(activeSubtopics), [activeSubtopics]);
 
   const toggleSubject = subject => {
-    setExpandedSubjects(current => current.includes(subject)
-      ? current.filter(item => item !== subject)
-      : [...current, subject]
-    );
+    const key = `${activeTab}:${subject}`;
+    setExpandedSubjects(current => ({
+      ...current,
+      [key]: !current[key]
+    }));
   };
 
   const practiceSubtopic = item => {
@@ -153,7 +199,7 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
           </p>
           <h1 className="mt-4 font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl">Find and fix your weakest topics</h1>
           <p className="mt-2 max-w-2xl font-sans text-sm font-normal leading-6 text-[#8B9CB8]">
-            We analyse your real practice history and highlight subtopics where your accuracy needs the most work.
+            We analyze your practice history and show you what needs urgent work, what’s average, and what you’ve mastered.
           </p>
         </header>
 
@@ -166,7 +212,7 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
           </section>
         )}
 
-        {!loading && groupedSubjects.length === 0 && (
+        {!loading && processedSubtopics.length === 0 && (
           <section className="mt-8 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-8 text-center shadow-[0_20px_70px_rgba(0,0,0,0.25)]">
             <BookOpen className="mx-auto h-11 w-11 text-[#FF6B35]" />
             <h2 className="mt-5 font-heading text-xl font-bold text-white">Complete your first practice session to see your weak areas</h2>
@@ -184,62 +230,98 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
           </section>
         )}
 
-        {!loading && groupedSubjects.length > 0 && (
-          <section className="mt-8 space-y-4">
-            {groupedSubjects.map(subjectGroup => {
-              const expanded = expandedSubjects.includes(subjectGroup.subject);
-              const ExpandIcon = expanded ? ChevronUp : ChevronDown;
-
-              return (
-                <article key={subjectGroup.subject} className="overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827]">
+        {!loading && processedSubtopics.length > 0 && (
+          <>
+            <section className="mt-8 grid grid-cols-3 gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-2">
+              {tabs.map(tab => {
+                const active = activeTab === tab.key;
+                return (
                   <button
+                    key={tab.key}
                     type="button"
-                    onClick={() => toggleSubject(subjectGroup.subject)}
-                    className="flex w-full items-center justify-between gap-4 p-5 text-left transition hover:bg-white/[0.02]"
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`rounded-xl px-2 py-3 text-center font-sans text-[11px] font-bold transition sm:text-sm ${active ? 'bg-[#FF6B35] text-white shadow-[0_12px_35px_rgba(255,107,53,0.2)]' : 'text-[#8B9CB8] hover:bg-white/5 hover:text-white'}`}
                   >
-                    <div className="min-w-0">
-                      <h2 className="break-words font-heading text-lg font-bold text-white">{subjectGroup.subject}</h2>
-                      <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">
-                        {subjectGroup.subtopics.length} tracked subtopic{subjectGroup.subtopics.length === 1 ? '' : 's'}
-                      </p>
-                    </div>
-                    <ExpandIcon className="h-5 w-5 shrink-0 text-[#FF6B35]" />
+                    <span className="block truncate">{tab.label}</span>
+                    <span className="mt-1 block text-[10px] font-normal opacity-80 sm:text-xs">{tabCounts[tab.key] || 0}</span>
                   </button>
+                );
+              })}
+            </section>
 
-                  {expanded && (
-                    <div className="animate-slide-up border-t border-white/10 p-4 pt-2">
-                      <div className="space-y-3">
-                        {subjectGroup.subtopics.map(item => (
-                          <div key={`${item.subject}-${item.subtopic}`} className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A0F1E]/70 p-4">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                              <div className="min-w-0">
-                                <p className="break-words font-heading text-base font-semibold text-white">{item.subtopic}</p>
-                                <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">
-                                  {item.questionsAttempted} question{item.questionsAttempted === 1 ? '' : 's'} attempted • {item.questionsCorrect} correct
-                                </p>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-2">
-                                <span className={`rounded-full border px-3 py-1 font-sans text-xs font-bold ${accuracyTone(item.accuracy)}`}>
-                                  {formatAccuracy(item.accuracy)}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => practiceSubtopic(item)}
-                                  className="rounded-full bg-[#FF6B35] px-4 py-2 font-sans text-xs font-bold text-white transition hover:bg-[#ff7c4d]"
-                                >
-                                  Practice Now
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+            {activeSubjectGroups.length === 0 ? (
+              <section className="mt-6 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-center">
+                <Target className="mx-auto h-9 w-9 text-[#FF6B35]" />
+                <h2 className="mt-4 font-heading text-lg font-bold text-white">{activeTabConfig.empty}</h2>
+                <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">
+                  Keep practicing to unlock more performance insights in this category.
+                </p>
+              </section>
+            ) : (
+              <section className="mt-6 space-y-4">
+                {activeSubjectGroups.map(subjectGroup => {
+                  const expandedKey = `${activeTab}:${subjectGroup.subject}`;
+                  const expanded = Boolean(expandedSubjects[expandedKey]);
+                  const ExpandIcon = expanded ? ChevronUp : ChevronDown;
+
+                  return (
+                    <article key={`${activeTab}-${subjectGroup.subject}`} className="overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827]">
+                      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <h2 className="break-words font-heading text-lg font-bold text-white">{subjectGroup.subject}</h2>
+                          <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">
+                            {activeTabConfig.countText(subjectGroup.subtopics.length)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleSubject(subjectGroup.subject)}
+                          className="inline-flex items-center justify-center gap-2 rounded-full border border-[#FF6B35]/30 bg-[#FF6B35]/10 px-4 py-2 font-sans text-xs font-bold text-[#FF6B35] transition hover:bg-[#FF6B35] hover:text-white"
+                        >
+                          View Topics
+                          <ExpandIcon className="h-4 w-4" />
+                        </button>
                       </div>
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </section>
+
+                      {expanded && (
+                        <div className="animate-slide-up border-t border-white/10 p-4 pt-2">
+                          <div className="space-y-3">
+                            {subjectGroup.subtopics.map(item => (
+                              <div key={`${item.subject}-${item.subtopic}`} className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A0F1E]/70 p-4">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                  <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="break-words font-heading text-base font-semibold text-white">{item.subtopic}</p>
+                                      <span className={`rounded-full border px-3 py-1 font-sans text-xs font-bold ${activeTabConfig.accentClass}`}>
+                                        {formatAccuracy(item.accuracy)}
+                                      </span>
+                                    </div>
+                                    <p className="mt-2 font-sans text-xs font-normal text-[#8B9CB8]">
+                                      Attempted: {item.questionsAttempted} | Failed: {item.failed}
+                                    </p>
+                                    <p className="mt-1 font-sans text-xs font-bold text-[#FF6B35]">
+                                      {activeTabConfig.message}
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => practiceSubtopic(item)}
+                                    className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#FF6B35] px-4 py-2 font-sans text-xs font-bold text-white transition hover:bg-[#ff7c4d]"
+                                  >
+                                    {activeTab === 'mastered' ? 'Review' : 'Practice Now'}
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </section>
+            )}
+          </>
         )}
       </main>
 
