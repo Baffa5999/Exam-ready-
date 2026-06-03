@@ -64,19 +64,26 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
     let cancelled = false;
 
     const loadPerformance = async () => {
-      if (!user?.id) {
+      setLoading(true);
+
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      const userId = authUser?.id || user?.id;
+
+      if (authError && !userId) {
+        console.info('Unable to identify current user for Weakness Assassin.', authError);
+      }
+
+      if (!userId) {
         setPerformanceRows([]);
         setExpandedSubjects([]);
         setLoading(false);
         return;
       }
 
-      setLoading(true);
-
       const { data, error } = await supabase
         .from('student_performance')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
 
       if (cancelled) return;
 
@@ -162,7 +169,7 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
         {!loading && groupedSubjects.length === 0 && (
           <section className="mt-8 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-8 text-center shadow-[0_20px_70px_rgba(0,0,0,0.25)]">
             <BookOpen className="mx-auto h-11 w-11 text-[#FF6B35]" />
-            <h2 className="mt-5 font-heading text-xl font-bold text-white">Complete your first practice session to see weak areas</h2>
+            <h2 className="mt-5 font-heading text-xl font-bold text-white">Complete your first practice session to see your weak areas</h2>
             <p className="mx-auto mt-3 max-w-sm font-sans text-sm font-normal leading-6 text-[#8B9CB8]">
               Once you answer questions, ExamReady will show the subtopics that need your attention here.
             </p>

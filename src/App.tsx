@@ -2401,7 +2401,17 @@ export default function App() {
             href: '/ai-tutor',
             icon: Sparkles,
             accent: '#FF6B35',
-            iconBg: 'rgba(255,107,53,0.15)'
+            iconBg: 'rgba(255,107,53,0.15)',
+            actionText: 'Open'
+          },
+          {
+            title: 'Weakness Assassin',
+            description: 'See your weak topics and practice them',
+            href: '/weakness',
+            icon: Target,
+            accent: '#FF6B35',
+            iconBg: 'rgba(255,107,53,0.15)',
+            actionText: 'View Weaknesses'
           },
           {
             title: 'Exam Practice',
@@ -2409,7 +2419,8 @@ export default function App() {
             href: '/practice',
             icon: PenLine,
             accent: '#00BBF9',
-            iconBg: 'rgba(0,187,249,0.15)'
+            iconBg: 'rgba(0,187,249,0.15)',
+            actionText: 'Open'
           }
         ];
         const getUpdateCategoryClass = (category: string) => {
@@ -2492,7 +2503,7 @@ export default function App() {
                       </div>
                       <div className="mt-4 flex justify-end">
                         <span className="inline-flex items-center gap-1 rounded-full px-3 py-2 font-sans text-xs font-semibold transition group-hover:bg-white/5" style={{ color: card.accent }}>
-                          Open
+                          {card.actionText}
                           <ChevronRight className="h-4 w-4 transition group-hover:translate-x-1" />
                         </span>
                       </div>
