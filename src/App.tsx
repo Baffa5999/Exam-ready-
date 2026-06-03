@@ -1075,34 +1075,6 @@ export default function App() {
     console.log('student_performance upsert completed successfully:', payload);
   };
 
-  const showStudentPerformanceDebug = async () => {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    const activeUser = user || currentUser;
-
-    if (userError || !activeUser) {
-      console.warn('Unable to fetch debug student_performance rows because no user was found:', userError);
-      window.alert('No authenticated user found for performance debug.');
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('student_performance')
-      .select('*')
-      .eq('user_id', activeUser.id);
-
-    if (error) {
-      console.warn('Unable to fetch debug student_performance rows:', error);
-      window.alert(`Unable to fetch student_performance rows: ${error.message}`);
-      return;
-    }
-
-    const rows = data || [];
-    console.log('Dashboard debug student_performance rows:', rows);
-    window.alert(rows.length > 0
-      ? JSON.stringify(rows, null, 2)
-      : 'No student_performance rows found for the current user.');
-  };
-
   const handlePracticeAnswer = (answerIndex: number) => {
     if (sessionSelectedAnswer !== null) return;
 
@@ -2499,23 +2471,14 @@ export default function App() {
                     <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Ready to study today?</p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => navigatePath('/profile')}
-                      className="inline-flex w-auto items-center justify-center gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-white/5 px-3 py-2 font-sans text-xs font-semibold text-white transition hover:bg-white/10 hover:text-[#FF6B35]"
-                    >
-                      <UserIcon className="h-4 w-4" />
-                      View Profile
-                    </button>
-                    <button
-                      type="button"
-                      onClick={showStudentPerformanceDebug}
-                      className="inline-flex w-auto items-center justify-center gap-2 rounded-xl border border-[#FF6B35]/25 bg-[#FF6B35]/10 px-3 py-2 font-sans text-xs font-semibold text-[#FF6B35] transition hover:bg-[#FF6B35]/15 hover:text-white"
-                    >
-                      Debug Performance
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigatePath('/profile')}
+                    className="inline-flex w-auto items-center justify-center gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-white/5 px-3 py-2 font-sans text-xs font-semibold text-white transition hover:bg-white/10 hover:text-[#FF6B35]"
+                  >
+                    <UserIcon className="h-4 w-4" />
+                    View Profile
+                  </button>
                 </div>
 
                 <div className="mt-5 grid grid-cols-3 gap-3 md:gap-4">
