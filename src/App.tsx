@@ -1028,20 +1028,20 @@ export default function App() {
       return;
     }
 
-    console.log('Checking existing student_performance row:', {
+    console.log('Checking existing student_performance row before upsert:', {
       userId: activeUser.id,
       subtopic: question.subtopic
     });
 
     const { data: existingPerformance, error: lookupError } = await supabase
       .from('student_performance')
-      .select('id, questions_attempted, questions_correct')
+      .select('questions_attempted, questions_correct')
       .eq('user_id', activeUser.id)
       .eq('subtopic', question.subtopic)
       .maybeSingle();
 
     if (lookupError) {
-      console.warn('Unable to load existing practice performance:', lookupError);
+      console.warn('Unable to load existing practice performance before upsert:', lookupError);
       return;
     }
 
@@ -1061,37 +1061,18 @@ export default function App() {
       last_practiced: new Date().toISOString()
     };
 
-    console.log('student_performance payload prepared:', payload);
+    console.log('Calling student_performance upsert with payload:', payload);
 
-    if (existingPerformance) {
-      console.log('Calling student_performance update:', {
-        existingPerformance,
-        payload
-      });
+    const { error: upsertError } = await supabase
+      .from('student_performance')
+      .upsert(payload, { onConflict: 'user_id, subtopic' });
 
-      let updateQuery = supabase.from('student_performance').update(payload);
-      updateQuery = existingPerformance.id
-        ? updateQuery.eq('id', existingPerformance.id)
-        : updateQuery.eq('user_id', activeUser.id).eq('subtopic', question.subtopic);
-
-      const { error } = await updateQuery;
-      if (error) {
-        console.warn('Unable to update practice performance:', error);
-        return;
-      }
-
-      console.log('student_performance update completed successfully:', payload);
+    if (upsertError) {
+      console.warn('Unable to upsert practice performance:', upsertError);
       return;
     }
 
-    console.log('Calling student_performance insert:', payload);
-    const { error } = await supabase.from('student_performance').insert(payload);
-    if (error) {
-      console.warn('Unable to insert practice performance:', error);
-      return;
-    }
-
-    console.log('student_performance insert completed successfully:', payload);
+    console.log('student_performance upsert completed successfully:', payload);
   };
 
   const showStudentPerformanceDebug = async () => {
