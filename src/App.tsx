@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
 import InstallPrompt from './components/InstallPrompt';
+import WeaknessAssassin from './pages/weakness/WeaknessAssassin';
 
 // Fonts link inside styles
 const fontStyles = `
@@ -2546,8 +2547,14 @@ export default function App() {
       {/* AI TUTOR PLACEHOLDER PAGE */}
       {view === 'aiTutor' && studentProfile && renderPlaceholderPage('AI Tutor', 'Ask-anything exam help is coming soon for your selected topics.')}
 
-      {/* WEAKNESS PLACEHOLDER PAGE */}
-      {view === 'weakness' && studentProfile && renderPlaceholderPage('Weakness Assassin', 'A dedicated weakness analysis page will appear here soon.')}
+      {/* WEAKNESS ASSASSIN PAGE */}
+      {view === 'weakness' && studentProfile && (
+        <WeaknessAssassin
+          user={currentUser}
+          navigatePath={navigatePath}
+          renderBottomNavigation={renderBottomNavigation}
+        />
+      )}
 
       {/* UPDATES PLACEHOLDER PAGE */}
       {view === 'updates' && studentProfile && renderPlaceholderPage('Exam Updates', 'Latest exam, scholarship, and school news will appear here soon.')}
