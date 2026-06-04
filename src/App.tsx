@@ -1351,7 +1351,7 @@ export default function App() {
     const currentPath = window.location.pathname;
 
     return (
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[rgba(255,255,255,0.08)] bg-[#16161F] px-2 py-2 backdrop-blur-xl">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[#FF6B35]/15 bg-[#10111A]/95 px-2 pb-3 pt-2 shadow-[0_-18px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
         <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
           {tabs.map(tab => {
             const active = tab.match(currentPath);
@@ -1363,9 +1363,11 @@ export default function App() {
                 type="button"
                 onClick={() => navigatePath(tab.href)}
                 aria-current={active ? 'page' : undefined}
-                className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-0.5 py-2 text-[10px] font-bold transition sm:px-1 sm:text-xs ${active ? 'text-[#FF6B35]' : 'text-[#8B9CB8] hover:text-white'}`}
+                className={`flex min-w-0 flex-col items-center gap-1.5 rounded-2xl px-0.5 py-1.5 text-[10px] font-bold transition sm:px-1 sm:text-xs ${active ? 'text-[#FF6B35]' : 'text-[#8B9CB8] hover:text-white'}`}
               >
-                <TabIcon className="h-5 w-5" />
+                <span className={`flex h-9 w-9 items-center justify-center rounded-2xl border transition ${active ? 'border-[#FF6B35]/35 bg-[#FF6B35]/15 shadow-[0_0_18px_rgba(255,107,53,0.18)]' : 'border-transparent bg-transparent'}`}>
+                  <TabIcon className="h-5 w-5" />
+                </span>
                 <span className="max-w-full truncate">{tab.label}</span>
               </button>
             );
@@ -1463,6 +1465,25 @@ export default function App() {
     navigatePath(`/practice/session?${params.toString()}`, navigationState);
   };
 
+  const professionalPageClass = 'min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,107,53,0.10),transparent_34%),#0A0F1E] pb-36 text-white font-sans';
+  const professionalMainClass = 'mx-auto max-w-5xl space-y-7 px-4 py-6 sm:px-6 md:px-10 md:py-8 animate-fade-up';
+  const professionalBackButtonClass = 'inline-flex min-w-0 items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827]/90 px-4 py-2.5 font-sans text-sm font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]';
+
+  const renderProfessionalHeader = (title: string, description: string, HeaderIcon: React.ElementType, accent = '#FF6B35') => (
+    <section className="rounded-[28px] border border-[#FF6B35]/20 bg-gradient-to-br from-[#1A1A2E] via-[#141827] to-[#111827] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-6">
+      <div className="flex items-center gap-4">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" style={{ backgroundColor: `${accent}1F`, color: accent }}>
+          <HeaderIcon className="h-7 w-7" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-sans text-[11px] font-bold uppercase tracking-[0.28em] text-[#FFB199]">ExamReady</p>
+          <h1 className="mt-2 break-words font-heading text-2xl font-bold leading-tight text-white sm:text-3xl">{title}</h1>
+          <p className="mt-2 max-w-2xl font-sans text-sm font-normal leading-6 text-[#8B9CB8]">{description}</p>
+        </div>
+      </div>
+    </section>
+  );
+
   const renderProfilePage = () => {
     const username = getDashboardUsername();
     const email = currentUser?.email || studentProfile?.email || 'No email available';
@@ -1496,8 +1517,8 @@ export default function App() {
     ];
 
     return (
-      <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans">
-        <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 md:px-10">
+      <div className={professionalPageClass}>
+        <main className={professionalMainClass}>
           <div className="mb-8 flex items-center justify-between gap-3">
             <button
               type="button"
@@ -1573,38 +1594,32 @@ export default function App() {
   };
 
   const renderPlaceholderPage = (title: string, description: string) => (
-    <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans">
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 md:px-10">
+    <div className={professionalPageClass}>
+      <main className={professionalMainClass}>
         <button
           type="button"
           onClick={() => navigatePath('/dashboard')}
-          className="mb-8 inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827] px-4 py-2 text-sm font-bold text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+          className={professionalBackButtonClass}
         >
           <ChevronLeft className="h-4 w-4" />
           Back to Dashboard
         </button>
-        <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 sm:p-8">
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">{title}</h1>
-          <p className="mt-2 max-w-2xl font-sans text-sm font-normal leading-6 text-[#8B9CB8]">{description}</p>
-        </section>
+        {renderProfessionalHeader(title, description, Sparkles)}
       </main>
       {renderBottomNavigation()}
     </div>
   );
 
   const renderPracticePage = () => (
-    <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
-      <main className="mx-auto max-w-4xl space-y-5 animate-fade-up">
-        <section>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Practice</h1>
-          <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">How would you like to practice today?</p>
-        </section>
+    <div className={professionalPageClass}>
+      <main className={professionalMainClass}>
+        {renderProfessionalHeader('Practice', 'How would you like to practice today?', PenLine, '#FF6B35')}
 
         <section className="space-y-4">
           <button
             type="button"
             onClick={() => navigatePath('/practice/subjects')}
-            className="group w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-left transition hover:-translate-y-0.5 hover:border-[#FF6B35]/40"
+            className="group w-full rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] text-left transition hover:-translate-y-0.5 hover:border-[#FF6B35]/40"
           >
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#FF6B35]/15 text-[#FF6B35]">
@@ -1628,7 +1643,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => navigatePath('/practice/exam-type')}
-            className="group w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-left transition hover:-translate-y-0.5 hover:border-purple-400/40"
+            className="group w-full rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] text-left transition hover:-translate-y-0.5 hover:border-purple-400/40"
           >
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 text-purple-300">
@@ -1662,13 +1677,12 @@ export default function App() {
     ];
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-8 text-white md:px-10">
-        <main className="mx-auto max-w-4xl animate-fade-up">
-          <button type="button" onClick={() => navigatePath('/practice')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
+      <div className={professionalPageClass}>
+        <main className={professionalMainClass}>
+          <button type="button" onClick={() => navigatePath('/practice')} className={professionalBackButtonClass}>
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Select Exam Type</h1>
-          <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Choose which exam you want to simulate today.</p>
+          {renderProfessionalHeader('Select Exam Type', 'Choose which exam you want to simulate today.', FileText, '#9B5DE5')}
 
           <section className="mt-6 space-y-3">
             {exams.map(exam => (
@@ -1692,7 +1706,7 @@ export default function App() {
             ))}
           </section>
 
-          <p className="mt-6 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4 text-sm leading-6 text-[#8B9CB8]">
+          <p className="mt-6 rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] text-sm leading-6 text-[#8B9CB8]">
             Your exam simulation will only include subjects you selected during onboarding.
           </p>
         </main>
@@ -1706,13 +1720,12 @@ export default function App() {
     const selectedCount = getSelectedTopicCount();
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-40 pt-8 text-white md:px-10">
-        <main className="mx-auto max-w-4xl animate-fade-up">
-          <button type="button" onClick={() => navigatePath('/practice')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
+      <div className={professionalPageClass}>
+        <main className={professionalMainClass}>
+          <button type="button" onClick={() => navigatePath('/practice')} className={professionalBackButtonClass}>
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Select Subject</h1>
-          <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Choose a subject, then select available subtopics.</p>
+          {renderProfessionalHeader('Select Subject', 'Choose a subject, then select available subtopics.', BookOpen, '#00BBF9')}
           {loadingPracticeAvailability && (
             <p className="mt-2 inline-flex items-center gap-2 font-sans text-xs font-normal text-[#8B9CB8]">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-[#FF6B35]" />
@@ -1729,7 +1742,7 @@ export default function App() {
               const ExpandIcon = expanded ? ChevronUp : ChevronDown;
 
               return (
-                <div key={subject.name} className="overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827]" style={{ borderLeftColor: subject.accent, borderLeftWidth: 4 }}>
+                <div key={subject.name} className="overflow-hidden rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85" style={{ borderLeftColor: subject.accent, borderLeftWidth: 4 }}>
                   <button type="button" onClick={() => toggleExpandedPracticeSubject(subject.name)} className="flex w-full items-center justify-between gap-4 p-4 text-left">
                     <div className="min-w-0">
                       <h2 className="break-words font-heading text-base font-semibold leading-5 text-white sm:text-lg">{subject.name}</h2>
@@ -1848,7 +1861,7 @@ export default function App() {
     if (totalQuestions === 0) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 text-white">
-          <div className="w-full max-w-md animate-fade-up rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-center">
+          <div className="w-full max-w-md animate-fade-up rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] text-center">
             <BookOpen className="mx-auto h-10 w-10 text-[#FF6B35]" />
             <h1 className="mt-5 font-heading text-2xl font-bold text-white">No questions available for selected topics.</h1>
             <p className="mt-3 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">They may not be in database yet.</p>
@@ -1871,7 +1884,7 @@ export default function App() {
 
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 py-10 text-white">
-          <div className="w-full max-w-md animate-fade-up rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-center sm:p-8">
+          <div className="w-full max-w-md animate-fade-up rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] text-center sm:p-8">
             <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full border-8 border-[#FF6B35]/25 bg-[#0A0F1E]">
               <span className="font-heading text-3xl font-bold text-[#FF6B35] sm:text-4xl">{percent}%</span>
             </div>
@@ -1964,7 +1977,7 @@ export default function App() {
             </p>
           )}
 
-          <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.25)] md:p-8">
+          <section className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] md:p-8">
             <p className="font-sans text-lg font-normal leading-8 text-white md:text-2xl">
               {currentQuestion?.question_text}
             </p>
@@ -2023,17 +2036,16 @@ export default function App() {
   };
 
   const renderCheatsheetPage = () => (
-    <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
-      <main className="mx-auto max-w-5xl animate-fade-up">
+    <div className={professionalPageClass}>
+      <main className={professionalMainClass}>
         <section>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Cheatsheets</h1>
-          <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Quick revision for every topic.</p>
+          {renderProfessionalHeader('Cheatsheets', 'Quick revision for every topic.', BookMarked, '#2EC4B6')}
           <div className="relative mt-5">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#8B9CB8]" />
             <input
               type="search"
               placeholder="Search topics"
-              className="w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] px-12 py-4 font-sans text-sm font-normal text-white outline-none transition placeholder:text-[#8B9CB8] focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15)]"
+              className="w-full rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 px-12 py-4 font-sans text-sm font-normal text-white outline-none transition placeholder:text-[#8B9CB8] focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15)]"
             />
           </div>
         </section>
@@ -2075,13 +2087,13 @@ export default function App() {
     const subject = getSubjectFromSlug(subjectSlug);
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-8 text-white md:px-10">
-        <main className="mx-auto max-w-4xl animate-fade-up">
-          <button type="button" onClick={() => navigatePath('/cheatsheet')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
+      <div className={professionalPageClass}>
+        <main className={professionalMainClass}>
+          <button type="button" onClick={() => navigatePath('/cheatsheet')} className={professionalBackButtonClass}>
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">{subject}</h1>
-          <div className="mt-8 divide-y divide-white/10 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-2">
+          {renderProfessionalHeader(subject, 'Choose a topic to open quick revision notes.', BookMarked, '#2EC4B6')}
+          <div className="mt-8 divide-y divide-white/10 rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-2">
             {(subtopicsBySubject[subject] || []).map(topic => (
               <button key={topic} type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}/${slugify(topic)}`)} className="flex w-full items-center justify-between px-4 py-4 text-left">
                 <span className="font-heading text-base font-bold text-white">{topic}</span>
@@ -2121,9 +2133,9 @@ export default function App() {
     ];
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-40 pt-8 text-white md:px-10">
-        <main className="mx-auto max-w-4xl animate-fade-up">
-          <button type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}`)} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B9CB8] hover:text-[#FF6B35]">
+      <div className={professionalPageClass}>
+        <main className={professionalMainClass}>
+          <button type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}`)} className={professionalBackButtonClass}>
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">{topic}</h1>
@@ -2131,7 +2143,7 @@ export default function App() {
 
           <div className="mt-8 space-y-5">
             {sections.map(section => (
-              <section key={section.title} className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-5 md:p-6">
+              <section key={section.title} className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-5 md:p-6">
                 <h2 className="font-heading text-lg font-bold text-white">{section.title}</h2>
                 <p className="mt-3 font-sans text-sm font-normal leading-7 text-[#C8D2E4] md:text-base">{section.body}</p>
               </section>
@@ -2182,15 +2194,12 @@ export default function App() {
       : '';
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
-        <main className="mx-auto max-w-5xl space-y-7 animate-fade-up">
-          <section>
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Battle</h1>
-            <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8] sm:text-base">Challenge your classmates and see who knows more.</p>
-          </section>
+      <div className={professionalPageClass}>
+        <main className={professionalMainClass}>
+          {renderProfessionalHeader('Battle', 'Challenge your classmates and see who knows more.', Swords, '#FF6B35')}
 
           <section className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6">
+            <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#FF6B35]/15 text-[#FF6B35]">
                   <Swords className="h-[22px] w-[22px]" />
@@ -2237,7 +2246,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6">
+            <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 text-purple-300">
                   <Target className="h-[22px] w-[22px]" />
@@ -2269,14 +2278,14 @@ export default function App() {
           <section>
             <h2 className="font-heading text-lg font-bold text-white sm:text-xl">Recent Battles</h2>
             {recentBattles.length === 0 ? (
-              <div className="mt-4 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] px-6 py-10 text-center">
+              <div className="mt-4 rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 px-6 py-10 text-center">
                 <p className="font-heading text-base font-bold text-white">No battles yet.</p>
                 <p className="mt-2 font-sans text-sm font-normal text-[#8B9CB8]">Challenge a friend to get started.</p>
               </div>
             ) : (
               <div className="mt-4 space-y-3">
                 {recentBattles.map(battle => (
-                  <div key={`${battle.opponent}-${battle.date}`} className="flex flex-col gap-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+                  <div key={`${battle.opponent}-${battle.date}`} className="flex flex-col gap-3 rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
                     <div className="min-w-0">
                       <p className="font-heading text-sm font-semibold text-white">{battle.opponent}</p>
                       <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{battle.date}</p>
@@ -2323,12 +2332,9 @@ export default function App() {
     );
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 pt-10 text-white md:px-10">
-        <main className="mx-auto max-w-5xl space-y-7 animate-fade-up">
-          <section>
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">Leaderboard</h1>
-            <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8] sm:text-base">See how you rank nationally.</p>
-          </section>
+      <div className={professionalPageClass}>
+        <main className={professionalMainClass}>
+          {renderProfessionalHeader('Leaderboard', 'See how you rank nationally.', Trophy, '#FFD700')}
 
           <section className="space-y-4">
             <div className="flex items-end gap-6 border-b border-[rgba(255,255,255,0.08)]">
@@ -2351,7 +2357,7 @@ export default function App() {
             {topThree.map(student => {
               const color = rankColors[student.rank];
               return (
-                <div key={student.username} className="grid grid-cols-[40px_28px_42px_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4">
+                <div key={student.username} className="grid grid-cols-[40px_28px_42px_minmax(0,1fr)] items-center gap-3 rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                   <span className="font-heading text-2xl font-bold" style={{ color }}>#{student.rank}</span>
                   <Award className="h-6 w-6" style={{ color }} />
                   <div className="flex h-10 w-10 items-center justify-center rounded-full font-heading text-sm font-semibold text-white" style={{ backgroundColor: `${color}33` }}>
@@ -2629,6 +2635,15 @@ export default function App() {
             accent: '#00BBF9',
             iconBg: 'rgba(0,187,249,0.15)',
             actionText: 'Open'
+          },
+          {
+            title: 'Exam Updates',
+            description: 'Latest exam news and scholarship alerts',
+            href: '/updates',
+            icon: Newspaper,
+            accent: '#2EC4B6',
+            iconBg: 'rgba(46,196,182,0.15)',
+            actionText: 'Read Updates'
           }
         ];
         const getUpdateCategoryClass = (category: string) => {
@@ -2641,7 +2656,7 @@ export default function App() {
         };
 
         return (
-          <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans scroll-smooth">
+          <div className={`${professionalPageClass} scroll-smooth`}>
             <nav className="sticky top-0 z-40 flex h-20 items-center border-b border-[rgba(255,255,255,0.08)] bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
               <span className="font-heading text-[22px] font-bold tracking-tight text-white">
                 Exam<span className="text-[#FF6B35]">Ready</span>
@@ -2669,17 +2684,17 @@ export default function App() {
                 </div>
 
                 <div className="mt-5 grid grid-cols-3 gap-3 md:gap-4">
-                  <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-3 text-center sm:p-4">
+                  <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-3 text-center sm:p-4">
                     <Flame className="mx-auto h-6 w-6 text-[#FF6B35] sm:h-7 sm:w-7" />
                     <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{studentProfile.streak ?? 0}</p>
                     <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Day Streak</p>
                   </div>
-                  <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-3 text-center sm:p-4">
+                  <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-3 text-center sm:p-4">
                     <BookOpen className="mx-auto h-6 w-6 text-[#00BBF9] sm:h-7 sm:w-7" />
                     <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{dashboardPerformance.questions}</p>
                     <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Questions</p>
                   </div>
-                  <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-3 text-center sm:p-4">
+                  <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-3 text-center sm:p-4">
                     <Target className="mx-auto h-6 w-6 text-[#2EC4B6] sm:h-7 sm:w-7" />
                     <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{dashboardPerformance.accuracy}%</p>
                     <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Accuracy</p>
@@ -2695,7 +2710,7 @@ export default function App() {
                       key={card.title}
                       type="button"
                       onClick={() => navigatePath(card.href)}
-                      className="group flex cursor-pointer flex-col rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-white/15"
+                      className="group flex cursor-pointer flex-col rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] text-left transition duration-200 hover:-translate-y-0.5 hover:border-white/15"
                     >
                       <div className="flex items-start gap-4">
                         <div
@@ -2739,7 +2754,7 @@ export default function App() {
                       key={`${update.category}-${update.title}-${index}`}
                       type="button"
                       onClick={() => navigatePath('/updates')}
-                      className="w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4 text-left transition hover:border-[#FF6B35]/30"
+                      className="w-full rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] text-left transition hover:border-[#FF6B35]/30"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span className={`rounded-full px-3 py-1 text-[11px] font-bold text-white ${getUpdateCategoryClass(update.category)}`}>

@@ -2,6 +2,28 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Loader2, Target } from 'lucide-react';
 import { supabase } from '../../supabase';
 
+
+const pageClass = 'min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,107,53,0.10),transparent_34%),#0A0F1E] pb-36 text-white font-sans';
+const mainClass = 'mx-auto max-w-5xl space-y-7 px-4 py-6 sm:px-6 md:px-10 md:py-8 animate-fade-up';
+const backButtonClass = 'inline-flex min-w-0 items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827]/90 px-4 py-2.5 font-sans text-sm font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]';
+
+const ProfessionalHeader = () => (
+  <section className="rounded-[28px] border border-[#FF6B35]/20 bg-gradient-to-br from-[#1A1A2E] via-[#141827] to-[#111827] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-6">
+    <div className="flex items-center gap-4">
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-[#FF6B35]/15 text-[#FF6B35] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <Target className="h-7 w-7" />
+      </div>
+      <div className="min-w-0">
+        <p className="font-sans text-[11px] font-bold uppercase tracking-[0.28em] text-[#FFB199]">Weakness Assassin</p>
+        <h1 className="mt-2 break-words font-heading text-2xl font-bold leading-tight text-white sm:text-3xl">Find and fix your weakest topics</h1>
+        <p className="mt-2 max-w-2xl font-sans text-sm font-normal leading-6 text-[#8B9CB8]">
+          We analyze your practice history and show you what needs urgent work, what’s average, and what you’ve mastered.
+        </p>
+      </div>
+    </div>
+  </section>
+);
+
 const tabs = [
   {
     key: 'urgent',
@@ -176,35 +198,25 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
       topics: JSON.stringify(navigationState.selections)
     });
 
-    console.log('Weakness Assassin Practice Now navigation state:', navigationState);
     navigatePath(`/practice/session?${params.toString()}`, navigationState);
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans">
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 md:px-10">
+    <div className={pageClass}>
+      <main className={mainClass}>
         <button
           type="button"
           onClick={() => navigatePath('/dashboard')}
-          className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827] px-4 py-2 font-sans text-sm font-bold text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+          className={backButtonClass}
         >
           <ChevronLeft className="h-4 w-4" />
           Back to Dashboard
         </button>
 
-        <header className="animate-fade-up">
-          <p className="inline-flex items-center gap-2 rounded-full border border-[#FF6B35]/25 bg-[#FF6B35]/10 px-3 py-1 font-sans text-xs font-bold text-[#FF6B35]">
-            <Target className="h-3.5 w-3.5" />
-            Weakness Assassin
-          </p>
-          <h1 className="mt-4 font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl">Find and fix your weakest topics</h1>
-          <p className="mt-2 max-w-2xl font-sans text-sm font-normal leading-6 text-[#8B9CB8]">
-            We analyze your practice history and show you what needs urgent work, what’s average, and what you’ve mastered.
-          </p>
-        </header>
+        <ProfessionalHeader />
 
         {loading && (
-          <section className="mt-8 flex min-h-[260px] items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-8 text-center">
+          <section className="mt-8 flex min-h-[260px] items-center justify-center rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] p-8 text-center">
             <div>
               <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#FF6B35]" />
               <p className="mt-4 font-sans text-sm font-normal text-[#8B9CB8]">Loading your weak areas...</p>
@@ -213,7 +225,7 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
         )}
 
         {!loading && processedSubtopics.length === 0 && (
-          <section className="mt-8 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-8 text-center shadow-[0_20px_70px_rgba(0,0,0,0.25)]">
+          <section className="mt-8 rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
             <BookOpen className="mx-auto h-11 w-11 text-[#FF6B35]" />
             <h2 className="mt-5 font-heading text-xl font-bold text-white">Complete your first practice session to see your weak areas</h2>
             <p className="mx-auto mt-3 max-w-sm font-sans text-sm font-normal leading-6 text-[#8B9CB8]">
@@ -232,7 +244,7 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
 
         {!loading && processedSubtopics.length > 0 && (
           <>
-            <section className="mt-8 grid grid-cols-3 gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-2">
+            <section className="mt-8 grid grid-cols-3 gap-2 rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] p-2">
               {tabs.map(tab => {
                 const active = activeTab === tab.key;
                 return (
@@ -250,7 +262,7 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
             </section>
 
             {activeSubjectGroups.length === 0 ? (
-              <section className="mt-6 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-center">
+              <section className="mt-6 rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] p-6 text-center">
                 <Target className="mx-auto h-9 w-9 text-[#FF6B35]" />
                 <h2 className="mt-4 font-heading text-lg font-bold text-white">{activeTabConfig.empty}</h2>
                 <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">
@@ -265,7 +277,7 @@ export default function WeaknessAssassin({ user, navigatePath, renderBottomNavig
                   const ExpandIcon = expanded ? ChevronUp : ChevronDown;
 
                   return (
-                    <article key={`${activeTab}-${subjectGroup.subject}`} className="overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827]">
+                    <article key={`${activeTab}-${subjectGroup.subject}`} className="overflow-hidden rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
                       <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
                           <h2 className="break-words font-heading text-lg font-bold text-white">{subjectGroup.subject}</h2>
