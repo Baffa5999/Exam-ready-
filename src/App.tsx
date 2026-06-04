@@ -972,6 +972,7 @@ export default function App() {
     const navigationState = (window.history.state || {}) as {
       subjects?: string[];
       subtopics?: string[];
+      selectedSubtopics?: string[];
       selections?: PracticeSelection[];
     };
     const params = new URLSearchParams(window.location.search);
@@ -982,22 +983,58 @@ export default function App() {
       pathname: window.location.pathname
     });
 
+    const resolveSubjectForSubtopic = (subtopic: string, fallbackSubjects: string[] = []) => {
+      const matchingFallbackSubject = fallbackSubjects.find(subject => {
+        const availableRows = availablePracticeSubtopics[subject] || [];
+        const fallbackRows = Object.values(fallbackPracticeSubtopicsByTopic[subject] || {}).flat();
+        return availableRows.some(row => row.subtopic === subtopic) || fallbackRows.includes(subtopic);
+      });
+      if (matchingFallbackSubject) return matchingFallbackSubject;
+
+      const matchingAvailableSubject = Object.entries(availablePracticeSubtopics).find(([, rows]) => (rows as PracticeTopicAvailability[]).some(row => row.subtopic === subtopic))?.[0];
+      if (matchingAvailableSubject) return matchingAvailableSubject;
+
+      const matchingFallbackLibrarySubject = Object.entries(fallbackPracticeSubtopicsByTopic).find(([, topics]) => Object.values(topics).flat().includes(subtopic))?.[0];
+      if (matchingFallbackLibrarySubject) return matchingFallbackLibrarySubject;
+
+      return fallbackSubjects[0] || params.get('subject') || 'Mathematics';
+    };
+
     if (Array.isArray(navigationState.selections) && navigationState.selections.length > 0) {
-      return navigationState.selections.filter(item => item.subject && item.topic);
+      const selections = navigationState.selections.filter(item => item.subject && item.topic);
+      if (selections.length > 0) return selections;
     }
 
-    if (Array.isArray(navigationState.subjects) && Array.isArray(navigationState.subtopics)) {
-      const selections = navigationState.subtopics.flatMap(subtopic => {
-        const matchingSubject = navigationState.subjects?.find(subject => {
-          const availableRows = availablePracticeSubtopics[subject] || [];
-          const fallbackRows = Object.values(fallbackPracticeSubtopicsByTopic[subject] || {}).flat();
-          return availableRows.some(row => row.subtopic === subtopic) || fallbackRows.includes(subtopic);
-        }) || navigationState.subjects?.[0];
+    const stateSubtopics = Array.isArray(navigationState.subtopics)
+      ? navigationState.subtopics
+      : Array.isArray(navigationState.selectedSubtopics)
+        ? navigationState.selectedSubtopics
+        : [];
 
-        return matchingSubject ? [{ subject: matchingSubject, topic: subtopic }] : [];
-      });
+    if (stateSubtopics.length > 0) {
+      const uniqueSubtopics = Array.from(new Set(stateSubtopics.filter(Boolean)));
+      const selections = uniqueSubtopics.map(subtopic => ({
+        subject: resolveSubjectForSubtopic(subtopic, navigationState.subjects || []),
+        topic: subtopic
+      }));
 
       if (selections.length > 0) return selections;
+    }
+
+    const rawSubtopics = params.get('subtopics');
+
+    if (rawSubtopics) {
+      try {
+        const parsedSubtopics = JSON.parse(rawSubtopics) as string[];
+        if (Array.isArray(parsedSubtopics) && parsedSubtopics.length > 0) {
+          return Array.from(new Set(parsedSubtopics.filter(Boolean))).map(subtopic => ({
+            subject: resolveSubjectForSubtopic(subtopic),
+            topic: subtopic
+          }));
+        }
+      } catch (error) {
+        console.warn('Unable to parse practice subtopics from URL:', error);
+      }
     }
 
     const rawTopics = params.get('topics');
@@ -1006,7 +1043,7 @@ export default function App() {
       try {
         const parsed = JSON.parse(rawTopics) as Array<{ subject?: string; topic?: string; subtopic?: string }>;
         const selections = parsed
-          .map(item => ({ subject: item.subject || '', topic: item.topic || item.subtopic || '' }))
+          .map(item => ({ subject: item.subject || resolveSubjectForSubtopic(item.topic || item.subtopic || ''), topic: item.topic || item.subtopic || '' }))
           .filter(item => item.subject && item.topic);
 
         if (selections.length > 0) return selections;
@@ -1203,7 +1240,9 @@ export default function App() {
       }));
 
       if (!cancelled) {
+        const distinctSubtopics = Array.from(new Set(Object.values(nextAvailability).flat().map(row => row.subtopic).filter(Boolean)));
         console.log('Available practice subtopics:', nextAvailability);
+        console.log('Distinct question subtopic names from Supabase:', distinctSubtopics);
         setAvailablePracticeSubtopics(nextAvailability);
         setLoadingPracticeAvailability(false);
       }
@@ -1244,22 +1283,13 @@ export default function App() {
 
       try {
         const selectedSubtopics = Array.from(new Set(selections.map(selection => selection.topic).filter(Boolean)));
-        console.log('Fetching practice questions from Supabase for subtopics:', selectedSubtopics);
+        console.log('Practice session selected subtopics array:', selectedSubtopics);
+        console.log('Fetching practice questions from Supabase with .in(\'subtopic\', selectedSubtopics):', selectedSubtopics);
 
-        const randomOrderedResult = await supabase
+        const result = await supabase
           .from('questions')
           .select('*')
-          .in('subtopic', selectedSubtopics)
-          .order('random()')
-          .limit(20);
-
-        const result = randomOrderedResult.error
-          ? await supabase
-            .from('questions')
-            .select('*')
-            .in('subtopic', selectedSubtopics)
-            .limit(20)
-          : randomOrderedResult;
+          .in('subtopic', selectedSubtopics);
 
         if (result.error) {
           console.warn('Unable to fetch practice questions:', result.error);
@@ -1268,7 +1298,12 @@ export default function App() {
         }
 
         if (!cancelled) {
-          const shuffledQuestions = shuffleQuestions((result.data || []) as PracticeQuestion[]);
+          const rows = (result.data || []) as PracticeQuestion[];
+          const matchedSubtopics = Array.from(new Set(rows.map(question => question.subtopic).filter(Boolean)));
+          console.log('Practice question rows returned:', rows.length);
+          console.log('Matched database subtopics for selected practice:', matchedSubtopics);
+
+          const shuffledQuestions = shuffleQuestions(rows);
           const uniqueQuestions = shuffledQuestions.filter((question, index, allQuestions) => {
             if (!question.id) return true;
             return allQuestions.findIndex(item => item.id === question.id) === index;
@@ -1356,6 +1391,15 @@ export default function App() {
 
   const getSelectedTopicCount = () => Object.values(selectedPracticeTopics).reduce((sum: number, topics) => sum + (topics as string[]).length, 0);
 
+  const getPracticeTopicsForSubject = (subject: string) => {
+    const staticTopics = subtopicsBySubject[subject] || [];
+    const dynamicTopics = (availablePracticeSubtopics[subject] || [])
+      .map(row => row.topic)
+      .filter(Boolean);
+
+    return Array.from(new Set([...staticTopics, ...dynamicTopics]));
+  };
+
   const getAvailableSubtopicRows = (subject: string, topic: string) => {
     const rows = availablePracticeSubtopics[subject] || [];
     const fallbackSubtopics = fallbackPracticeSubtopicsByTopic[subject]?.[topic] || [];
@@ -1423,12 +1467,14 @@ export default function App() {
       selections: selectedEntries
     };
 
+    console.log('Selected subtopics:', selectedSubtopics);
     console.log('Start Practice navigation state:', navigationState);
 
     setPracticeQuestionsLoading(true);
     const params = new URLSearchParams({
       subject: first.subject,
       topic: first.topic,
+      subtopics: JSON.stringify(selectedSubtopics),
       topics: JSON.stringify(selectedEntries)
     });
     navigatePath(`/practice/session?${params.toString()}`, navigationState);
@@ -1636,7 +1682,7 @@ export default function App() {
 
           <section className="mt-6 space-y-3">
             {practiceSubjects.map(subject => {
-              const topics = subtopicsBySubject[subject.name] || [];
+              const topics = getPracticeTopicsForSubject(subject.name);
               const selectedSubtopics = selectedPracticeTopics[subject.name] || [];
               const expanded = expandedPracticeSubjects.includes(subject.name);
               const expandedTopics = expandedPracticeTopics[subject.name] || [];
@@ -1764,8 +1810,8 @@ export default function App() {
         <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 text-white">
           <div className="w-full max-w-md animate-fade-up rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-center">
             <BookOpen className="mx-auto h-10 w-10 text-[#FF6B35]" />
-            <h1 className="mt-5 font-heading text-2xl font-bold text-white">No questions available for this topic yet.</h1>
-            <p className="mt-3 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Check back soon.</p>
+            <h1 className="mt-5 font-heading text-2xl font-bold text-white">No questions available for selected topics.</h1>
+            <p className="mt-3 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">They may not be in database yet.</p>
             <button
               type="button"
               onClick={() => navigatePath('/practice/subjects')}
