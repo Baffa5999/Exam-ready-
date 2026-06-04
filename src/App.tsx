@@ -1463,57 +1463,114 @@ export default function App() {
     navigatePath(`/practice/session?${params.toString()}`, navigationState);
   };
 
-  const renderProfilePage = () => (
-    <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans">
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 md:px-10">
-        <button
-          type="button"
-          onClick={() => navigatePath('/dashboard')}
-          className="mb-6 inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827] px-4 py-2 text-sm font-bold text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back to Dashboard
-        </button>
+  const renderProfilePage = () => {
+    const username = getDashboardUsername();
+    const email = currentUser?.email || studentProfile?.email || 'No email available';
+    const initial = (studentProfile?.username || studentProfile?.fullName || currentUser?.email || 'S').charAt(0).toUpperCase();
+    const profileStats = [
+      {
+        label: 'Day Streak',
+        value: studentProfile?.streak ?? 0,
+        icon: Flame,
+        color: '#FF6B35'
+      },
+      {
+        label: 'Overall Accuracy',
+        value: `${dashboardPerformance.accuracy}%`,
+        icon: Target,
+        color: '#2EC4B6'
+      },
+      {
+        label: 'Questions Answered',
+        value: dashboardPerformance.questions,
+        icon: BookOpen,
+        color: '#00BBF9'
+      },
+      {
+        label: 'Battles Won',
+        value: profileBattleWins,
+        icon: Trophy,
+        color: '#FF6B35',
+        helper: 'Completed battle wins'
+      }
+    ];
 
-        <section className="animate-fade-up rounded-3xl border border-[rgba(255,107,53,0.2)] bg-gradient-to-br from-[#1A1A2E] to-[#111827] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.25)] sm:p-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="font-sans text-xs font-bold uppercase tracking-[0.2em] text-[#FF6B35]">Profile</p>
-              <h1 className="mt-3 break-words font-heading text-2xl font-bold text-white sm:text-3xl">{getDashboardUsername()}</h1>
-              <p className="mt-2 break-words font-sans text-sm font-normal text-[#8B9CB8]">{currentUser?.email || studentProfile?.email || 'No email available'}</p>
-            </div>
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#FF6B35] font-heading text-2xl font-bold text-white">
-              {(studentProfile?.username || studentProfile?.fullName || currentUser?.email || 'S').charAt(0).toUpperCase()}
-            </div>
+    return (
+      <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans">
+        <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 md:px-10">
+          <div className="mb-8 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => navigatePath('/dashboard')}
+              className="inline-flex min-w-0 items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827]/90 px-4 py-2.5 font-sans text-sm font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+            >
+              <ChevronLeft className="h-4 w-4 shrink-0" />
+              <span className="truncate">Back to Dashboard</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="inline-flex items-center gap-2 rounded-full border border-[#FF6B35]/25 bg-[#FF6B35]/10 px-4 py-2.5 font-sans text-sm font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:bg-[#FF6B35] hover:text-white"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign Out</span>
+            </button>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4">
-              <Flame className="h-6 w-6 text-[#FF6B35]" />
-              <p className="mt-3 font-heading text-2xl font-bold text-white">{studentProfile?.streak ?? 0}</p>
-              <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">Day Streak</p>
+          <section className="animate-fade-up rounded-[28px] border border-[#FF6B35]/25 bg-gradient-to-br from-[#1A1A2E] via-[#141827] to-[#111827] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:p-8">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+              <div className="relative flex h-32 w-32 shrink-0 items-center justify-center self-center rounded-full border border-[#FFB36B]/40 bg-[radial-gradient(circle_at_50%_42%,#33220F_0%,#0A0F1E_58%,#FF6B35_60%,#2A1720_70%,#0A0F1E_100%)] shadow-[0_0_35px_rgba(255,107,53,0.22)] sm:self-auto">
+                <div className="absolute inset-3 rounded-full border border-[#FFD08A]/60" />
+                <div className="absolute inset-6 rounded-full border border-[#FF6B35]/40" />
+                <span className="relative font-heading text-5xl font-bold text-[#FF8A3D] drop-shadow-[0_2px_10px_rgba(255,107,53,0.45)]">
+                  {initial}
+                </span>
+              </div>
+
+              <div className="min-w-0 text-center sm:text-left">
+                <span className="inline-flex rounded-md border border-[#FF8A66]/60 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-[0.28em] text-[#FFB199]">
+                  Profile
+                </span>
+                <h1 className="mt-4 break-words font-heading text-2xl font-bold leading-tight text-[#FF7A55] sm:text-3xl">
+                  {username}
+                </h1>
+                <p className="mt-2 break-words font-sans text-sm font-normal text-[#8B9CB8] sm:text-base">
+                  {email}
+                </p>
+              </div>
             </div>
-            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4">
-              <Target className="h-6 w-6 text-[#2EC4B6]" />
-              <p className="mt-3 font-heading text-2xl font-bold text-white">{dashboardPerformance.accuracy}%</p>
-              <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">Overall Accuracy</p>
+
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              {profileStats.map(stat => {
+                const StatIcon = stat.icon;
+                return (
+                  <div
+                    key={stat.label}
+                    className="min-h-[154px] rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-5"
+                  >
+                    <StatIcon className="h-9 w-9" style={{ color: stat.color }} />
+                    <p className="mt-5 font-heading text-3xl font-bold leading-none sm:text-4xl" style={{ color: stat.color }}>
+                      {stat.value}
+                    </p>
+                    <p className="mt-3 font-sans text-sm font-normal leading-5 text-[#8B9CB8] sm:text-base">
+                      {stat.label}
+                    </p>
+                    {stat.helper && (
+                      <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]/80">
+                        {stat.helper}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4">
-              <BookOpen className="h-6 w-6 text-[#00BBF9]" />
-              <p className="mt-3 font-heading text-2xl font-bold text-white">{dashboardPerformance.questions}</p>
-              <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">Questions Answered</p>
-            </div>
-            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-4">
-              <Trophy className="h-6 w-6 text-[#FF6B35]" />
-              <p className="mt-3 font-heading text-2xl font-bold text-white">🏆 Battles Won: {profileBattleWins}</p>
-              <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">Completed battle wins</p>
-            </div>
-          </div>
-        </section>
-      </main>
-      {renderBottomNavigation()}
-    </div>
-  );
+          </section>
+        </main>
+        {renderBottomNavigation()}
+      </div>
+    );
+  };
 
   const renderPlaceholderPage = (title: string, description: string) => (
     <div className="min-h-screen overflow-x-hidden bg-[#0A0F1E] pb-36 text-white font-sans">
