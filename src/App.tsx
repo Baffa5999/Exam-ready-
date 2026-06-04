@@ -977,12 +977,6 @@ export default function App() {
     };
     const params = new URLSearchParams(window.location.search);
 
-    console.log('PracticeSession received navigation state:', {
-      navigationState,
-      search: window.location.search,
-      pathname: window.location.pathname
-    });
-
     const resolveSubjectForSubtopic = (subtopic: string, fallbackSubjects: string[] = []) => {
       const matchingFallbackSubject = fallbackSubjects.find(subject => {
         const availableRows = availablePracticeSubtopics[subject] || [];
@@ -1073,6 +1067,34 @@ export default function App() {
     return next;
   };
 
+  const getBalancedPracticeQuestions = (questions: PracticeQuestion[], selectedSubtopics: string[], limit = 20) => {
+    const uniqueQuestions = questions.filter((question, index, allQuestions) => {
+      if (question.id) return allQuestions.findIndex(item => item.id === question.id) === index;
+
+      const fallbackKey = `${question.subject}-${question.topic}-${question.subtopic}-${question.question_text}`;
+      return allQuestions.findIndex(item => `${item.subject}-${item.topic}-${item.subtopic}-${item.question_text}` === fallbackKey) === index;
+    });
+
+    const groupedQuestions = selectedSubtopics
+      .map(subtopic => ({
+        subtopic,
+        questions: shuffleQuestions(uniqueQuestions.filter(question => question.subtopic === subtopic))
+      }))
+      .filter(group => group.questions.length > 0);
+
+    const balancedQuestions: PracticeQuestion[] = [];
+
+    while (balancedQuestions.length < limit && groupedQuestions.some(group => group.questions.length > 0)) {
+      for (const group of groupedQuestions) {
+        const nextQuestion = group.questions.shift();
+        if (nextQuestion) balancedQuestions.push(nextQuestion);
+        if (balancedQuestions.length >= limit) break;
+      }
+    }
+
+    return balancedQuestions;
+  };
+
   const getAnswerOptions = (question: PracticeQuestion) => [
     question.option_a,
     question.option_b,
@@ -1094,24 +1116,10 @@ export default function App() {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     const activeUser = user || currentUser;
 
-    console.log('Practice performance save requested after answer:', {
-      userId: activeUser?.id,
-      questionId: question.id,
-      subject: question.subject,
-      topic: question.topic,
-      subtopic: question.subtopic,
-      isCorrect
-    });
-
     if (userError || !activeUser) {
       console.warn('Skipping practice performance save because no authenticated user was found:', userError);
       return;
     }
-
-    console.log('Checking existing student_performance row before upsert:', {
-      userId: activeUser.id,
-      subtopic: question.subtopic
-    });
 
     const { data: existingPerformance, error: lookupError } = await supabase
       .from('student_performance')
@@ -1141,8 +1149,6 @@ export default function App() {
       last_practiced: new Date().toISOString()
     };
 
-    console.log('Calling student_performance upsert with payload:', payload);
-
     const { error: upsertError } = await supabase
       .from('student_performance')
       .upsert(payload, { onConflict: 'user_id, subtopic' });
@@ -1152,7 +1158,6 @@ export default function App() {
       return;
     }
 
-    console.log('student_performance upsert completed successfully:', payload);
   };
 
   const handlePracticeAnswer = (answerIndex: number) => {
@@ -1174,14 +1179,6 @@ export default function App() {
       } else {
         setFailedPracticeQuestions(prev => [...prev, { question: currentQuestion, selectedAnswer: answerIndex }]);
       }
-      console.log('Practice answer selected; calling student_performance save:', {
-        questionId: currentQuestion.id,
-        subject: currentQuestion.subject,
-        subtopic: currentQuestion.subtopic,
-        selectedAnswer: answerIndex,
-        correctAnswerIndex,
-        isCorrect
-      });
       void savePracticePerformance(currentQuestion, isCorrect);
     }
   };
@@ -1283,13 +1280,6 @@ export default function App() {
 
       try {
         const selectedSubtopics = Array.from(new Set(selections.map(selection => selection.topic).filter(Boolean)));
-        console.log('Practice session selected subtopics array:', selectedSubtopics);
-        console.log('Fetching practice questions from Supabase with .in(\'subtopic\', selectedSubtopics):', selectedSubtopics);
-        console.log('DEBUG: Supabase questions query filter:', {
-          table: 'questions',
-          filter: 'subtopic IN selectedSubtopics',
-          selectedSubtopics
-        });
 
         const result = await supabase
           .from('questions')
@@ -1303,18 +1293,8 @@ export default function App() {
         }
 
         if (!cancelled) {
-          console.log('DEBUG: Supabase questions data returned:', result.data);
           const rows = (result.data || []) as PracticeQuestion[];
-          const matchedSubtopics = Array.from(new Set(rows.map(question => question.subtopic).filter(Boolean)));
-          console.log('Practice question rows returned:', rows.length);
-          console.log('Matched database subtopics for selected practice:', matchedSubtopics);
-
-          const shuffledQuestions = shuffleQuestions(rows);
-          const uniqueQuestions = shuffledQuestions.filter((question, index, allQuestions) => {
-            if (!question.id) return true;
-            return allQuestions.findIndex(item => item.id === question.id) === index;
-          });
-          setPracticeQuestions(uniqueQuestions.slice(0, 20));
+          setPracticeQuestions(getBalancedPracticeQuestions(rows, selectedSubtopics, 20));
         }
       } finally {
         if (!cancelled) setPracticeQuestionsLoading(false);
@@ -1472,9 +1452,6 @@ export default function App() {
       subtopics: selectedSubtopics,
       selections: selectedEntries
     };
-
-    console.log('Selected subtopics:', selectedSubtopics);
-    console.log('Start Practice navigation state:', navigationState);
 
     setPracticeQuestionsLoading(true);
     const params = new URLSearchParams({
@@ -1788,31 +1765,6 @@ export default function App() {
 
   const renderPracticeSessionPage = () => {
     const params = new URLSearchParams(window.location.search);
-    const location = { state: window.history.state || {} } as { state?: { subtopics?: string[]; selectedSubtopics?: string[] } };
-    const { subtopics } = location.state || {};
-    const urlSubtopics = (() => {
-      const rawSubtopics = params.get('subtopics');
-      if (!rawSubtopics) return [] as string[];
-
-      try {
-        const parsed = JSON.parse(rawSubtopics) as string[];
-        return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
-      } catch (error) {
-        console.warn('Unable to parse debug practice subtopics from URL:', error);
-        return [] as string[];
-      }
-    })();
-    const receivedSubtopics = Array.isArray(subtopics) && subtopics.length > 0
-      ? subtopics
-      : Array.isArray(location.state?.selectedSubtopics) && location.state.selectedSubtopics.length > 0
-        ? location.state.selectedSubtopics
-        : urlSubtopics;
-    console.log('DEBUG: Received subtopics:', receivedSubtopics.length > 0 ? receivedSubtopics : subtopics);
-    const debugSubtopicsBanner = (
-      <div style={{ background: '#333', padding: '8px', fontSize: '12px' }} className="font-sans text-white">
-        Selected: {receivedSubtopics.length > 0 ? receivedSubtopics.join(', ') : 'none'}
-      </div>
-    );
     const fallbackSubject = params.get('subject') || (window.location.pathname.startsWith('/mock-exam/') ? getPrimaryExamLabel() : 'Mathematics');
     const fallbackSubtopic = params.get('topic') || params.get('subtopic') || (window.location.pathname.startsWith('/mock-exam/') ? 'Full Mock Exam' : 'Algebra');
     const currentQuestion = practiceQuestions[questionIndex];
@@ -1827,13 +1779,10 @@ export default function App() {
 
     if (practiceQuestionsLoading) {
       return (
-        <div className="min-h-screen bg-[#0A0F1E] text-white">
-          {debugSubtopicsBanner}
-          <div className="flex min-h-[calc(100vh-36px)] items-center justify-center px-5">
+        <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 text-white">
           <div className="animate-fade-up text-center">
             <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#FF6B35]" />
             <p className="mt-4 font-sans text-sm font-normal text-[#8B9CB8]">Loading questions...</p>
-          </div>
           </div>
         </div>
       );
@@ -1841,9 +1790,7 @@ export default function App() {
 
     if (totalQuestions === 0) {
       return (
-        <div className="min-h-screen bg-[#0A0F1E] text-white">
-          {debugSubtopicsBanner}
-          <div className="flex min-h-[calc(100vh-36px)] items-center justify-center px-5">
+        <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 text-white">
           <div className="w-full max-w-md animate-fade-up rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-center">
             <BookOpen className="mx-auto h-10 w-10 text-[#FF6B35]" />
             <h1 className="mt-5 font-heading text-2xl font-bold text-white">No questions available for selected topics.</h1>
@@ -1857,7 +1804,6 @@ export default function App() {
               Back to Subject Selection
             </button>
           </div>
-          </div>
         </div>
       );
     }
@@ -1867,9 +1813,7 @@ export default function App() {
       const message = percent > 70 ? 'Excellent work!' : percent >= 50 ? 'Good effort!' : 'Keep practicing!';
 
       return (
-        <div className="min-h-screen bg-[#0A0F1E] text-white">
-          {debugSubtopicsBanner}
-          <div className="flex min-h-[calc(100vh-36px)] items-center justify-center px-5 py-10">
+        <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 py-10 text-white">
           <div className="w-full max-w-md animate-fade-up rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 text-center sm:p-8">
             <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full border-8 border-[#FF6B35]/25 bg-[#0A0F1E]">
               <span className="font-heading text-3xl font-bold text-[#FF6B35] sm:text-4xl">{percent}%</span>
@@ -1929,14 +1873,12 @@ export default function App() {
               </button>
             </div>
           </div>
-          </div>
         </div>
       );
     }
 
     return (
       <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 text-white md:px-10">
-        {debugSubtopicsBanner}
         <header className="sticky top-0 z-30 -mx-5 border-b border-white/10 bg-[#0A0F1E]/95 px-5 py-4 backdrop-blur md:-mx-10 md:px-10">
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
             <button type="button" onClick={() => navigatePath('/practice')} className="rounded-full p-2 text-[#8B9CB8] hover:text-[#FF6B35]" aria-label="Back to practice">
@@ -1958,6 +1900,12 @@ export default function App() {
             <Clock className="h-4 w-4" />
             {questionTimeLeft}s
           </div>
+
+          {totalQuestions > 0 && totalQuestions < 20 && (
+            <p className="mx-auto mb-6 max-w-md rounded-2xl border border-[#FF6B35]/20 bg-[#FF6B35]/10 px-4 py-3 text-center font-sans text-xs font-normal leading-5 text-[#FFB59C]">
+              Only {totalQuestions} questions are available for these topics right now.
+            </p>
+          )}
 
           <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.25)] md:p-8">
             <p className="font-sans text-lg font-normal leading-8 text-white md:text-2xl">
