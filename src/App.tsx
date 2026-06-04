@@ -43,6 +43,7 @@ import {
 import Onboarding from './components/Onboarding';
 import InstallPrompt from './components/InstallPrompt';
 import WeaknessAssassin from './pages/weakness/WeaknessAssassin';
+import PracticeConfigure from './pages/practice/PracticeConfigure';
 
 // Fonts link inside styles
 const fontStyles = `
@@ -164,7 +165,7 @@ const slugify = (value: string) => value.toLowerCase().replace(/&/g, 'and').repl
 const getSubjectFromSlug = (slug: string) => subjectLibrary.find(subject => slugify(subject.name) === slug)?.name || 'Mathematics';
 const getSubtopicFromSlug = (subject: string, slug: string) => subtopicsBySubject[subject]?.find(topic => slugify(topic) === slug) || subtopicsBySubject[subject]?.[0] || 'Algebra';
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceExamType' | 'practiceSession' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceConfigure' | 'practiceExamType' | 'practiceSession' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
@@ -177,6 +178,7 @@ const viewToPath: Record<AppView, string> = {
   updates: '/updates',
   practice: '/practice',
   practiceSubjects: '/practice/subjects',
+  practiceConfigure: '/practice/configure',
   practiceExamType: '/practice/exam-type',
   practiceSession: '/practice/session',
   cheatsheet: '/cheatsheet',
@@ -204,6 +206,7 @@ function pathToView(pathname: string): AppView {
   if (routePath === '/updates') return 'updates';
   if (routePath === '/practice') return 'practice';
   if (routePath === '/practice/subjects') return 'practiceSubjects';
+  if (routePath === '/practice/configure') return 'practiceConfigure';
   if (routePath === '/practice/exam-type') return 'practiceExamType';
   if (routePath === '/practice/session') return 'practiceSession';
   if (routePath.startsWith('/mock-exam/')) return 'practiceSession';
@@ -355,7 +358,7 @@ export default function App() {
     if (!authReady) return;
 
     const isPublicRoute = view === 'landing' || view === 'signin';
-    const isProtectedRoute = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceExamType', 'practiceSession', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'].includes(view);
+    const isProtectedRoute = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'].includes(view);
 
     if (!currentUser) {
       if (isProtectedRoute) {
@@ -1058,6 +1061,15 @@ export default function App() {
     return [];
   };
 
+  const getPracticeQuestionLimit = () => {
+    const navigationState = (window.history.state || {}) as { limit?: number | string };
+    const params = new URLSearchParams(window.location.search);
+    const rawLimit = Number(navigationState.limit ?? params.get('limit') ?? 20);
+
+    if (!Number.isFinite(rawLimit) || rawLimit <= 0) return 20;
+    return Math.min(Math.max(Math.round(rawLimit), 1), 100);
+  };
+
   const shuffleQuestions = (questions: PracticeQuestion[]) => {
     const next = [...questions];
     for (let index = next.length - 1; index > 0; index -= 1) {
@@ -1280,6 +1292,7 @@ export default function App() {
 
       try {
         const selectedSubtopics = Array.from(new Set(selections.map(selection => selection.topic).filter(Boolean)));
+        const questionLimit = getPracticeQuestionLimit();
 
         const result = await supabase
           .from('questions')
@@ -1294,7 +1307,7 @@ export default function App() {
 
         if (!cancelled) {
           const rows = (result.data || []) as PracticeQuestion[];
-          setPracticeQuestions(getBalancedPracticeQuestions(rows, selectedSubtopics, 20));
+          setPracticeQuestions(getBalancedPracticeQuestions(rows, selectedSubtopics, questionLimit));
         }
       } finally {
         if (!cancelled) setPracticeQuestionsLoading(false);
@@ -1455,14 +1468,13 @@ export default function App() {
       selections: selectedEntries
     };
 
-    setPracticeQuestionsLoading(true);
     const params = new URLSearchParams({
       subject: first.subject,
       topic: first.topic,
       subtopics: JSON.stringify(selectedSubtopics),
       topics: JSON.stringify(selectedEntries)
     });
-    navigatePath(`/practice/session?${params.toString()}`, navigationState);
+    navigatePath(`/practice/configure?${params.toString()}`, navigationState);
   };
 
   const professionalPageClass = 'min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,107,53,0.10),transparent_34%),#0A0F1E] pb-36 text-white font-sans';
@@ -2799,6 +2811,11 @@ export default function App() {
 
       {/* PRACTICE SUBJECT SELECTION PAGE */}
       {view === 'practiceSubjects' && studentProfile && renderPracticeSubjectsPage()}
+
+      {/* PRACTICE CONFIGURE PAGE */}
+      {view === 'practiceConfigure' && studentProfile && (
+        <PracticeConfigure navigatePath={navigatePath} renderBottomNavigation={renderBottomNavigation} />
+      )}
 
       {/* PRACTICE EXAM TYPE PAGE */}
       {view === 'practiceExamType' && studentProfile && renderPracticeExamTypePage()}
