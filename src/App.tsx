@@ -38,6 +38,13 @@ import {
   Home,
   PenLine,
   Swords,
+  Crosshair,
+  NotebookTabs,
+  BookOpenCheck,
+  WandSparkles,
+  UsersRound,
+  CircleDotDashed,
+  PenTool,
   User as UserIcon
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
@@ -1356,10 +1363,10 @@ export default function App() {
   const renderBottomNavigation = () => {
     const tabs = [
       { icon: Home, label: 'Home', href: '/dashboard', match: (path: string) => path === '/dashboard' },
-      { icon: PenLine, label: 'Practice', href: '/practice', match: (path: string) => path === '/practice' || path.startsWith('/practice/') },
-      { icon: FileText, label: 'Cheatsheet', href: '/cheatsheet', match: (path: string) => path === '/cheatsheet' || path.startsWith('/cheatsheet/') },
-      { icon: Swords, label: 'Battle', href: '/battle', match: (path: string) => path === '/battle' },
-      { icon: Trophy, label: 'Leaderboard', href: '/leaderboard', match: (path: string) => path === '/leaderboard' }
+      { icon: Crosshair, label: 'Practice', href: '/practice', match: (path: string) => path === '/practice' || path.startsWith('/practice/') },
+      { icon: NotebookTabs, label: 'Cheatsheet', href: '/cheatsheet', match: (path: string) => path === '/cheatsheet' || path.startsWith('/cheatsheet/') },
+      { icon: UsersRound, label: 'Battle', href: '/battle', match: (path: string) => path === '/battle' },
+      { icon: CircleDotDashed, label: 'Leaderboard', href: '/leaderboard', match: (path: string) => path === '/leaderboard' }
     ];
     const currentPath = window.location.pathname;
 
@@ -1625,7 +1632,7 @@ export default function App() {
   const renderPracticePage = () => (
     <div className={professionalPageClass}>
       <main className={professionalMainClass}>
-        {renderProfessionalHeader('Practice', 'How would you like to practice today?', PenLine, '#FF6B35')}
+        {renderProfessionalHeader('Practice', 'How would you like to practice today?', Crosshair, '#FF6B35')}
 
         <section className="space-y-4">
           <button
@@ -2051,7 +2058,7 @@ export default function App() {
     <div className={professionalPageClass}>
       <main className={professionalMainClass}>
         <section>
-          {renderProfessionalHeader('Cheatsheets', 'Quick revision for every topic.', BookMarked, '#2EC4B6')}
+          {renderProfessionalHeader('Cheatsheets', 'Quick revision for every topic.', NotebookTabs, '#2EC4B6')}
           <div className="relative mt-5">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#8B9CB8]" />
             <input
@@ -2104,7 +2111,7 @@ export default function App() {
           <button type="button" onClick={() => navigatePath('/cheatsheet')} className={professionalBackButtonClass}>
             <ChevronLeft className="h-5 w-5" /> Back
           </button>
-          {renderProfessionalHeader(subject, 'Choose a topic to open quick revision notes.', BookMarked, '#2EC4B6')}
+          {renderProfessionalHeader(subject, 'Choose a topic to open quick revision notes.', NotebookTabs, '#2EC4B6')}
           <div className="mt-8 divide-y divide-white/10 rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-2">
             {(subtopicsBySubject[subject] || []).map(topic => (
               <button key={topic} type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}/${slugify(topic)}`)} className="flex w-full items-center justify-between px-4 py-4 text-left">
@@ -2208,7 +2215,7 @@ export default function App() {
     return (
       <div className={professionalPageClass}>
         <main className={professionalMainClass}>
-          {renderProfessionalHeader('Battle', 'Challenge your classmates and see who knows more.', Swords, '#FF6B35')}
+          {renderProfessionalHeader('Battle', 'Challenge your classmates and see who knows more.', UsersRound, '#FF6B35')}
 
           <section className="grid gap-4 md:grid-cols-2">
             <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
@@ -2625,7 +2632,7 @@ export default function App() {
             title: 'AI Tutor',
             description: 'Ask anything about your exam topics instantly',
             href: '/ai-tutor',
-            icon: Sparkles,
+            icon: WandSparkles,
             accent: '#FF6B35',
             iconBg: 'rgba(255,107,53,0.15)',
             actionText: 'Open'
@@ -2634,7 +2641,7 @@ export default function App() {
             title: 'Weakness Assassin',
             description: 'See your weak topics and practice them',
             href: '/weakness',
-            icon: Target,
+            icon: Crosshair,
             accent: '#FF6B35',
             iconBg: 'rgba(255,107,53,0.15)',
             actionText: 'View Weaknesses'
@@ -2643,7 +2650,7 @@ export default function App() {
             title: 'Exam Practice',
             description: 'Practice subjects or take a full mock exam',
             href: '/practice',
-            icon: PenLine,
+            icon: PenTool,
             accent: '#00BBF9',
             iconBg: 'rgba(0,187,249,0.15)',
             actionText: 'Open'
@@ -2652,7 +2659,7 @@ export default function App() {
             title: 'Exam Updates',
             description: 'Latest exam news and scholarship alerts',
             href: '/updates',
-            icon: Newspaper,
+            icon: FileText,
             accent: '#2EC4B6',
             iconBg: 'rgba(46,196,182,0.15)',
             actionText: 'Read Updates'
@@ -2702,7 +2709,7 @@ export default function App() {
                     <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Day Streak</p>
                   </div>
                   <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-3 text-center sm:p-4">
-                    <BookOpen className="mx-auto h-6 w-6 text-[#00BBF9] sm:h-7 sm:w-7" />
+                    <BookOpenCheck className="mx-auto h-6 w-6 text-[#00BBF9] sm:h-7 sm:w-7" />
                     <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{dashboardPerformance.questions}</p>
                     <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Questions</p>
                   </div>

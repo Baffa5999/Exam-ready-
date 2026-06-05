@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Loader2, Target } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Crosshair, Loader2, Target } from 'lucide-react';
 import { supabase } from '../../supabase';
 
 
@@ -11,7 +11,7 @@ const ProfessionalHeader = () => (
   <section className="rounded-[28px] border border-[#FF6B35]/20 bg-gradient-to-br from-[#1A1A2E] via-[#141827] to-[#111827] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-6">
     <div className="flex items-center gap-4">
       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-[#FF6B35]/15 text-[#FF6B35] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-        <Target className="h-7 w-7" />
+        <Crosshair className="h-7 w-7" />
       </div>
       <div className="min-w-0">
         <p className="font-sans text-[11px] font-bold uppercase tracking-[0.28em] text-[#FFB199]">Weakness Assassin</p>
