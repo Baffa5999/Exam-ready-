@@ -124,6 +124,16 @@ interface PracticeTopicAvailability {
   subtopic: string;
 }
 
+interface LeaderboardStudent {
+  rank: number;
+  userId: string;
+  username: string;
+  exam?: string;
+  score: number;
+  streak: number;
+  current?: boolean;
+}
+
 const fallbackDashboardUpdates: DashboardUpdate[] = [
   {
     category: 'JAMB',
@@ -260,8 +270,10 @@ export default function App() {
   const [showFailedReview, setShowFailedReview] = useState<boolean>(false);
   const [battleCode, setBattleCode] = useState<string>('');
   const [joinBattleCode, setJoinBattleCode] = useState<string>('');
-  const [leaderboardRange, setLeaderboardRange] = useState<'Weekly' | 'Monthly' | 'All Time'>('Weekly');
+  const [leaderboardRange, setLeaderboardRange] = useState<'Weekly' | 'Monthly' | 'All Time'>('All Time');
   const [leaderboardSubject, setLeaderboardSubject] = useState<string>('All Subjects');
+  const [leaderboardRows, setLeaderboardRows] = useState<LeaderboardStudent[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState<boolean>(false);
 
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
@@ -1220,6 +1232,84 @@ export default function App() {
 
     return () => window.clearInterval(timer);
   }, [view, questionIndex, sessionSelectedAnswer, practiceQuestions]);
+
+  useEffect(() => {
+    if (view !== 'leaderboard') return;
+
+    let cancelled = false;
+
+    const loadLeaderboard = async () => {
+      setLeaderboardLoading(true);
+
+      const { data: performanceRows, error: performanceError } = await supabase
+        .from('student_performance')
+        .select('user_id, questions_correct')
+        .limit(5000);
+
+      if (cancelled) return;
+
+      if (performanceError || !performanceRows) {
+        console.info('Unable to load leaderboard performance data; showing empty rankings.', performanceError);
+        setLeaderboardRows([]);
+        setLeaderboardLoading(false);
+        return;
+      }
+
+      const totalsByUser = new Map<string, number>();
+      (performanceRows as Array<Record<string, any>>).forEach(row => {
+        const userId = row.user_id;
+        if (!userId) return;
+        totalsByUser.set(userId, (totalsByUser.get(userId) || 0) + (Number(row.questions_correct) || 0));
+      });
+
+      const rankedTotals = Array.from(totalsByUser.entries())
+        .sort(([, firstTotal], [, secondTotal]) => secondTotal - firstTotal)
+        .slice(0, 20);
+      const userIds = rankedTotals.map(([userId]) => userId);
+
+      if (userIds.length === 0) {
+        setLeaderboardRows([]);
+        setLeaderboardLoading(false);
+        return;
+      }
+
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, exam_type, exam_types, streak')
+        .in('id', userIds);
+
+      if (cancelled) return;
+
+      if (profileError) {
+        console.info('Unable to load leaderboard profiles; using fallback display names.', profileError);
+      }
+
+      const profilesById = new Map<string, Record<string, any>>((profiles || []).map((profile: Record<string, any>) => [profile.id, profile]));
+      const nextRows = rankedTotals.map(([userId, totalCorrect], index) => {
+        const profile = profilesById.get(userId) || {};
+        const examType = profile.exam_type || profile.examTypes?.[0] || profile.exam_types?.[0];
+
+        return {
+          rank: index + 1,
+          userId,
+          username: profile.username || profile.full_name || `student_${userId.slice(0, 6)}`,
+          exam: examType,
+          score: totalCorrect,
+          streak: Number(profile.streak) || 0,
+          current: currentUser?.id === userId
+        };
+      });
+
+      setLeaderboardRows(nextRows);
+      setLeaderboardLoading(false);
+    };
+
+    void loadLeaderboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [view, currentUser?.id]);
 
   useEffect(() => {
     if (view !== 'practiceSubjects') return;
@@ -2185,17 +2275,6 @@ export default function App() {
     { opponent: 'math_guru', date: 'May 28', yours: 18, theirs: 14, result: 'Win' }
   ];
 
-  const leaderboardRows = [
-    { rank: 1, username: 'jamb_master', exam: 'JAMB', score: 9840, streak: 24 },
-    { rank: 2, username: 'naija_scholar', exam: 'WAEC', score: 9320, streak: 19 },
-    { rank: 3, username: 'chemistry_king', exam: 'JAMB', score: 9015, streak: 17 },
-    { rank: 4, username: 'bio_queen', exam: 'NECO', score: 8750, streak: 16 },
-    { rank: 5, username: 'math_guru', exam: 'JAMB', score: 8425, streak: 15 },
-    { rank: 6, username: 'lagos_reader', exam: 'WAEC', score: 8090, streak: 12 },
-    { rank: 7, username: 'physics_pro', exam: 'NECO', score: 7925, streak: 10 },
-    { rank: 8, username: 'abuja_brain', exam: 'JAMB', score: 7650, streak: 9 }
-  ];
-
   const renderBattlePage = () => {
     const generateBattleCode = () => {
       const nextCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -2325,27 +2404,26 @@ export default function App() {
   };
 
   const renderLeaderboardPage = () => {
-    const currentUsername = (studentProfile?.username || getDashboardUsername()).toString().toLowerCase().replace(/\s+/g, '_');
-    const currentUserRow = { rank: 57, username: currentUsername || 'examready_student', exam: getPrimaryExamLabel(), score: 4210, streak: studentProfile?.streak ?? 0, current: true };
     const visibleRows = leaderboardRows.slice(3);
     const filters = ['All Subjects', 'Mathematics', 'Biology', 'Chemistry', 'Physics', 'English'];
     const topThree = leaderboardRows.slice(0, 3);
     const rankColors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
     const usernameClass = (username: string, base = 'text-sm') => username.length > 12 ? 'text-[11px] sm:text-xs' : base;
+    const hasEnoughRankings = leaderboardRows.length >= 3;
 
-    const renderLeaderboardRow = (student: typeof leaderboardRows[number] | typeof currentUserRow, highlighted = false) => (
-      <div key={`${student.rank}-${student.username}`} className={`grid grid-cols-[28px_40px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-4 ${highlighted ? 'border-[#FF6B35]/30 bg-[#FF6B35]/10' : 'border-[rgba(255,255,255,0.08)] bg-[#111827]'}`}>
-        <span className={`font-sans text-xs font-normal ${highlighted ? 'text-[#FF6B35]' : 'text-[#8B9CB8]'}`}>#{student.rank}</span>
+    const renderLeaderboardRow = (student: LeaderboardStudent, highlighted = false) => (
+      <div key={`${student.rank}-${student.userId}`} className={`grid grid-cols-[28px_40px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-4 ${highlighted ? 'border-[#FF6B35]/30 bg-[#FF6B35]/10' : 'border-[rgba(255,255,255,0.08)] bg-[#111827]'}`}>
+        <span className={`font-sans text-xs font-normal ${highlighted ? 'text-[#FF6B35]' : 'text-[#8B9CB8]'}`}>{student.rank}</span>
         <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-heading text-sm font-semibold text-white ${highlighted ? 'bg-[#FF6B35]' : 'bg-white/10'}`}>
           {student.username.charAt(0).toUpperCase()}
         </div>
         <div className="min-w-0">
           <p className={`break-words font-heading font-medium leading-tight text-white ${usernameClass(student.username, 'text-sm sm:text-base')}`}>{student.username}</p>
-          <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{student.exam}</p>
+          {student.exam && <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{student.exam}</p>}
         </div>
         <div className="text-right">
           <p className="font-heading text-sm font-semibold text-white sm:text-base">{student.score.toLocaleString()}</p>
-          <p className="mt-1 inline-flex items-center justify-end gap-1 font-sans text-xs font-normal text-[#8B9CB8]"><Flame className="h-3.5 w-3.5 text-[#FF6B35]" /> {student.streak}</p>
+          <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">correct answers</p>
         </div>
       </div>
     );
@@ -2370,35 +2448,59 @@ export default function App() {
                 </button>
               ))}
             </div>
+            {leaderboardRange !== 'All Time' && (
+              <p className="rounded-2xl border border-[#FF6B35]/20 bg-[#FF6B35]/10 px-4 py-3 font-sans text-xs font-normal leading-5 text-[#FFB199]">
+                Weekly and Monthly filters are coming soon. Showing all-time correct answers for now.
+              </p>
+            )}
           </section>
 
-          <section className="space-y-3">
-            {topThree.map(student => {
-              const color = rankColors[student.rank];
-              return (
-                <div key={student.username} className="grid grid-cols-[40px_28px_42px_minmax(0,1fr)] items-center gap-3 rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                  <span className="font-heading text-2xl font-bold" style={{ color }}>#{student.rank}</span>
-                  <Award className="h-6 w-6" style={{ color }} />
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full font-heading text-sm font-semibold text-white" style={{ backgroundColor: `${color}33` }}>
-                    {student.username.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`break-words font-heading font-semibold leading-tight text-white ${usernameClass(student.username, 'text-sm sm:text-base')}`}>{student.username}</p>
-                    <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{student.score.toLocaleString()} pts</p>
-                  </div>
-                </div>
-              );
-            })}
-          </section>
+          {leaderboardLoading ? (
+            <section className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
+              <Loader2 className="mx-auto h-9 w-9 animate-spin text-[#FF6B35]" />
+              <p className="mt-4 font-sans text-sm font-normal text-[#8B9CB8]">Loading rankings...</p>
+            </section>
+          ) : (
+            <>
+              {!hasEnoughRankings && (
+                <section className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-6 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
+                  <Trophy className="mx-auto h-10 w-10 text-[#FF6B35]" />
+                  <h2 className="mt-4 font-heading text-lg font-bold text-white">Complete more practice sessions to see rankings!</h2>
+                  <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">
+                    Rankings appear as students answer questions and build total correct answers.
+                  </p>
+                </section>
+              )}
 
-          <section className="space-y-3">
-            {visibleRows.map(student => renderLeaderboardRow(student))}
+              {topThree.length > 0 && (
+                <section className="space-y-3">
+                  {topThree.map(student => {
+                    const color = rankColors[student.rank] || '#FF6B35';
+                    return (
+                      <div key={student.userId} className="grid grid-cols-[40px_28px_42px_minmax(0,1fr)] items-center gap-3 rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                        <span className="font-heading text-2xl font-bold" style={{ color }}>{student.rank}</span>
+                        <Award className="h-6 w-6" style={{ color }} />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full font-heading text-sm font-semibold text-white" style={{ backgroundColor: `${color}33` }}>
+                          {student.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`break-words font-heading font-semibold leading-tight text-white ${usernameClass(student.username, 'text-sm sm:text-base')}`}>{student.username}</p>
+                          <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{student.score.toLocaleString()} correct answers</p>
+                          {student.exam && <p className="mt-1 inline-flex rounded-full border border-white/10 px-2 py-0.5 font-sans text-[10px] font-semibold text-[#8B9CB8]">{student.exam}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </section>
+              )}
 
-            <div className="pt-3">
-              <div className="mb-3 h-px bg-white/10" />
-              {renderLeaderboardRow(currentUserRow, true)}
-            </div>
-          </section>
+              {visibleRows.length > 0 && (
+                <section className="space-y-3">
+                  {visibleRows.map(student => renderLeaderboardRow(student, Boolean(student.current)))}
+                </section>
+              )}
+            </>
+          )}
         </main>
         {renderBottomNavigation()}
       </div>
