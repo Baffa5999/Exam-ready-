@@ -1641,8 +1641,6 @@ export default function App() {
     </section>
   );
 
-  const profileStreakImage = 'https://images.unsplash.com/photo-1711653758220-cb95461f3097?auto=format&fit=crop&fm=jpg&q=80&w=360';
-  const profileAccuracyImage = 'https://images.unsplash.com/photo-1745209428549-0332b653ab1d?auto=format&fit=crop&fm=jpg&q=80&w=360';
 
   const renderProfilePage = () => {
     const username = getDashboardUsername();
@@ -1653,28 +1651,32 @@ export default function App() {
         label: 'Day Streak',
         value: studentProfile?.streak ?? 0,
         icon: Flame,
-        image: profileStreakImage,
-        imageAlt: 'Burning study book representing the day streak',
+        symbol: '🔥',
+        iconLabel: 'Flame icon',
         color: '#FACC15'
       },
       {
         label: 'Overall Accuracy',
         value: `${dashboardPerformance.accuracy}%`,
         icon: Target,
-        image: profileAccuracyImage,
-        imageAlt: 'Bullseye target representing overall accuracy',
+        symbol: '🎯',
+        iconLabel: 'Bullseye target icon',
         color: '#2EC4B6'
       },
       {
         label: 'Questions Answered',
         value: dashboardPerformance.questions,
         icon: BookOpen,
+        symbol: '📖',
+        iconLabel: 'Open book icon',
         color: '#00BBF9'
       },
       {
         label: 'Battles Won',
         value: profileBattleWins,
         icon: Trophy,
+        symbol: '🏆',
+        iconLabel: 'Trophy icon',
         color: '#FF6B35',
         helper: 'Completed battle wins'
       }
@@ -1732,28 +1734,27 @@ export default function App() {
                 return (
                   <div
                     key={stat.label}
-                    className="flex min-h-0 flex-col justify-between overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/80 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-5"
+                    className="flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/80 p-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-5"
                   >
-                    {stat.image ? (
-                      <img
-                        src={stat.image}
-                        alt={stat.imageAlt}
-                        className="h-12 w-12 rounded-2xl object-cover shadow-[0_8px_24px_rgba(0,0,0,0.32)] sm:h-14 sm:w-14"
-                        loading="lazy"
-                      />
+                    {stat.symbol ? (
+                      <span
+                        className="block text-5xl leading-none drop-shadow-[0_10px_24px_rgba(0,0,0,0.35)] sm:text-6xl"
+                        role="img"
+                        aria-label={stat.iconLabel}
+                      >
+                        {stat.symbol}
+                      </span>
                     ) : (
-                      <StatIcon className="h-8 w-8 sm:h-9 sm:w-9" style={{ color: stat.color }} />
+                      <StatIcon className="h-9 w-9 sm:h-10 sm:w-10" style={{ color: stat.color }} />
                     )}
-                    <div>
-                      <p className="mt-3 font-heading text-2xl font-bold leading-none sm:mt-5 sm:text-4xl" style={{ color: stat.color }}>
-                        {stat.value}
-                      </p>
-                      <p className="mt-2 font-sans text-xs font-normal leading-4 text-[#8B9CB8] sm:mt-3 sm:text-base sm:leading-5">
-                        {stat.label}
-                      </p>
-                    </div>
+                    <p className="mt-4 font-heading text-2xl font-bold leading-none sm:mt-5 sm:text-4xl" style={{ color: stat.color }}>
+                      {stat.value}
+                    </p>
+                    <p className="mt-2 font-sans text-xs font-normal leading-4 text-[#8B9CB8] sm:mt-3 sm:text-base sm:leading-5">
+                      {stat.label}
+                    </p>
                     {stat.helper && (
-                      <p className="mt-1 font-sans text-[11px] font-normal text-[#8B9CB8]/80 sm:text-xs">
+                      <p className="mt-1 max-w-[9rem] font-sans text-[11px] font-normal leading-4 text-[#8B9CB8]/80 sm:text-xs">
                         {stat.helper}
                       </p>
                     )}
