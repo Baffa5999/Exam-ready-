@@ -51,6 +51,7 @@ import Onboarding from './components/Onboarding';
 import InstallPrompt from './components/InstallPrompt';
 import WeaknessAssassin from './pages/weakness/WeaknessAssassin';
 import PracticeConfigure from './pages/practice/PracticeConfigure';
+import AITutor from './pages/ai-tutor/AITutor';
 
 // Fonts link inside styles
 const fontStyles = `
@@ -2899,8 +2900,14 @@ export default function App() {
       {/* PROFILE PLACEHOLDER PAGE */}
       {view === 'profile' && studentProfile && renderProfilePage()}
 
-      {/* AI TUTOR PLACEHOLDER PAGE */}
-      {view === 'aiTutor' && studentProfile && renderPlaceholderPage('AI Tutor', 'Ask-anything exam help is coming soon for your selected topics.')}
+      {/* AI TUTOR PAGE */}
+      {view === 'aiTutor' && studentProfile && (
+        <AITutor
+          user={currentUser}
+          navigatePath={navigatePath}
+          renderBottomNavigation={renderBottomNavigation}
+        />
+      )}
 
       {/* WEAKNESS ASSASSIN PAGE */}
       {view === 'weakness' && studentProfile && (

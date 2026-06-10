@@ -1,0 +1,352 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Bot, ChevronLeft, Loader2, Send, Sparkles, UserRound } from 'lucide-react';
+
+const SYSTEM_PROMPT = 'You are a helpful JAMB/WAEC/NECO tutor for Nigerian secondary school students. Answer exam questions clearly, with step-by-step explanations. Keep answers concise and friendly. Use Nigerian examples where helpful.';
+const DAILY_LIMIT = 5;
+const LIMIT_MESSAGE = "You've used your 5 free daily questions. Try again tomorrow.";
+
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+const getMessageText = data => {
+  if (!data) return '';
+
+  if (typeof data === 'string') return data;
+
+  return data.candidates?.[0]?.content?.parts
+    ?.map(part => part?.text || '')
+    .join('')
+    .trim()
+    || data.choices?.[0]?.message?.content?.trim()
+    || data.choices?.[0]?.text?.trim()
+    || '';
+};
+
+async function requestGemini(messages) {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error('Gemini API key is not configured.');
+
+  const contents = messages.map(message => ({
+    role: message.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: message.content }]
+  }));
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: SYSTEM_PROMPT }]
+      },
+      contents,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 700
+      }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini request failed with status ${response.status}.`);
+  }
+
+  const data = await response.json();
+  const text = getMessageText(data);
+  if (!text) throw new Error('Gemini returned an empty response.');
+  return text;
+}
+
+async function requestGroq(messages) {
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  if (!apiKey) throw new Error('Groq API key is not configured.');
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'llama-3.1-8b-instant',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...messages
+      ],
+      temperature: 0.7,
+      max_tokens: 700
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Groq request failed with status ${response.status}.`);
+  }
+
+  const data = await response.json();
+  const text = getMessageText(data);
+  if (!text) throw new Error('Groq returned an empty response.');
+  return text;
+}
+
+async function requestOpenAI(messages) {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) throw new Error('OpenAI API key is not configured.');
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...messages
+      ],
+      temperature: 0.7,
+      max_tokens: 700
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI request failed with status ${response.status}.`);
+  }
+
+  const data = await response.json();
+  const text = getMessageText(data);
+  if (!text) throw new Error('OpenAI returned an empty response.');
+  return text;
+}
+
+async function askTutor(messages) {
+  const providers = [requestGemini, requestGroq, requestOpenAI];
+  let lastError;
+
+  for (const provider of providers) {
+    try {
+      return await provider(messages);
+    } catch (error) {
+      lastError = error;
+      console.info('AI Tutor provider fallback triggered:', error?.message || error);
+    }
+  }
+
+  throw lastError || new Error('No AI provider is available.');
+}
+
+export default function AITutor({ user, navigatePath, renderBottomNavigation }) {
+  const userKey = user?.id || user?.email || 'guest';
+  const storageKey = useMemo(() => `examready-ai-tutor-usage-${userKey}`, [userKey]);
+  const messagesEndRef = useRef(null);
+  const [messages, setMessages] = useState([
+    {
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Hi! I can help with JAMB, WAEC, or NECO questions. Ask me a topic, past question, or anything you want explained.'
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [usage, setUsage] = useState(() => ({ date: todayKey(), count: 0 }));
+
+  useEffect(() => {
+    const today = todayKey();
+    const saved = localStorage.getItem(storageKey);
+
+    if (!saved) {
+      setUsage({ date: today, count: 0 });
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed?.date === today) {
+        setUsage({ date: today, count: Number(parsed.count) || 0 });
+      } else {
+        const resetUsage = { date: today, count: 0 };
+        localStorage.setItem(storageKey, JSON.stringify(resetUsage));
+        setUsage(resetUsage);
+      }
+    } catch {
+      const resetUsage = { date: today, count: 0 };
+      localStorage.setItem(storageKey, JSON.stringify(resetUsage));
+      setUsage(resetUsage);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, isTyping]);
+
+  const questionsLeft = Math.max(DAILY_LIMIT - usage.count, 0);
+  const limitReached = questionsLeft <= 0;
+  const sendDisabled = isTyping || !input.trim() || limitReached;
+
+  const updateUsage = nextUsage => {
+    localStorage.setItem(storageKey, JSON.stringify(nextUsage));
+    setUsage(nextUsage);
+  };
+
+  const handleSubmit = async event => {
+    event.preventDefault();
+
+    const prompt = input.trim();
+    if (!prompt || isTyping) return;
+
+    if (limitReached) {
+      return;
+    }
+
+    const nextUsage = { date: todayKey(), count: usage.count + 1 };
+    updateUsage(nextUsage);
+
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: prompt
+    };
+    const nextMessages = [...messages, userMessage];
+
+    setMessages(nextMessages);
+    setInput('');
+    setIsTyping(true);
+
+    try {
+      const history = nextMessages
+        .filter(message => message.id !== 'welcome')
+        .map(({ role, content }) => ({ role, content }));
+      const answer = await askTutor(history);
+
+      setMessages(current => [
+        ...current,
+        {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: answer
+        }
+      ]);
+    } catch (error) {
+      console.error('AI Tutor failed:', error);
+      setMessages(current => [
+        ...current,
+        {
+          id: `assistant-error-${Date.now()}`,
+          role: 'assistant',
+          content: 'Sorry, I could not reach the AI tutor right now. Please try again in a few minutes.'
+        }
+      ]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  return (
+    <div className="min-h-[100dvh] bg-[#0A0F1E] text-white">
+      <main className="mx-auto flex min-h-[100dvh] max-w-4xl flex-col px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pb-28 lg:px-8">
+        <header className="mb-5 rounded-[28px] border border-[#FF6B35]/20 bg-gradient-to-br from-[#1A1A2E] via-[#141827] to-[#111827] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-6">
+          <button
+            type="button"
+            onClick={() => navigatePath('/dashboard')}
+            className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 font-sans text-sm font-bold text-[#FFB199] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back to Dashboard
+          </button>
+
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35] shadow-[0_0_24px_rgba(255,107,53,0.2)]">
+              <Sparkles className="h-7 w-7" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-sans text-[11px] font-bold uppercase tracking-[0.28em] text-[#FFB199]">ExamReady</p>
+              <h1 className="mt-1 font-heading text-2xl font-bold leading-tight text-white sm:text-3xl">AI Tutor</h1>
+              <p className="mt-2 font-sans text-sm leading-6 text-[#8B9CB8]">
+                Ask JAMB, WAEC, or NECO questions and get clear step-by-step help.
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#0B1324]/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
+            <div>
+              <p className="font-heading text-sm font-bold text-white">Daily free questions</p>
+              <p className="font-sans text-xs text-[#8B9CB8]">{questionsLeft} of {DAILY_LIMIT} left today</p>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${limitReached ? 'bg-red-500/15 text-red-200' : 'bg-[#FF6B35]/15 text-[#FFB199]'}`}>
+              {limitReached ? 'Limit reached' : 'Ready'}
+            </span>
+          </div>
+
+          {limitReached && (
+            <div className="border-b border-[#FF6B35]/20 bg-[#FF6B35]/10 px-4 py-3 font-sans text-sm font-semibold text-[#FFB199] sm:px-5">
+              {LIMIT_MESSAGE}
+            </div>
+          )}
+
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-5" aria-live="polite">
+            {messages.map(message => {
+              const isUser = message.role === 'user';
+
+              return (
+                <div key={message.id} className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  {!isUser && (
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#D1D5DB]">
+                      <Bot className="h-4 w-4" />
+                    </div>
+                  )}
+                  <div className={`max-w-[82%] rounded-2xl px-4 py-3 font-sans text-sm leading-6 shadow-[0_12px_30px_rgba(0,0,0,0.18)] sm:max-w-[74%] ${isUser ? 'rounded-br-md bg-[#FF6B35] text-white' : 'rounded-bl-md bg-[#111827] text-[#D1D5DB]'}`}>
+                    {message.content}
+                  </div>
+                  {isUser && (
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FF6B35] text-white">
+                      <UserRound className="h-4 w-4" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {isTyping && (
+              <div className="flex justify-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#D1D5DB]">
+                  <Bot className="h-4 w-4" />
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-md bg-[#111827] px-4 py-3 text-sm text-[#D1D5DB]">
+                  <Loader2 className="h-4 w-4 animate-spin text-[#FF6B35]" />
+                  Tutor is typing...
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </section>
+      </main>
+
+      <form
+        onSubmit={handleSubmit}
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0A0F1E]/95 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-2xl"
+      >
+        <div className="mx-auto flex max-w-4xl gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={event => setInput(event.target.value)}
+            disabled={limitReached}
+            placeholder={limitReached ? LIMIT_MESSAGE : 'Ask a JAMB, WAEC, or NECO question...'}
+            className="min-h-12 flex-1 rounded-2xl border border-white/10 bg-[#111827] px-4 font-sans text-sm text-white outline-none transition placeholder:text-[#8B9CB8] focus:border-[#FF6B35]/60 disabled:cursor-not-allowed disabled:opacity-70"
+          />
+          <button
+            type="submit"
+            disabled={sendDisabled}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#FF6B35] px-4 font-sans text-sm font-bold text-white transition hover:bg-[#ff7c4d] disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:px-5"
+          >
+            {isTyping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            <span className="hidden sm:inline">Send</span>
+          </button>
+        </div>
+      </form>
+
+      {renderBottomNavigation?.()}
+    </div>
+  );
+}
