@@ -266,6 +266,7 @@ export default function App() {
   const [questionTimeLeft, setQuestionTimeLeft] = useState<number>(30);
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
   const [practiceQuestionsLoading, setPracticeQuestionsLoading] = useState<boolean>(false);
+  const [practiceErrorMessage, setPracticeErrorMessage] = useState<string | null>(null);
   const [failedPracticeQuestions, setFailedPracticeQuestions] = useState<Array<{ question: PracticeQuestion; selectedAnswer: number }>>([]);
   const [recordedPracticeAnswers, setRecordedPracticeAnswers] = useState<string[]>([]);
   const [showFailedReview, setShowFailedReview] = useState<boolean>(false);
@@ -1370,6 +1371,7 @@ export default function App() {
     const loadPracticeQuestions = async () => {
       const selections = getPracticeSelectionsFromNavigation();
       setPracticeQuestionsLoading(true);
+      setPracticeErrorMessage(null);
       setPracticeQuestions([]);
       setFailedPracticeQuestions([]);
       setRecordedPracticeAnswers([]);
@@ -1392,6 +1394,13 @@ export default function App() {
         const selectedSubtopics = Array.from(new Set(selections.map(selection => selection.topic).filter(Boolean)));
         const questionLimit = getPracticeQuestionLimit();
 
+        console.info('PracticeSession Supabase query:', {
+          table: 'questions',
+          select: '*',
+          filter: { subtopic: selectedSubtopics },
+          questionLimit
+        });
+
         const result = await supabase
           .from('questions')
           .select('*')
@@ -1399,12 +1408,21 @@ export default function App() {
 
         if (result.error) {
           console.warn('Unable to fetch practice questions:', result.error);
-          if (!cancelled) setPracticeQuestions([]);
+          if (!cancelled) {
+            setPracticeQuestions([]);
+            setPracticeErrorMessage(result.error.message);
+          }
           return;
         }
 
         if (!cancelled) {
           const rows = (result.data || []) as PracticeQuestion[];
+          if (rows.length === 0) {
+            setPracticeQuestions([]);
+            setPracticeErrorMessage('No questions found for selected topics. They may not be in the database yet.');
+            return;
+          }
+
           setPracticeQuestions(getBalancedPracticeQuestions(rows, selectedSubtopics, questionLimit));
         }
       } finally {
@@ -1973,8 +1991,15 @@ export default function App() {
         <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 text-white">
           <div className="w-full max-w-md animate-fade-up rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] text-center">
             <BookOpen className="mx-auto h-10 w-10 text-[#FF6B35]" />
+            {practiceErrorMessage && (
+              <div className="mt-5 rounded-2xl bg-red-600 px-4 py-3 font-sans text-sm font-bold leading-6 text-white shadow-[0_12px_30px_rgba(220,38,38,0.28)]">
+                {practiceErrorMessage}
+              </div>
+            )}
             <h1 className="mt-5 font-heading text-2xl font-bold text-white">No questions available for selected topics.</h1>
-            <p className="mt-3 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">They may not be in database yet.</p>
+            {!practiceErrorMessage && (
+              <p className="mt-3 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">No questions found for selected topics. They may not be in the database yet.</p>
+            )}
             <button
               type="button"
               onClick={() => navigatePath('/practice/subjects')}
