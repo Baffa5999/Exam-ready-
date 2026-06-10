@@ -1631,6 +1631,9 @@ export default function App() {
     </section>
   );
 
+  const profileStreakImage = 'https://images.unsplash.com/photo-1711653758220-cb95461f3097?auto=format&fit=crop&fm=jpg&q=80&w=360';
+  const profileAccuracyImage = 'https://images.unsplash.com/photo-1745209428549-0332b653ab1d?auto=format&fit=crop&fm=jpg&q=80&w=360';
+
   const renderProfilePage = () => {
     const username = getDashboardUsername();
     const email = currentUser?.email || studentProfile?.email || 'No email available';
@@ -1640,12 +1643,16 @@ export default function App() {
         label: 'Day Streak',
         value: studentProfile?.streak ?? 0,
         icon: Flame,
+        image: profileStreakImage,
+        imageAlt: 'Burning study book representing the day streak',
         color: '#FACC15'
       },
       {
         label: 'Overall Accuracy',
         value: `${dashboardPerformance.accuracy}%`,
         icon: Target,
+        image: profileAccuracyImage,
+        imageAlt: 'Bullseye target representing overall accuracy',
         color: '#2EC4B6'
       },
       {
@@ -1664,13 +1671,13 @@ export default function App() {
     ];
 
     return (
-      <div className={professionalPageClass}>
-        <main className={professionalMainClass}>
-          <div className="mb-8 flex items-center justify-between gap-3">
+      <div className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,107,53,0.10),transparent_34%),#0A0F1E] text-white font-sans">
+        <main className="mx-auto flex h-[calc(100dvh-92px)] max-w-5xl flex-col gap-3 px-4 py-3 sm:px-6 md:px-10 animate-fade-up">
+          <div className="flex shrink-0 items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => navigatePath('/dashboard')}
-              className="inline-flex min-w-0 items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827]/90 px-4 py-2.5 font-sans text-sm font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+              className="inline-flex min-w-0 items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827]/90 px-3 py-2 font-sans text-xs font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35] sm:px-4 sm:py-2.5 sm:text-sm"
             >
               <ChevronLeft className="h-4 w-4 shrink-0" />
               <span className="truncate">Back to Dashboard</span>
@@ -1679,53 +1686,64 @@ export default function App() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="inline-flex items-center gap-2 rounded-full border border-[#FF6B35]/25 bg-[#FF6B35]/10 px-4 py-2.5 font-sans text-sm font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:bg-[#FF6B35] hover:text-white"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#FF6B35]/25 bg-[#FF6B35]/10 px-3 py-2 font-sans text-xs font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:bg-[#FF6B35] hover:text-white sm:px-4 sm:py-2.5 sm:text-sm"
             >
               <LogOut className="h-4 w-4" />
               <span>Sign Out</span>
             </button>
           </div>
 
-          <section className="animate-fade-up rounded-[28px] border border-[#FF6B35]/25 bg-gradient-to-br from-[#1A1A2E] via-[#141827] to-[#111827] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:p-8">
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-              <div className="relative flex h-32 w-32 shrink-0 items-center justify-center self-center rounded-full border border-[#FFB36B]/40 bg-[radial-gradient(circle_at_50%_42%,#33220F_0%,#0A0F1E_58%,#FF6B35_60%,#2A1720_70%,#0A0F1E_100%)] shadow-[0_0_35px_rgba(255,107,53,0.22)] sm:self-auto">
+          <section className="flex min-h-0 flex-1 animate-fade-up flex-col rounded-[24px] border border-[#FF6B35]/25 bg-gradient-to-br from-[#1A1A2E] via-[#141827] to-[#111827] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:p-6">
+            <div className="flex shrink-0 items-center gap-4">
+              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-[#FFB36B]/40 bg-[radial-gradient(circle_at_50%_42%,#33220F_0%,#0A0F1E_58%,#FF6B35_60%,#2A1720_70%,#0A0F1E_100%)] shadow-[0_0_35px_rgba(255,107,53,0.22)] sm:h-28 sm:w-28">
                 <div className="absolute inset-3 rounded-full border border-[#FFD08A]/60" />
-                <div className="absolute inset-6 rounded-full border border-[#FF6B35]/40" />
-                <span className="relative font-heading text-5xl font-bold text-[#FF8A3D] drop-shadow-[0_2px_10px_rgba(255,107,53,0.45)]">
+                <div className="absolute inset-5 rounded-full border border-[#FF6B35]/40 sm:inset-6" />
+                <span className="relative font-heading text-3xl font-bold text-[#FF8A3D] drop-shadow-[0_2px_10px_rgba(255,107,53,0.45)] sm:text-5xl">
                   {initial}
                 </span>
               </div>
 
-              <div className="min-w-0 text-center sm:text-left">
-                <span className="inline-flex rounded-md border border-[#FF8A66]/60 px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-[0.28em] text-[#FFB199]">
+              <div className="min-w-0 flex-1 text-left">
+                <span className="inline-flex rounded-md border border-[#FF8A66]/60 px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-[0.24em] text-[#FFB199] sm:px-3 sm:text-[11px]">
                   Profile
                 </span>
-                <h1 className="mt-4 break-words font-heading text-2xl font-bold leading-tight text-[#FF7A55] sm:text-3xl">
+                <h1 className="mt-2 break-words font-heading text-xl font-bold leading-tight text-[#FF7A55] sm:mt-4 sm:text-3xl">
                   {username}
                 </h1>
-                <p className="mt-2 break-words font-sans text-sm font-normal text-[#8B9CB8] sm:text-base">
+                <p className="mt-1 break-words font-sans text-xs font-normal text-[#8B9CB8] sm:mt-2 sm:text-base">
                   {email}
                 </p>
               </div>
             </div>
 
-            <div className="mt-8 grid grid-cols-2 gap-4">
+            <div className="mt-4 grid min-h-0 flex-1 grid-cols-2 gap-3 sm:mt-6 sm:gap-4">
               {profileStats.map(stat => {
                 const StatIcon = stat.icon;
                 return (
                   <div
                     key={stat.label}
-                    className="min-h-[154px] rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-5"
+                    className="flex min-h-0 flex-col justify-between overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/80 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-5"
                   >
-                    <StatIcon className="h-9 w-9" style={{ color: stat.color }} />
-                    <p className="mt-5 font-heading text-3xl font-bold leading-none sm:text-4xl" style={{ color: stat.color }}>
-                      {stat.value}
-                    </p>
-                    <p className="mt-3 font-sans text-sm font-normal leading-5 text-[#8B9CB8] sm:text-base">
-                      {stat.label}
-                    </p>
+                    {stat.image ? (
+                      <img
+                        src={stat.image}
+                        alt={stat.imageAlt}
+                        className="h-12 w-12 rounded-2xl object-cover shadow-[0_8px_24px_rgba(0,0,0,0.32)] sm:h-14 sm:w-14"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <StatIcon className="h-8 w-8 sm:h-9 sm:w-9" style={{ color: stat.color }} />
+                    )}
+                    <div>
+                      <p className="mt-3 font-heading text-2xl font-bold leading-none sm:mt-5 sm:text-4xl" style={{ color: stat.color }}>
+                        {stat.value}
+                      </p>
+                      <p className="mt-2 font-sans text-xs font-normal leading-4 text-[#8B9CB8] sm:mt-3 sm:text-base sm:leading-5">
+                        {stat.label}
+                      </p>
+                    </div>
                     {stat.helper && (
-                      <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]/80">
+                      <p className="mt-1 font-sans text-[11px] font-normal text-[#8B9CB8]/80 sm:text-xs">
                         {stat.helper}
                       </p>
                     )}
