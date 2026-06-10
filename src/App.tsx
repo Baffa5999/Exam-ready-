@@ -1602,7 +1602,7 @@ export default function App() {
         label: 'Day Streak',
         value: studentProfile?.streak ?? 0,
         icon: Flame,
-        color: '#FF6B35'
+        color: '#FACC15'
       },
       {
         label: 'Overall Accuracy',
@@ -2806,7 +2806,7 @@ export default function App() {
 
                 <div className="mt-5 grid grid-cols-3 gap-3 md:gap-4">
                   <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-3 text-center sm:p-4">
-                    <Flame className="mx-auto h-6 w-6 text-[#FF6B35] sm:h-7 sm:w-7" />
+                    <Flame className="mx-auto h-6 w-6 text-[#FACC15] sm:h-7 sm:w-7" />
                     <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{studentProfile.streak ?? 0}</p>
                     <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Day Streak</p>
                   </div>
@@ -3111,7 +3111,7 @@ export default function App() {
                     {/* Quick Stats Grid */}
                     <div className="grid grid-cols-3 gap-2 mb-3">
                       <div className="bg-[#111827] border border-[rgba(255,255,255,0.05)] p-2 rounded-xl text-center">
-                        <span className="flex items-center justify-center gap-1 text-xs font-semibold text-white"><Flame className="h-3 w-3 text-[#FF6B35]" />9</span>
+                        <span className="flex items-center justify-center gap-1 text-xs font-semibold text-white"><Flame className="h-3 w-3 text-[#FACC15]" />9</span>
                         <span className="text-[8px] text-[rgba(255,255,255,0.4)] uppercase">Streak</span>
                       </div>
                       <div className="bg-[#111827] border border-[rgba(255,255,255,0.05)] p-2 rounded-xl text-center">
