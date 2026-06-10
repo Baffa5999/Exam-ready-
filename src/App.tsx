@@ -18,7 +18,6 @@ import {
   ChevronLeft,
   ChevronDown,
   ChevronUp,
-  Clock,
   Timer,
   Search,
   BookMarked,
@@ -51,6 +50,7 @@ import Onboarding from './components/Onboarding';
 import InstallPrompt from './components/InstallPrompt';
 import WeaknessAssassin from './pages/weakness/WeaknessAssassin';
 import PracticeConfigure from './pages/practice/PracticeConfigure';
+import PracticeReview from './pages/practice/PracticeReview';
 import AITutor from './pages/ai-tutor/AITutor';
 
 // Fonts link inside styles
@@ -183,7 +183,7 @@ const slugify = (value: string) => value.toLowerCase().replace(/&/g, 'and').repl
 const getSubjectFromSlug = (slug: string) => subjectLibrary.find(subject => slugify(subject.name) === slug)?.name || 'Mathematics';
 const getSubtopicFromSlug = (subject: string, slug: string) => subtopicsBySubject[subject]?.find(topic => slugify(topic) === slug) || subtopicsBySubject[subject]?.[0] || 'Algebra';
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceConfigure' | 'practiceExamType' | 'practiceSession' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceConfigure' | 'practiceExamType' | 'practiceSession' | 'practiceReview' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
@@ -199,6 +199,7 @@ const viewToPath: Record<AppView, string> = {
   practiceConfigure: '/practice/configure',
   practiceExamType: '/practice/exam-type',
   practiceSession: '/practice/session',
+  practiceReview: '/practice/review',
   cheatsheet: '/cheatsheet',
   cheatsheetSubject: '/cheatsheet',
   cheatsheetContent: '/cheatsheet',
@@ -227,6 +228,7 @@ function pathToView(pathname: string): AppView {
   if (routePath === '/practice/configure') return 'practiceConfigure';
   if (routePath === '/practice/exam-type') return 'practiceExamType';
   if (routePath === '/practice/session') return 'practiceSession';
+  if (routePath === '/practice/review') return 'practiceReview';
   if (routePath.startsWith('/mock-exam/')) return 'practiceSession';
   if (routePath === '/battle') return 'battle';
   if (routePath === '/leaderboard') return 'leaderboard';
@@ -261,15 +263,14 @@ export default function App() {
   const [loadingPracticeAvailability, setLoadingPracticeAvailability] = useState<boolean>(false);
   const [expandedCheatsheetSubject, setExpandedCheatsheetSubject] = useState<string | null>(null);
   const [questionIndex, setQuestionIndex] = useState<number>(0);
-  const [sessionSelectedAnswer, setSessionSelectedAnswer] = useState<number | null>(null);
   const [sessionScore, setSessionScore] = useState<number>(0);
-  const [questionTimeLeft, setQuestionTimeLeft] = useState<number>(30);
+  const [practiceAnswerSubmitting, setPracticeAnswerSubmitting] = useState<boolean>(false);
+  const practiceAnswerLock = React.useRef<boolean>(false);
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
   const [practiceQuestionsLoading, setPracticeQuestionsLoading] = useState<boolean>(false);
   const [practiceErrorMessage, setPracticeErrorMessage] = useState<string | null>(null);
-  const [failedPracticeQuestions, setFailedPracticeQuestions] = useState<Array<{ question: PracticeQuestion; selectedAnswer: number }>>([]);
-  const [recordedPracticeAnswers, setRecordedPracticeAnswers] = useState<string[]>([]);
-  const [showFailedReview, setShowFailedReview] = useState<boolean>(false);
+  const [failedPracticeQuestions, setFailedPracticeQuestions] = useState<Array<{ question: PracticeQuestion; selectedAnswer: number; correctAnswer: number; isCorrect: boolean }>>([]);
+  const [sessionAnswers, setSessionAnswers] = useState<Array<{ question: PracticeQuestion; selectedAnswer: number; correctAnswer: number; isCorrect: boolean }>>([]);
   const [battleCode, setBattleCode] = useState<string>('');
   const [joinBattleCode, setJoinBattleCode] = useState<string>('');
   const [leaderboardRange, setLeaderboardRange] = useState<'Weekly' | 'Monthly' | 'All Time'>('All Time');
@@ -379,7 +380,7 @@ export default function App() {
     if (!authReady) return;
 
     const isPublicRoute = view === 'landing' || view === 'signin';
-    const isProtectedRoute = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'].includes(view);
+    const isProtectedRoute = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'practiceReview', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'].includes(view);
 
     if (!currentUser) {
       if (isProtectedRoute) {
@@ -1194,46 +1195,38 @@ export default function App() {
   };
 
   const handlePracticeAnswer = (answerIndex: number) => {
-    if (sessionSelectedAnswer !== null) return;
+    if (practiceAnswerLock.current) return;
 
     const currentQuestion = practiceQuestions[questionIndex];
     if (!currentQuestion) return;
 
+    practiceAnswerLock.current = true;
+    setPracticeAnswerSubmitting(true);
+
     const correctAnswerIndex = getCorrectAnswerIndex(currentQuestion);
     const isCorrect = answerIndex === correctAnswerIndex;
-    const recordKey = `${currentQuestion.id ?? `${currentQuestion.subject}-${currentQuestion.subtopic}-${questionIndex}`}-${questionIndex}`;
+    const answerRecord = {
+      question: currentQuestion,
+      selectedAnswer: answerIndex,
+      correctAnswer: correctAnswerIndex,
+      isCorrect
+    };
 
-    setSessionSelectedAnswer(answerIndex);
+    setSessionAnswers(prev => [...prev, answerRecord]);
 
-    if (!recordedPracticeAnswers.includes(recordKey)) {
-      setRecordedPracticeAnswers(prev => [...prev, recordKey]);
-      if (isCorrect) {
-        setSessionScore(prev => prev + 1);
-      } else {
-        setFailedPracticeQuestions(prev => [...prev, { question: currentQuestion, selectedAnswer: answerIndex }]);
-      }
-      void savePracticePerformance(currentQuestion, isCorrect);
+    if (isCorrect) {
+      setSessionScore(prev => prev + 1);
+    } else {
+      setFailedPracticeQuestions(prev => [...prev, answerRecord]);
     }
+
+    void savePracticePerformance(currentQuestion, isCorrect);
+    setQuestionIndex(prev => prev + 1);
+    window.setTimeout(() => {
+      practiceAnswerLock.current = false;
+      setPracticeAnswerSubmitting(false);
+    }, 0);
   };
-
-  useEffect(() => {
-    if (view !== 'practiceSession') return;
-    if (practiceQuestionsLoading || practiceQuestions.length === 0 || questionIndex >= practiceQuestions.length || sessionSelectedAnswer !== null) return;
-
-    setQuestionTimeLeft(30);
-    const timer = window.setInterval(() => {
-      setQuestionTimeLeft(prev => {
-        if (prev <= 1) {
-          window.clearInterval(timer);
-          handlePracticeAnswer(-1);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, [view, questionIndex, sessionSelectedAnswer, practiceQuestions]);
 
   useEffect(() => {
     if (view !== 'leaderboard') return;
@@ -1374,12 +1367,10 @@ export default function App() {
       setPracticeErrorMessage(null);
       setPracticeQuestions([]);
       setFailedPracticeQuestions([]);
-      setRecordedPracticeAnswers([]);
-      setShowFailedReview(false);
+      setSessionAnswers([]);
       setQuestionIndex(0);
-      setSessionSelectedAnswer(null);
       setSessionScore(0);
-      setQuestionTimeLeft(30);
+      setPracticeAnswerSubmitting(false);
 
       if (selections.length === 0) {
         console.warn('PracticeSession missing selected subjects/subtopics. Redirecting to subject selection.');
@@ -1970,9 +1961,6 @@ export default function App() {
     const subject = currentQuestion?.subject || fallbackSubject;
     const subtopic = currentQuestion?.subtopic || fallbackSubtopic;
     const options = currentQuestion ? getAnswerOptions(currentQuestion) : [];
-    const correctIndex = currentQuestion ? getCorrectAnswerIndex(currentQuestion) : -1;
-    const answeredSession = sessionSelectedAnswer !== null;
-    const isCorrect = answeredSession && sessionSelectedAnswer === correctIndex;
     const progress = totalQuestions > 0 ? Math.min(((Math.min(questionIndex + 1, totalQuestions)) / totalQuestions) * 100, 100) : 0;
 
     if (practiceQuestionsLoading) {
@@ -2023,47 +2011,29 @@ export default function App() {
             <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full border-8 border-[#FF6B35]/25 bg-[#0A0F1E]">
               <span className="font-heading text-3xl font-bold text-[#FF6B35] sm:text-4xl">{percent}%</span>
             </div>
-            <p className="mt-6 font-heading text-2xl font-bold text-white">{sessionScore} out of {totalQuestions}</p>
-            <p className="mt-2 font-sans text-lg font-bold text-[#FF6B35]">{percent}%</p>
+            <p className="mt-6 font-heading text-2xl font-bold text-white">{sessionScore}/{totalQuestions}</p>
+            <p className="mt-2 font-sans text-lg font-bold text-[#FF6B35]">Accuracy: {percent}%</p>
             <p className="mt-4 font-heading text-lg font-bold text-white">{message}</p>
             <p className="mt-2 font-sans text-sm font-normal text-[#8B9CB8]">{subject} • {subtopic}</p>
 
-            {showFailedReview && failedPracticeQuestions.length > 0 && (
-              <div className="mt-6 max-h-72 space-y-3 overflow-y-auto text-left">
-                {failedPracticeQuestions.map(({ question, selectedAnswer }, index) => {
-                  const failedOptions = getAnswerOptions(question);
-                  const failedCorrectIndex = getCorrectAnswerIndex(question);
-                  return (
-                    <div key={`${question.id ?? question.question_text}-${index}`} className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4">
-                      <p className="font-sans text-sm font-semibold leading-6 text-white">{question.question_text}</p>
-                      <p className="mt-2 font-sans text-xs text-red-300">Your answer: {selectedAnswer >= 0 ? failedOptions[selectedAnswer] : 'No answer selected'}</p>
-                      <p className="mt-1 font-sans text-xs text-emerald-300">Correct answer: {failedOptions[failedCorrectIndex] || question.correct_answer}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
             <div className="mt-8 space-y-3">
-              {failedPracticeQuestions.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowFailedReview(prev => !prev)}
-                  className="w-full rounded-2xl border border-red-400/30 px-5 py-4 font-sans text-sm font-bold text-red-300 transition hover:border-red-300 hover:text-red-200"
-                >
-                  {showFailedReview ? 'Hide Failed Questions' : 'Review Failed Questions'}
-                </button>
-              )}
+              <button
+                type="button"
+                disabled={failedPracticeQuestions.length === 0}
+                onClick={() => navigatePath('/practice/review', { failedPracticeQuestions })}
+                className="w-full rounded-2xl border border-red-400/30 px-5 py-4 font-sans text-sm font-bold text-red-300 transition hover:border-red-300 hover:text-red-200 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-[#8B9CB8] disabled:opacity-60"
+              >
+                Review Failed Questions
+              </button>
               <button
                 type="button"
                 onClick={() => {
                   setQuestionIndex(0);
-                  setSessionSelectedAnswer(null);
                   setSessionScore(0);
-                  setQuestionTimeLeft(30);
+                  practiceAnswerLock.current = false;
+                  setPracticeAnswerSubmitting(false);
                   setFailedPracticeQuestions([]);
-                  setRecordedPracticeAnswers([]);
-                  setShowFailedReview(false);
+                  setSessionAnswers([]);
                 }}
                 className="w-full rounded-2xl bg-[#FF6B35] px-5 py-4 font-sans text-sm font-bold text-white transition hover:bg-[#ff7c4d]"
               >
@@ -2101,11 +2071,6 @@ export default function App() {
         </header>
 
         <main className="mx-auto max-w-4xl py-8">
-          <div className={`mx-auto mb-6 flex w-fit items-center gap-2 rounded-full border px-4 py-2 font-sans text-sm font-bold ${questionTimeLeft < 10 ? 'border-red-500/40 text-red-400' : 'border-white/10 text-[#8B9CB8]'}`}>
-            <Clock className="h-4 w-4" />
-            {questionTimeLeft}s
-          </div>
-
           {totalQuestions > 0 && totalQuestions < 20 && (
             <p className="mx-auto mb-6 max-w-md rounded-2xl border border-[#FF6B35]/20 bg-[#FF6B35]/10 px-4 py-3 text-center font-sans text-xs font-normal leading-5 text-[#FFB59C]">
               Only {totalQuestions} questions are available for these topics right now.
@@ -2119,53 +2084,22 @@ export default function App() {
           </section>
 
           <section className="mt-6 space-y-3">
-            {options.map((option, index) => {
-              const selected = sessionSelectedAnswer === index;
-              const correct = answeredSession && index === correctIndex;
-              const wrong = answeredSession && selected && index !== correctIndex;
-
-              return (
-                <button
-                  key={`${option}-${index}`}
-                  type="button"
-                  disabled={answeredSession}
-                  onClick={() => handlePracticeAnswer(index)}
-                  className={`flex w-full items-center gap-4 rounded-2xl border bg-[#111827] p-4 text-left transition ${correct ? 'border-emerald-400 text-emerald-300' : wrong ? 'border-red-400 text-red-300' : answeredSession ? 'border-white/5 opacity-45' : 'border-white/10 text-white hover:border-[#FF6B35]/50'}`}
-                >
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${correct ? 'bg-emerald-500 text-white' : wrong ? 'bg-red-500 text-white' : 'bg-[#0A0F1E] text-[#8B9CB8]'}`}>
-                    {String.fromCharCode(65 + index)}
-                  </span>
-                  <span className="font-sans text-sm md:text-base">{option}</span>
-                </button>
-              );
-            })}
+            {options.map((option, index) => (
+              <button
+                key={`${option}-${index}`}
+                type="button"
+                disabled={practiceAnswerSubmitting}
+                onClick={() => handlePracticeAnswer(index)}
+                className="flex w-full flex-wrap items-start gap-3 rounded-2xl border border-white/10 bg-[#111827] p-4 text-left text-white transition hover:border-[#FF6B35]/50 disabled:cursor-not-allowed disabled:opacity-70 sm:flex-nowrap"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0A0F1E] text-sm font-bold text-[#8B9CB8]">
+                  {String.fromCharCode(65 + index)}
+                </span>
+                <span className="min-w-0 flex-1 whitespace-normal break-words font-sans text-sm leading-6 md:text-base">{option}</span>
+              </button>
+            ))}
           </section>
-
-          {answeredSession && currentQuestion && (
-            <section className={`mt-6 animate-slide-up rounded-2xl border-l-4 bg-[#111827] p-5 ${isCorrect ? 'border-l-emerald-500' : 'border-l-[#FF6B35]'}`}>
-              <p className={`font-heading text-sm font-bold ${isCorrect ? 'text-emerald-400' : 'text-[#FF6B35]'}`}>{isCorrect ? 'Correct' : 'Explanation'}</p>
-              <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#C8D2E4]">
-                {currentQuestion.explanation || 'No explanation is available for this question yet.'}
-              </p>
-            </section>
-          )}
         </main>
-
-        {answeredSession && (
-          <div className="fixed inset-x-0 bottom-0 z-40 bg-[#0A0F1E]/90 px-5 py-4 backdrop-blur">
-            <button
-              type="button"
-              onClick={() => {
-                setQuestionIndex(prev => prev + 1);
-                setSessionSelectedAnswer(null);
-                setQuestionTimeLeft(30);
-              }}
-              className="mx-auto block w-full max-w-4xl rounded-2xl bg-[#FF6B35] px-6 py-4 font-sans text-sm font-bold text-white transition hover:bg-[#ff7c4d]"
-            >
-              {questionIndex + 1 >= totalQuestions ? 'See Results' : 'Next Question'}
-            </button>
-          </div>
-        )}
       </div>
     );
   };
@@ -2962,6 +2896,14 @@ export default function App() {
 
       {/* PRACTICE SESSION PAGE */}
       {view === 'practiceSession' && studentProfile && renderPracticeSessionPage()}
+
+      {/* PRACTICE REVIEW PAGE */}
+      {view === 'practiceReview' && studentProfile && (
+        <PracticeReview
+          failedQuestions={((window.history.state || {}) as { failedPracticeQuestions?: typeof failedPracticeQuestions }).failedPracticeQuestions || failedPracticeQuestions}
+          navigatePath={navigatePath}
+        />
+      )}
 
       {/* CHEATSHEET PAGE */}
       {view === 'cheatsheet' && studentProfile && renderCheatsheetPage()}
