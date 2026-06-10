@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, ChevronLeft, Loader2, Send, Sparkles, UserRound } from 'lucide-react';
+import { Bot, ChevronLeft, Loader2, Send, UserRound } from 'lucide-react';
 
 const SYSTEM_PROMPT = 'You are a helpful JAMB/WAEC/NECO tutor for Nigerian secondary school students. Answer exam questions clearly, with step-by-step explanations. Keep answers concise and friendly. Use Nigerian examples where helpful.';
 const DAILY_LIMIT = 5;
@@ -241,32 +241,23 @@ export default function AITutor({ user, navigatePath }) {
 
   return (
     <div className="min-h-[100dvh] bg-[#0A0F1E] text-white">
-      <main className="mx-auto flex min-h-[100dvh] max-w-4xl flex-col px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pb-28 lg:px-8">
-        <header className="mb-5 rounded-[28px] border border-[#FF6B35]/20 bg-gradient-to-br from-[#1A1A2E] via-[#141827] to-[#111827] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-6">
+      <main className="mx-auto flex h-[100dvh] max-w-5xl flex-col px-3 pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:pb-24 lg:px-8">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => navigatePath('/dashboard')}
-            className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 font-sans text-sm font-bold text-[#FFB199] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#111827]/90 px-3 py-2 font-sans text-xs font-bold text-[#FFB199] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35] sm:text-sm"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back to Dashboard
+            Back
           </button>
-
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35] shadow-[0_0_24px_rgba(255,107,53,0.2)]">
-              <Sparkles className="h-7 w-7" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-sans text-[11px] font-bold uppercase tracking-[0.28em] text-[#FFB199]">ExamReady</p>
-              <h1 className="mt-1 font-heading text-2xl font-bold leading-tight text-white sm:text-3xl">AI Tutor</h1>
-              <p className="mt-2 font-sans text-sm leading-6 text-[#8B9CB8]">
-                Ask JAMB, WAEC, or NECO questions and get clear step-by-step help.
-              </p>
-            </div>
+          <div className="min-w-0 text-right">
+            <h1 className="font-heading text-lg font-bold leading-tight text-white sm:text-2xl">AI Tutor</h1>
+            <p className="hidden font-sans text-xs text-[#8B9CB8] sm:block">JAMB, WAEC & NECO step-by-step help</p>
           </div>
-        </header>
+        </div>
 
-        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#0B1324]/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px] border border-white/10 bg-[#0B1324]/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] sm:rounded-[28px]">
           <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
             <div>
               <p className="font-heading text-sm font-bold text-white">Daily free questions</p>
