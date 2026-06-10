@@ -279,6 +279,9 @@ export default function App() {
   const [leaderboardRows, setLeaderboardRows] = useState<LeaderboardStudent[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState<boolean>(false);
 
+  const publicViews: AppView[] = ['landing', 'signin'];
+  const protectedViews: AppView[] = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'practiceReview', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'];
+
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
     if (window.location.pathname !== nextPath) {
@@ -289,6 +292,11 @@ export default function App() {
       }
     }
     setView(nextView);
+  };
+
+  const shouldRedirectToSignedInStart = () => {
+    const currentView = pathToView(window.location.pathname);
+    return publicViews.includes(currentView) || currentView === 'onboarding';
   };
   
   // Quiz states
@@ -380,8 +388,8 @@ export default function App() {
   useEffect(() => {
     if (!authReady) return;
 
-    const isPublicRoute = view === 'landing' || view === 'signin';
-    const isProtectedRoute = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'practiceReview', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'].includes(view);
+    const isPublicRoute = publicViews.includes(view);
+    const isProtectedRoute = protectedViews.includes(view);
 
     if (!currentUser) {
       if (isProtectedRoute) {
@@ -625,7 +633,9 @@ export default function App() {
     if (data) {
       const profile = buildProfileFromSupabase(user, data);
       setStudentProfile(profile);
-      navigateTo('dashboard', { replace: true });
+      if (shouldRedirectToSignedInStart()) {
+        navigateTo('dashboard', { replace: true });
+      }
       return;
     }
 
@@ -2451,6 +2461,24 @@ export default function App() {
     );
   };
 
+  const renderLoadingScreen = () => (
+    <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-6 text-white">
+      <div className="relative flex w-full max-w-sm flex-col items-center text-center">
+        <div className="absolute h-64 w-64 rounded-full bg-[radial-gradient(rgba(255,107,53,0.22),transparent_68%)] blur-2xl" />
+        <div className="relative flex h-24 w-24 items-center justify-center rounded-[28px] border border-[#FF6B35]/30 bg-[#111827] shadow-[0_0_60px_rgba(255,107,53,0.22)]">
+          <span className="font-heading text-4xl font-bold tracking-tight text-white">E<span className="text-[#FF6B35]">R</span></span>
+        </div>
+        <h1 className="relative mt-6 font-heading text-4xl font-bold tracking-tight text-white">
+          Exam<span className="text-[#FF6B35]">Ready</span>
+        </h1>
+        <p className="relative mt-3 font-sans text-sm font-medium text-[#8B9CB8]">Loading your study space...</p>
+        <div className="relative mt-8 h-1.5 w-48 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full w-1/2 animate-[pulse_1.2s_ease-in-out_infinite] rounded-full bg-[#FF6B35]" />
+        </div>
+      </div>
+    </div>
+  );
+
   const renderLeaderboardPage = () => {
     const visibleRows = leaderboardRows.slice(3);
     const filters = ['All Subjects', 'Mathematics', 'Biology', 'Chemistry', 'Physics', 'English'];
@@ -2560,6 +2588,10 @@ export default function App() {
       {/* Inject custom font styles */}
       <style>{fontStyles}</style>
       <InstallPrompt />
+
+      {(loading || !authReady) && renderLoadingScreen()}
+      {!(loading || !authReady) && (
+        <>
 
       {/* STICKY STATUS BANNER NOTIFICATIONS */}
       {statusMessage && (
@@ -3574,6 +3606,8 @@ export default function App() {
         </div>
       )}
 
+        </>
+      )}
     </div>
   );
 }
