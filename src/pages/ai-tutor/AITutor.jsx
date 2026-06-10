@@ -133,7 +133,7 @@ async function askTutor(messages) {
   throw lastError || new Error('No AI provider is available.');
 }
 
-export default function AITutor({ user, navigatePath, renderBottomNavigation }) {
+export default function AITutor({ user, navigatePath }) {
   const userKey = user?.id || user?.email || 'guest';
   const storageKey = useMemo(() => `examready-ai-tutor-usage-${userKey}`, [userKey]);
   const messagesEndRef = useRef(null);
@@ -345,8 +345,6 @@ export default function AITutor({ user, navigatePath, renderBottomNavigation }) 
           </button>
         </div>
       </form>
-
-      {renderBottomNavigation?.()}
     </div>
   );
 }

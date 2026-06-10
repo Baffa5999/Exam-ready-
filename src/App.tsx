@@ -2905,7 +2905,6 @@ export default function App() {
         <AITutor
           user={currentUser}
           navigatePath={navigatePath}
-          renderBottomNavigation={renderBottomNavigation}
         />
       )}
 
