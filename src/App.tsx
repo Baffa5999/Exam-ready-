@@ -265,12 +265,13 @@ export default function App() {
   const [questionIndex, setQuestionIndex] = useState<number>(0);
   const [sessionScore, setSessionScore] = useState<number>(0);
   const [practiceAnswerSubmitting, setPracticeAnswerSubmitting] = useState<boolean>(false);
+  const [practiceAutoAdvance, setPracticeAutoAdvance] = useState<boolean>(false);
   const practiceAnswerLock = React.useRef<boolean>(false);
   const [practiceQuestions, setPracticeQuestions] = useState<PracticeQuestion[]>([]);
   const [practiceQuestionsLoading, setPracticeQuestionsLoading] = useState<boolean>(false);
   const [practiceErrorMessage, setPracticeErrorMessage] = useState<string | null>(null);
   const [failedPracticeQuestions, setFailedPracticeQuestions] = useState<Array<{ question: PracticeQuestion; selectedAnswer: number; correctAnswer: number; isCorrect: boolean }>>([]);
-  const [sessionAnswers, setSessionAnswers] = useState<Array<{ question: PracticeQuestion; selectedAnswer: number; correctAnswer: number; isCorrect: boolean }>>([]);
+  const [sessionAnswers, setSessionAnswers] = useState<Array<{ question: PracticeQuestion; selectedAnswer: number; correctAnswer: number; isCorrect: boolean } | undefined>>([]);
   const [battleCode, setBattleCode] = useState<string>('');
   const [joinBattleCode, setJoinBattleCode] = useState<string>('');
   const [leaderboardRange, setLeaderboardRange] = useState<'Weekly' | 'Monthly' | 'All Time'>('All Time');
@@ -1194,11 +1195,29 @@ export default function App() {
 
   };
 
+  const goToNextPracticeQuestion = () => {
+    setQuestionIndex(prev => Math.min(prev + 1, practiceQuestions.length));
+    practiceAnswerLock.current = false;
+    setPracticeAnswerSubmitting(false);
+  };
+
+  const goToPreviousPracticeQuestion = () => {
+    setQuestionIndex(prev => Math.max(prev - 1, 0));
+    practiceAnswerLock.current = false;
+    setPracticeAnswerSubmitting(false);
+  };
+
   const handlePracticeAnswer = (answerIndex: number) => {
     if (practiceAnswerLock.current) return;
 
     const currentQuestion = practiceQuestions[questionIndex];
     if (!currentQuestion) return;
+
+    const existingAnswer = sessionAnswers[questionIndex];
+    if (existingAnswer) {
+      if (practiceAutoAdvance) goToNextPracticeQuestion();
+      return;
+    }
 
     practiceAnswerLock.current = true;
     setPracticeAnswerSubmitting(true);
@@ -1212,7 +1231,11 @@ export default function App() {
       isCorrect
     };
 
-    setSessionAnswers(prev => [...prev, answerRecord]);
+    setSessionAnswers(prev => {
+      const next = [...prev];
+      next[questionIndex] = answerRecord;
+      return next;
+    });
 
     if (isCorrect) {
       setSessionScore(prev => prev + 1);
@@ -1221,7 +1244,12 @@ export default function App() {
     }
 
     void savePracticePerformance(currentQuestion, isCorrect);
-    setQuestionIndex(prev => prev + 1);
+
+    if (practiceAutoAdvance) {
+      goToNextPracticeQuestion();
+      return;
+    }
+
     window.setTimeout(() => {
       practiceAnswerLock.current = false;
       setPracticeAnswerSubmitting(false);
@@ -1962,6 +1990,8 @@ export default function App() {
     const subtopic = currentQuestion?.subtopic || fallbackSubtopic;
     const options = currentQuestion ? getAnswerOptions(currentQuestion) : [];
     const progress = totalQuestions > 0 ? Math.min(((Math.min(questionIndex + 1, totalQuestions)) / totalQuestions) * 100, 100) : 0;
+    const currentSessionAnswer = sessionAnswers[questionIndex];
+    const canGoNext = Boolean(currentSessionAnswer) && !practiceAnswerSubmitting;
 
     if (practiceQuestionsLoading) {
       return (
@@ -2053,7 +2083,7 @@ export default function App() {
     }
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-36 text-white md:px-10">
+      <div className="min-h-screen bg-[#0A0F1E] px-5 pb-44 text-white md:px-10">
         <header className="sticky top-0 z-30 -mx-5 border-b border-white/10 bg-[#0A0F1E]/95 px-5 py-4 backdrop-blur md:-mx-10 md:px-10">
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
             <button type="button" onClick={() => navigatePath('/practice')} className="rounded-full p-2 text-[#8B9CB8] hover:text-[#FF6B35]" aria-label="Back to practice">
@@ -2070,7 +2100,22 @@ export default function App() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-4xl py-8">
+        <div className="mx-auto mt-4 flex max-w-4xl items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0B1324]/85 px-4 py-3">
+          <div>
+            <p className="font-heading text-sm font-bold text-white">Auto next</p>
+            <p className="font-sans text-xs text-[#8B9CB8]">Move immediately after selecting an answer.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPracticeAutoAdvance(prev => !prev)}
+            aria-pressed={practiceAutoAdvance}
+            className={`relative h-8 w-14 rounded-full transition ${practiceAutoAdvance ? 'bg-[#FF6B35]' : 'bg-[#111827]'}`}
+          >
+            <span className={`absolute top-1 h-6 w-6 rounded-full bg-white transition ${practiceAutoAdvance ? 'left-7' : 'left-1'}`} />
+          </button>
+        </div>
+
+        <main className="mx-auto max-w-4xl py-6">
           {totalQuestions > 0 && totalQuestions < 20 && (
             <p className="mx-auto mb-6 max-w-md rounded-2xl border border-[#FF6B35]/20 bg-[#FF6B35]/10 px-4 py-3 text-center font-sans text-xs font-normal leading-5 text-[#FFB59C]">
               Only {totalQuestions} questions are available for these topics right now.
@@ -2084,22 +2129,47 @@ export default function App() {
           </section>
 
           <section className="mt-6 space-y-3">
-            {options.map((option, index) => (
-              <button
-                key={`${option}-${index}`}
-                type="button"
-                disabled={practiceAnswerSubmitting}
-                onClick={() => handlePracticeAnswer(index)}
-                className="flex w-full flex-wrap items-start gap-3 rounded-2xl border border-white/10 bg-[#111827] p-4 text-left text-white transition hover:border-[#FF6B35]/50 disabled:cursor-not-allowed disabled:opacity-70 sm:flex-nowrap"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0A0F1E] text-sm font-bold text-[#8B9CB8]">
-                  {String.fromCharCode(65 + index)}
-                </span>
-                <span className="min-w-0 flex-1 whitespace-normal break-words font-sans text-sm leading-6 md:text-base">{option}</span>
-              </button>
-            ))}
+            {options.map((option, index) => {
+              const selected = currentSessionAnswer?.selectedAnswer === index;
+
+              return (
+                <button
+                  key={`${option}-${index}`}
+                  type="button"
+                  disabled={practiceAnswerSubmitting || Boolean(currentSessionAnswer)}
+                  onClick={() => handlePracticeAnswer(index)}
+                  className={`flex w-full flex-wrap items-start gap-3 rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed sm:flex-nowrap ${selected ? 'border-[#FF6B35] bg-[#FF6B35]/15 text-white' : 'border-white/10 bg-[#111827] text-white hover:border-[#FF6B35]/50 disabled:opacity-70'}`}
+                >
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${selected ? 'bg-[#FF6B35] text-white' : 'bg-[#0A0F1E] text-[#8B9CB8]'}`}>
+                    {String.fromCharCode(65 + index)}
+                  </span>
+                  <span className="min-w-0 flex-1 whitespace-normal break-words font-sans text-sm leading-6 md:text-base">{option}</span>
+                </button>
+              );
+            })}
           </section>
         </main>
+
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0A0F1E]/95 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+          <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={goToPreviousPracticeQuestion}
+              disabled={questionIndex === 0}
+              className="rounded-2xl border border-white/10 px-5 py-4 font-sans text-sm font-bold text-white transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={goToNextPracticeQuestion}
+              disabled={!canGoNext}
+              className="rounded-2xl bg-[#FF6B35] px-5 py-4 font-sans text-sm font-bold text-white transition hover:bg-[#ff7c4d] disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+            >
+              {questionIndex + 1 >= totalQuestions ? 'See Results' : 'Next Question'}
+            </button>
+          </div>
+        </div>
       </div>
     );
   };
