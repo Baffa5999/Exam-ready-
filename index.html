@@ -8,11 +8,31 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ExamReady">
     <link rel="apple-touch-icon" href="/icon-192x192.png">
-    <meta name="theme-color" content="#FF6B35">
+    <meta name="theme-color" content="#0A0F1E">
     <title>ExamReady — Pass JAMB, WAEC & NECO</title>
   </head>
-  <body class="bg-[#0A0F1E] text-white">
-    <div id="root"></div>
+  <body class="bg-[#0A0F1E] text-white" style="margin:0;background:#0A0F1E;color:#fff;">
+    <div id="root">
+      <div id="initial-loader" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0A0F1E;padding:0 24px;color:#fff;font-family:Arial, sans-serif;">
+        <div style="position:relative;width:100%;max-width:384px;text-align:center;display:flex;flex-direction:column;align-items:center;">
+          <div style="position:absolute;width:256px;height:256px;border-radius:9999px;background:radial-gradient(rgba(255,107,53,0.22), transparent 68%);filter:blur(32px);"></div>
+          <div style="position:relative;width:96px;height:96px;border-radius:28px;border:1px solid rgba(255,107,53,0.3);background:#111827;box-shadow:0 0 60px rgba(255,107,53,0.22);display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:40px;font-weight:800;letter-spacing:-0.04em;color:#fff;line-height:1;">E<span style="color:#FF6B35;">R</span></span>
+          </div>
+          <h1 style="position:relative;margin:24px 0 0;font-size:40px;line-height:1.1;font-weight:800;letter-spacing:-0.04em;color:#fff;">Exam<span style="color:#FF6B35;">Ready</span></h1>
+          <p style="position:relative;margin:12px 0 0;font-size:14px;font-weight:500;color:#8B9CB8;">Loading your study space...</p>
+          <div style="position:relative;margin-top:32px;width:192px;height:6px;overflow:hidden;border-radius:9999px;background:rgba(255,255,255,0.1);">
+            <div style="height:100%;width:50%;border-radius:9999px;background:#FF6B35;animation:examreadyPulse 1.2s ease-in-out infinite;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <style>
+      @keyframes examreadyPulse {
+        0%, 100% { transform: translateX(-20%); opacity: 0.55; }
+        50% { transform: translateX(120%); opacity: 1; }
+      }
+    </style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

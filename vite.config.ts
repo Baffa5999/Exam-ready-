@@ -20,7 +20,7 @@ export default defineConfig(() => {
           name: 'ExamReady',
           short_name: 'ExamReady',
           description: 'JAMB, WAEC and NECO exam preparation for Nigerian students',
-          theme_color: '#FF6B35',
+          theme_color: '#0A0F1E',
           background_color: '#0A0F1E',
           display: 'standalone',
           orientation: 'portrait',
