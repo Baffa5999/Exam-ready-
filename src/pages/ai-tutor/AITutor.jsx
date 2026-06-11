@@ -1,136 +1,34 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, ChevronLeft, Loader2, Send, UserRound } from 'lucide-react';
 
-const SYSTEM_PROMPT = 'You are a helpful JAMB/WAEC/NECO tutor for Nigerian secondary school students. Answer exam questions clearly, with step-by-step explanations. Keep answers concise and friendly. Use Nigerian examples where helpful.';
 const DAILY_LIMIT = 5;
 const LIMIT_MESSAGE = "You've used your 5 free daily questions. Try again tomorrow.";
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
-const getMessageText = data => {
-  if (!data) return '';
-
-  if (typeof data === 'string') return data;
-
-  return data.candidates?.[0]?.content?.parts
-    ?.map(part => part?.text || '')
-    .join('')
-    .trim()
-    || data.choices?.[0]?.message?.content?.trim()
-    || data.choices?.[0]?.text?.trim()
-    || '';
-};
-
-async function requestGemini(messages) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) throw new Error('Gemini API key is not configured.');
-
-  const contents = messages.map(message => ({
-    role: message.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: message.content }]
-  }));
-
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+async function askTutor(message, history) {
+  const response = await fetch('/api/ai-tutor', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: SYSTEM_PROMPT }]
-      },
-      contents,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 700
-      }
-    })
+    body: JSON.stringify({ message, history })
   });
 
-  if (!response.ok) {
-    throw new Error(`Gemini request failed with status ${response.status}.`);
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
   }
-
-  const data = await response.json();
-  const text = getMessageText(data);
-  if (!text) throw new Error('Gemini returned an empty response.');
-  return text;
-}
-
-async function requestGroq(messages) {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-  if (!apiKey) throw new Error('Groq API key is not configured.');
-
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...messages
-      ],
-      temperature: 0.7,
-      max_tokens: 700
-    })
-  });
 
   if (!response.ok) {
-    throw new Error(`Groq request failed with status ${response.status}.`);
+    throw new Error(data.error || `AI Tutor request failed with status ${response.status}.`);
   }
 
-  const data = await response.json();
-  const text = getMessageText(data);
-  if (!text) throw new Error('Groq returned an empty response.');
-  return text;
-}
-
-async function requestOpenAI(messages) {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OpenAI API key is not configured.');
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...messages
-      ],
-      temperature: 0.7,
-      max_tokens: 700
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI request failed with status ${response.status}.`);
+  if (!data.response) {
+    throw new Error('AI Tutor returned an empty response.');
   }
 
-  const data = await response.json();
-  const text = getMessageText(data);
-  if (!text) throw new Error('OpenAI returned an empty response.');
-  return text;
-}
-
-async function askTutor(messages) {
-  const providers = [requestGemini, requestGroq, requestOpenAI];
-  let lastError;
-
-  for (const provider of providers) {
-    try {
-      return await provider(messages);
-    } catch (error) {
-      lastError = error;
-      console.info('AI Tutor provider fallback triggered:', error?.message || error);
-    }
-  }
-
-  throw lastError || new Error('No AI provider is available.');
+  return data.response;
 }
 
 export default function AITutor({ user, navigatePath }) {
@@ -211,10 +109,10 @@ export default function AITutor({ user, navigatePath }) {
     setIsTyping(true);
 
     try {
-      const history = nextMessages
+      const history = messages
         .filter(message => message.id !== 'welcome')
         .map(({ role, content }) => ({ role, content }));
-      const answer = await askTutor(history);
+      const answer = await askTutor(prompt, history);
 
       setMessages(current => [
         ...current,
