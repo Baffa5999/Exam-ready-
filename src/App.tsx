@@ -39,7 +39,6 @@ import {
   Swords,
   Crosshair,
   NotebookTabs,
-  BookOpenCheck,
   WandSparkles,
   UsersRound,
   CircleDotDashed,
@@ -1648,50 +1647,50 @@ export default function App() {
     const username = getDashboardUsername();
     const email = currentUser?.email || studentProfile?.email || 'No email available';
     const initial = (studentProfile?.username || studentProfile?.fullName || currentUser?.email || 'S').charAt(0).toUpperCase();
+    const streakCount = studentProfile?.streak ?? 0;
     const profileStats = [
       {
         label: 'Day Streak',
-        value: studentProfile?.streak ?? 0,
-        icon: Flame,
+        value: streakCount > 0 ? `${streakCount}` : '0 — Start today!',
         symbol: '🔥',
         iconLabel: 'Flame icon',
-        color: '#FACC15'
+        color: '#FFB199',
+        valueClassName: 'text-lg sm:text-2xl'
       },
       {
         label: 'Overall Accuracy',
         value: `${dashboardPerformance.accuracy}%`,
-        icon: Target,
         symbol: '🎯',
         iconLabel: 'Bullseye target icon',
-        color: '#2EC4B6'
+        color: '#1EF1E5',
+        valueClassName: 'text-4xl sm:text-5xl'
       },
       {
         label: 'Questions Answered',
         value: dashboardPerformance.questions,
-        icon: BookOpen,
         symbol: '📖',
         iconLabel: 'Open book icon',
-        color: '#00BBF9'
+        color: '#1EF1E5',
+        valueClassName: 'text-4xl sm:text-5xl'
       },
       {
         label: 'Battles Won',
-        value: profileBattleWins,
-        icon: Trophy,
+        value: profileBattleWins > 0 ? `${profileBattleWins}` : '0 — Ready for your first victory!',
         symbol: '🏆',
         iconLabel: 'Trophy icon',
-        color: '#FF6B35',
-        helper: 'Completed battle wins'
+        color: '#FFE8A3',
+        valueClassName: 'text-lg sm:text-2xl'
       }
     ];
 
     return (
-      <div className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,107,53,0.10),transparent_34%),#0A0F1E] text-white font-sans">
-        <main className="mx-auto flex h-[calc(100dvh-92px)] max-w-5xl flex-col gap-3 px-4 py-3 sm:px-6 md:px-10 animate-fade-up">
+      <div className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_12%_20%,rgba(255,107,53,0.13),transparent_28%),#0A0F1E] text-white font-sans">
+        <main className="mx-auto flex h-[calc(100dvh-92px)] max-w-5xl flex-col gap-4 px-4 py-4 sm:px-6 md:px-10 animate-fade-up">
           <div className="flex shrink-0 items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => navigatePath('/dashboard')}
-              className="inline-flex min-w-0 items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827]/90 px-3 py-2 font-sans text-xs font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35] sm:px-4 sm:py-2.5 sm:text-sm"
+              className="inline-flex min-w-0 items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827]/90 px-4 py-2.5 font-sans text-sm font-bold text-[#FFB199] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
             >
               <ChevronLeft className="h-4 w-4 shrink-0" />
               <span className="truncate">Back to Dashboard</span>
@@ -1700,69 +1699,61 @@ export default function App() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#FF6B35]/25 bg-[#FF6B35]/10 px-3 py-2 font-sans text-xs font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:bg-[#FF6B35] hover:text-white sm:px-4 sm:py-2.5 sm:text-sm"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#FF6B35]/35 bg-[#FF6B35]/15 px-4 py-2.5 font-sans text-sm font-bold text-[#FFB199] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:bg-[#FF6B35] hover:text-white"
             >
               <LogOut className="h-4 w-4" />
               <span>Sign Out</span>
             </button>
           </div>
 
-          <section className="flex min-h-0 flex-1 animate-fade-up flex-col rounded-[24px] border border-[#FF6B35]/25 bg-gradient-to-br from-[#1A1A2E] via-[#141827] to-[#111827] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:p-6">
-            <div className="flex shrink-0 items-center gap-4">
-              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-[#FFB36B]/40 bg-[radial-gradient(circle_at_50%_42%,#33220F_0%,#0A0F1E_58%,#FF6B35_60%,#2A1720_70%,#0A0F1E_100%)] shadow-[0_0_35px_rgba(255,107,53,0.22)] sm:h-28 sm:w-28">
-                <div className="absolute inset-3 rounded-full border border-[#FFD08A]/60" />
-                <div className="absolute inset-5 rounded-full border border-[#FF6B35]/40 sm:inset-6" />
-                <span className="relative font-heading text-3xl font-bold text-[#FF8A3D] drop-shadow-[0_2px_10px_rgba(255,107,53,0.45)] sm:text-5xl">
-                  {initial}
-                </span>
+          <section className="flex min-h-0 flex-1 flex-col gap-4">
+            <div className="shrink-0">
+              <div className="flex items-center gap-4 sm:gap-6">
+                <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-[#FFB36B]/40 bg-[radial-gradient(circle_at_50%_42%,#33220F_0%,#0A0F1E_54%,#FF6B35_58%,#2A1720_72%,#0A0F1E_100%)] shadow-[0_0_38px_rgba(255,107,53,0.35)] sm:h-32 sm:w-32">
+                  <div className="absolute inset-3 rounded-full border border-[#FFD08A]/60" />
+                  <div className="absolute inset-6 rounded-full border border-[#FF6B35]/45" />
+                  <span className="relative font-heading text-4xl font-bold text-[#FF8A3D] drop-shadow-[0_2px_10px_rgba(255,107,53,0.55)] sm:text-5xl">
+                    {initial}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  className="rounded-full border border-[#FF8A66]/45 bg-[#FF6B35]/20 px-5 py-3 font-sans text-sm font-extrabold text-white shadow-[0_12px_32px_rgba(255,107,53,0.18)] transition hover:bg-[#FF6B35]/30 sm:text-base"
+                >
+                  Edit Profile
+                </button>
               </div>
 
-              <div className="min-w-0 flex-1 text-left">
-                <span className="inline-flex rounded-md border border-[#FF8A66]/60 px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-[0.24em] text-[#FFB199] sm:px-3 sm:text-[11px]">
-                  Profile
-                </span>
-                <h1 className="mt-2 break-words font-heading text-xl font-bold leading-tight text-[#FF7A55] sm:mt-4 sm:text-3xl">
-                  {username}
-                </h1>
-                <p className="mt-1 break-words font-sans text-xs font-normal text-[#8B9CB8] sm:mt-2 sm:text-base">
-                  {email}
-                </p>
-              </div>
+              <h1 className="mt-4 break-words font-heading text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl">
+                {username}
+              </h1>
+              <p className="mt-1 break-words font-sans text-lg font-normal text-[#C4CAD8] sm:text-xl">
+                {email}
+              </p>
             </div>
 
-            <div className="mt-4 grid min-h-0 flex-1 grid-cols-2 gap-3 sm:mt-6 sm:gap-4">
-              {profileStats.map(stat => {
-                const StatIcon = stat.icon;
-                return (
-                  <div
-                    key={stat.label}
-                    className="flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/80 p-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-5"
+            <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-4 sm:gap-5">
+              {profileStats.map(stat => (
+                <div
+                  key={stat.label}
+                  className="flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[28px] border border-[#FF8A66]/55 bg-[radial-gradient(circle_at_50%_18%,rgba(255,255,255,0.10),transparent_28%),#0B1324]/95 px-3 py-4 text-center shadow-[0_0_22px_rgba(255,107,53,0.16),inset_0_1px_0_rgba(255,255,255,0.05)]"
+                >
+                  <span
+                    className="block text-5xl leading-none drop-shadow-[0_10px_24px_rgba(255,107,53,0.25)] sm:text-6xl"
+                    role="img"
+                    aria-label={stat.iconLabel}
                   >
-                    {stat.symbol ? (
-                      <span
-                        className="block text-5xl leading-none drop-shadow-[0_10px_24px_rgba(0,0,0,0.35)] sm:text-6xl"
-                        role="img"
-                        aria-label={stat.iconLabel}
-                      >
-                        {stat.symbol}
-                      </span>
-                    ) : (
-                      <StatIcon className="h-9 w-9 sm:h-10 sm:w-10" style={{ color: stat.color }} />
-                    )}
-                    <p className="mt-4 font-heading text-2xl font-bold leading-none sm:mt-5 sm:text-4xl" style={{ color: stat.color }}>
-                      {stat.value}
-                    </p>
-                    <p className="mt-2 font-sans text-xs font-normal leading-4 text-[#8B9CB8] sm:mt-3 sm:text-base sm:leading-5">
-                      {stat.label}
-                    </p>
-                    {stat.helper && (
-                      <p className="mt-1 max-w-[9rem] font-sans text-[11px] font-normal leading-4 text-[#8B9CB8]/80 sm:text-xs">
-                        {stat.helper}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+                    {stat.symbol}
+                  </span>
+                  <p className={`mt-4 max-w-[12rem] font-heading font-extrabold leading-tight ${stat.valueClassName}`} style={{ color: stat.color }}>
+                    {stat.value}
+                  </p>
+                  <p className="mt-2 font-sans text-sm font-medium leading-5 text-[#C4CAD8] sm:text-base">
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
             </div>
           </section>
         </main>
@@ -2879,18 +2870,18 @@ export default function App() {
                 </div>
 
                 <div className="mt-5 grid grid-cols-3 gap-3 md:gap-4">
-                  <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-3 text-center sm:p-4">
-                    <Flame className="mx-auto h-6 w-6 text-[#FACC15] sm:h-7 sm:w-7" />
+                  <div className="rounded-[22px] border border-[#FF8A66]/35 bg-[#0B1324]/85 p-3 text-center shadow-[0_0_16px_rgba(255,107,53,0.10)] sm:p-4">
+                    <span className="mx-auto block text-3xl leading-none" role="img" aria-label="Flame icon">🔥</span>
                     <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{studentProfile.streak ?? 0}</p>
                     <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Day Streak</p>
                   </div>
-                  <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-3 text-center sm:p-4">
-                    <BookOpenCheck className="mx-auto h-6 w-6 text-[#00BBF9] sm:h-7 sm:w-7" />
+                  <div className="rounded-[22px] border border-[#FF8A66]/35 bg-[#0B1324]/85 p-3 text-center shadow-[0_0_16px_rgba(255,107,53,0.10)] sm:p-4">
+                    <span className="mx-auto block text-3xl leading-none" role="img" aria-label="Open book icon">📖</span>
                     <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{dashboardPerformance.questions}</p>
                     <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Questions</p>
                   </div>
-                  <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-3 text-center sm:p-4">
-                    <Target className="mx-auto h-6 w-6 text-[#2EC4B6] sm:h-7 sm:w-7" />
+                  <div className="rounded-[22px] border border-[#FF8A66]/35 bg-[#0B1324]/85 p-3 text-center shadow-[0_0_16px_rgba(255,107,53,0.10)] sm:p-4">
+                    <span className="mx-auto block text-3xl leading-none" role="img" aria-label="Bullseye target icon">🎯</span>
                     <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{dashboardPerformance.accuracy}%</p>
                     <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Accuracy</p>
                   </div>
