@@ -43,7 +43,7 @@ import {
   WandSparkles,
   UsersRound,
   CircleDotDashed,
-  PenTool,
+  Headphones,
   User as UserIcon
 } from 'lucide-react';
 import Onboarding from './components/Onboarding';
@@ -183,7 +183,7 @@ const slugify = (value: string) => value.toLowerCase().replace(/&/g, 'and').repl
 const getSubjectFromSlug = (slug: string) => subjectLibrary.find(subject => slugify(subject.name) === slug)?.name || 'Mathematics';
 const getSubtopicFromSlug = (subject: string, slug: string) => subtopicsBySubject[subject]?.find(topic => slugify(topic) === slug) || subtopicsBySubject[subject]?.[0] || 'Algebra';
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceConfigure' | 'practiceExamType' | 'practiceSession' | 'practiceReview' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'audiobook' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceConfigure' | 'practiceExamType' | 'practiceSession' | 'practiceReview' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
@@ -192,6 +192,7 @@ const viewToPath: Record<AppView, string> = {
   dashboard: '/dashboard',
   profile: '/profile',
   aiTutor: '/ai-tutor',
+  audiobook: '/audiobook',
   weakness: '/weakness',
   updates: '/updates',
   practice: '/practice',
@@ -221,6 +222,7 @@ function pathToView(pathname: string): AppView {
   if (routePath === '/dashboard') return 'dashboard';
   if (routePath === '/profile') return 'profile';
   if (routePath === '/ai-tutor') return 'aiTutor';
+  if (routePath === '/audiobook') return 'audiobook';
   if (routePath === '/weakness') return 'weakness';
   if (routePath === '/updates') return 'updates';
   if (routePath === '/practice') return 'practice';
@@ -280,7 +282,7 @@ export default function App() {
   const [leaderboardLoading, setLeaderboardLoading] = useState<boolean>(false);
 
   const publicViews: AppView[] = ['landing', 'signin'];
-  const protectedViews: AppView[] = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'practiceReview', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'];
+  const protectedViews: AppView[] = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'audiobook', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'practiceReview', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'];
 
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
@@ -2812,6 +2814,15 @@ export default function App() {
         const username = getDashboardUsername() || 'Student';
         const actionCards = [
           {
+            title: 'JAMB Novel Audiobook',
+            description: 'Listen to the recommended novel for JAMB English',
+            href: '/audiobook',
+            icon: Headphones,
+            accent: '#00BBF9',
+            iconBg: 'rgba(0,187,249,0.15)',
+            actionText: 'Listen Now'
+          },
+          {
             title: 'AI Tutor',
             description: 'Ask anything about your exam topics instantly',
             href: '/ai-tutor',
@@ -2828,24 +2839,6 @@ export default function App() {
             accent: '#FF6B35',
             iconBg: 'rgba(255,107,53,0.15)',
             actionText: 'View Weaknesses'
-          },
-          {
-            title: 'Exam Practice',
-            description: 'Practice subjects or take a full mock exam',
-            href: '/practice',
-            icon: PenTool,
-            accent: '#00BBF9',
-            iconBg: 'rgba(0,187,249,0.15)',
-            actionText: 'Open'
-          },
-          {
-            title: 'Exam Updates',
-            description: 'Latest exam news and scholarship alerts',
-            href: '/updates',
-            icon: FileText,
-            accent: '#2EC4B6',
-            iconBg: 'rgba(46,196,182,0.15)',
-            actionText: 'Read Updates'
           }
         ];
         const getUpdateCategoryClass = (category: string) => {
@@ -2904,7 +2897,7 @@ export default function App() {
                 </div>
               </section>
 
-              <section className="grid grid-cols-1 gap-4 animate-fade-up sm:grid-cols-2">
+              <section className="grid grid-cols-1 gap-4 animate-fade-up">
                 {actionCards.map(card => {
                   const CardIcon = card.icon;
                   return (
@@ -2996,6 +2989,9 @@ export default function App() {
           renderBottomNavigation={renderBottomNavigation}
         />
       )}
+
+      {/* AUDIOBOOK PLACEHOLDER PAGE */}
+      {view === 'audiobook' && studentProfile && renderPlaceholderPage('JAMB Novel Audiobook', 'Listen to the recommended novel for JAMB English.')}
 
       {/* UPDATES PLACEHOLDER PAGE */}
       {view === 'updates' && studentProfile && renderPlaceholderPage('Exam Updates', 'Latest exam, scholarship, and school news will appear here soon.')}
