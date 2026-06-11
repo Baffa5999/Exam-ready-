@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, Download, Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ChevronLeft, Download, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward, Volume2 } from 'lucide-react';
+import { useAudioPlayer } from '../../contexts/AudioContext.jsx';
 
 const AUDIOBOOK_TITLE = 'JAMB Novel 2026 – The Life Changer';
 
@@ -25,74 +26,67 @@ const formatTime = seconds => {
   return `${minutes}:${remainingSeconds}`;
 };
 
+const getChapterIndexByUrl = url => chapters.findIndex(chapter => chapter.url === url);
+
 export default function Audiobook({ navigatePath }) {
-  const audioRef = useRef(null);
-  const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const currentChapter = chapters[currentChapterIndex];
+  const {
+    currentUrl,
+    currentTitle,
+    currentChapter,
+    currentTime,
+    duration,
+    isPlaying,
+    playChapter: playAudioChapter,
+    pause,
+    seek
+  } = useAudioPlayer();
+  const [selectedChapterIndex, setSelectedChapterIndex] = useState(0);
+  const activeChapterIndex = getChapterIndexByUrl(currentUrl);
+  const currentChapterIndex = activeChapterIndex >= 0 ? activeChapterIndex : selectedChapterIndex;
+  const currentChapterDetails = chapters[currentChapterIndex] || chapters[0];
+  const loaded = Boolean(currentUrl);
+  const playerTitle = currentTitle || currentChapterDetails.title;
+  const playerChapterNumber = currentChapter?.number || currentChapterDetails.number;
   const remainingTime = useMemo(() => Math.max(duration - currentTime, 0), [duration, currentTime]);
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.src = currentChapter.url;
-    audio.load();
-    setCurrentTime(0);
-    setDuration(0);
-
-    if (isPlaying) {
-      void audio.play().catch(error => {
-        console.warn('Unable to autoplay audiobook chapter:', error);
-        setIsPlaying(false);
-      });
-    }
-  }, [currentChapter.url, isPlaying]);
-
   const playChapter = index => {
-    if (index === currentChapterIndex) {
-      togglePlayPause();
+    const chapter = chapters[index];
+    if (!chapter) return;
+
+    setSelectedChapterIndex(index);
+
+    if (chapter.url === currentUrl && isPlaying) {
+      pause();
       return;
     }
 
-    setCurrentChapterIndex(index);
-    setIsPlaying(true);
-  };
-
-  const togglePlayPause = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-      return;
-    }
-
-    void audio.play().then(() => setIsPlaying(true)).catch(error => {
-      console.warn('Unable to play audiobook chapter:', error);
-      setIsPlaying(false);
-    });
+    playAudioChapter(chapter.url, chapter.title, chapter);
   };
 
   const goToChapter = nextIndex => {
     const safeIndex = Math.min(Math.max(nextIndex, 0), chapters.length - 1);
-    setCurrentChapterIndex(safeIndex);
-    setIsPlaying(true);
+    playChapter(safeIndex);
+  };
+
+  const togglePlayPause = () => {
+    if (isPlaying) {
+      pause();
+      return;
+    }
+
+    playAudioChapter(currentChapterDetails.url, currentChapterDetails.title, currentChapterDetails);
   };
 
   const handleSeek = event => {
-    const nextTime = Number(event.target.value);
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = nextTime;
-    setCurrentTime(nextTime);
+    seek(Number(event.target.value));
+  };
+
+  const skipBy = seconds => {
+    seek(currentTime + seconds);
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E] px-4 pb-44 pt-5 text-white sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#0A0F1E] px-4 pb-52 pt-5 text-white sm:px-6 lg:px-8">
       <main className="mx-auto max-w-4xl">
         <button
           type="button"
@@ -113,7 +107,7 @@ export default function Audiobook({ navigatePath }) {
 
         <section className="mt-6 space-y-3">
           {chapters.map((chapter, index) => {
-            const active = index === currentChapterIndex;
+            const active = chapter.url === currentUrl;
             const playing = active && isPlaying;
 
             return (
@@ -136,13 +130,17 @@ export default function Audiobook({ navigatePath }) {
                   <p className="mt-1 font-sans text-xs text-[#8B9CB8]">Duration: {chapter.duration}</p>
                 </div>
 
-                <button
-                  type="button"
-                  className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35] sm:flex"
-                  aria-label={`Download ${chapter.title} later`}
+                <a
+                  href={chapter.url}
+                  download
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 text-[#8B9CB8] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+                  aria-label={`Download ${chapter.title}`}
                 >
                   <Download className="h-4 w-4" />
-                </button>
+                  <span className="sr-only">Download</span>
+                </a>
               </article>
             );
           })}
@@ -154,14 +152,22 @@ export default function Audiobook({ navigatePath }) {
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-[#FFB199]">Now playing</p>
-              <h2 className="mt-1 truncate font-heading text-sm font-bold text-white sm:text-base">{currentChapter.title}</h2>
+              <h2 className="mt-1 truncate font-heading text-sm font-bold text-white sm:text-base">{playerTitle}</h2>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <button type="button" onClick={() => goToChapter(currentChapterIndex - 1)} disabled={currentChapterIndex === 0} className="rounded-full p-2 text-[#8B9CB8] transition hover:text-[#FF6B35] disabled:cursor-not-allowed disabled:opacity-40" aria-label="Previous chapter">
                 <SkipBack className="h-5 w-5" />
               </button>
+              <button type="button" onClick={() => skipBy(-10)} disabled={!loaded} className="inline-flex items-center gap-1 rounded-full px-2 py-2 font-sans text-xs font-bold text-[#8B9CB8] transition hover:text-[#FF6B35] disabled:cursor-not-allowed disabled:opacity-40" aria-label="Rewind 10 seconds">
+                <RotateCcw className="h-4 w-4" />
+                -10
+              </button>
               <button type="button" onClick={togglePlayPause} className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FF6B35] text-white transition hover:bg-[#ff7c4d]" aria-label={isPlaying ? 'Pause audiobook' : 'Play audiobook'}>
                 {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+              </button>
+              <button type="button" onClick={() => skipBy(10)} disabled={!loaded} className="inline-flex items-center gap-1 rounded-full px-2 py-2 font-sans text-xs font-bold text-[#8B9CB8] transition hover:text-[#FF6B35] disabled:cursor-not-allowed disabled:opacity-40" aria-label="Forward 10 seconds">
+                +10
+                <RotateCw className="h-4 w-4" />
               </button>
               <button type="button" onClick={() => goToChapter(currentChapterIndex + 1)} disabled={currentChapterIndex + 1 >= chapters.length} className="rounded-full p-2 text-[#8B9CB8] transition hover:text-[#FF6B35] disabled:cursor-not-allowed disabled:opacity-40" aria-label="Next chapter">
                 <SkipForward className="h-5 w-5" />
@@ -177,7 +183,8 @@ export default function Audiobook({ navigatePath }) {
               max={duration || 0}
               value={Math.min(currentTime, duration || 0)}
               onChange={handleSeek}
-              className="h-2 flex-1 accent-[#FF6B35]"
+              disabled={!loaded}
+              className="h-2 flex-1 accent-[#FF6B35] disabled:opacity-50"
               aria-label="Seek audiobook"
             />
             <span className="w-12 font-sans text-xs text-[#8B9CB8]">-{formatTime(remainingTime)}</span>
@@ -185,24 +192,10 @@ export default function Audiobook({ navigatePath }) {
 
           <div className="mt-2 flex items-center gap-2 font-sans text-xs text-[#8B9CB8]">
             <Volume2 className="h-4 w-4 text-[#FF6B35]" />
-            <span>Chapter {currentChapter.number} of {chapters.length}</span>
+            <span>Chapter {playerChapterNumber} of {chapters.length}</span>
           </div>
         </div>
       </div>
-
-      <audio
-        ref={audioRef}
-        preload="metadata"
-        onTimeUpdate={event => setCurrentTime(event.currentTarget.currentTime)}
-        onLoadedMetadata={event => setDuration(event.currentTarget.duration || 0)}
-        onEnded={() => {
-          if (currentChapterIndex + 1 < chapters.length) {
-            goToChapter(currentChapterIndex + 1);
-          } else {
-            setIsPlaying(false);
-          }
-        }}
-      />
     </div>
   );
 }
