@@ -51,6 +51,7 @@ import WeaknessAssassin from './pages/weakness/WeaknessAssassin';
 import PracticeConfigure from './pages/practice/PracticeConfigure';
 import PracticeReview from './pages/practice/PracticeReview';
 import AITutor from './pages/ai-tutor/AITutor';
+import Audiobook from './pages/audiobook/Audiobook';
 
 // Fonts link inside styles
 const fontStyles = `
@@ -2972,6 +2973,11 @@ export default function App() {
         />
       )}
 
+      {/* AUDIOBOOK PAGE */}
+      {view === 'audiobook' && studentProfile && (
+        <Audiobook navigatePath={navigatePath} />
+      )}
+
       {/* WEAKNESS ASSASSIN PAGE */}
       {view === 'weakness' && studentProfile && (
         <WeaknessAssassin
@@ -2980,10 +2986,6 @@ export default function App() {
           renderBottomNavigation={renderBottomNavigation}
         />
       )}
-
-      {/* AUDIOBOOK PLACEHOLDER PAGE */}
-      {view === 'audiobook' && studentProfile && renderPlaceholderPage('JAMB Novel Audiobook', 'Listen to the recommended novel for JAMB English.')}
-
       {/* UPDATES PLACEHOLDER PAGE */}
       {view === 'updates' && studentProfile && renderPlaceholderPage('Exam Updates', 'Latest exam, scholarship, and school news will appear here soon.')}
 
