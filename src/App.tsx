@@ -2982,7 +2982,7 @@ export default function App() {
 
       {/* AUDIOBOOK PAGE */}
       {view === 'audiobook' && studentProfile && (
-        <Audiobook navigatePath={navigatePath} />
+        <Audiobook navigatePath={navigatePath} user={currentUser} />
       )}
 
       {/* WEAKNESS ASSASSIN PAGE */}

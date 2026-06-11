@@ -10,6 +10,7 @@ const clampTime = (time, duration) => {
 
 export function AudioProvider({ children }) {
   const audioRef = useRef(null);
+  const pendingStartRef = useRef(null);
   const [currentUrl, setCurrentUrl] = useState('');
   const [currentTitle, setCurrentTitle] = useState('');
   const [currentChapter, setCurrentChapter] = useState(null);
@@ -17,20 +18,28 @@ export function AudioProvider({ children }) {
   const [duration, setDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolumeState] = useState(1);
+  const [playbackRate, setPlaybackRateState] = useState(1);
 
-  const playChapter = (url, title, chapter = null) => {
+  const playChapter = (url, title, chapter = null, startAt = null) => {
     const audio = audioRef.current;
     if (!audio || !url) return;
 
     const isNewSource = audio.src !== new URL(url, window.location.href).href;
+    const resumeAt = Number.isFinite(startAt) && startAt > 0 ? startAt : null;
 
     if (isNewSource) {
+      pendingStartRef.current = resumeAt;
       audio.src = url;
       audio.load();
-      setCurrentTime(0);
+      setCurrentTime(resumeAt || 0);
       setDuration(0);
+    } else if (resumeAt !== null) {
+      const nextTime = clampTime(resumeAt, audio.duration);
+      audio.currentTime = nextTime;
+      setCurrentTime(nextTime);
     }
 
+    audio.playbackRate = playbackRate;
     setCurrentUrl(url);
     setCurrentTitle(title || 'Audiobook chapter');
     setCurrentChapter(chapter);
@@ -63,6 +72,13 @@ export function AudioProvider({ children }) {
     if (audio) audio.volume = safeVolume;
   };
 
+  const setPlaybackRate = nextRate => {
+    const audio = audioRef.current;
+    const safeRate = Math.min(Math.max(Number(nextRate) || 1, 0.5), 2);
+    setPlaybackRateState(safeRate);
+    if (audio) audio.playbackRate = safeRate;
+  };
+
   const value = useMemo(() => ({
     currentUrl,
     currentTitle,
@@ -71,11 +87,13 @@ export function AudioProvider({ children }) {
     duration,
     isPlaying,
     volume,
+    playbackRate,
     playChapter,
     pause,
     seek,
-    setVolume
-  }), [currentUrl, currentTitle, currentChapter, currentTime, duration, isPlaying, volume]);
+    setVolume,
+    setPlaybackRate
+  }), [currentUrl, currentTitle, currentChapter, currentTime, duration, isPlaying, volume, playbackRate]);
 
   return (
     <AudioContext.Provider value={value}>
@@ -84,7 +102,19 @@ export function AudioProvider({ children }) {
         ref={audioRef}
         preload="metadata"
         onTimeUpdate={event => setCurrentTime(event.currentTarget.currentTime)}
-        onLoadedMetadata={event => setDuration(event.currentTarget.duration || 0)}
+        onLoadedMetadata={event => {
+          const audio = event.currentTarget;
+          const loadedDuration = audio.duration || 0;
+          const startAt = pendingStartRef.current;
+          setDuration(loadedDuration);
+
+          if (startAt !== null) {
+            const nextTime = clampTime(startAt, loadedDuration);
+            audio.currentTime = nextTime;
+            setCurrentTime(nextTime);
+            pendingStartRef.current = null;
+          }
+        }}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
