@@ -1652,11 +1652,12 @@ export default function App() {
     const profileStats = [
       {
         label: 'Day Streak',
-        value: streakCount > 0 ? `${streakCount}` : '0 — Start today!',
+        value: `${streakCount}`,
+        helper: streakCount > 0 ? 'Keep it burning!' : 'Start today!',
         symbol: '🔥',
         iconLabel: 'Flame icon',
         color: '#FFB199',
-        valueClassName: 'text-lg sm:text-2xl'
+        valueClassName: 'text-base sm:text-xl'
       },
       {
         label: 'Overall Accuracy',
@@ -1664,7 +1665,7 @@ export default function App() {
         symbol: '🎯',
         iconLabel: 'Bullseye target icon',
         color: '#1EF1E5',
-        valueClassName: 'text-4xl sm:text-5xl'
+        valueClassName: 'text-3xl sm:text-4xl'
       },
       {
         label: 'Questions Answered',
@@ -1672,26 +1673,27 @@ export default function App() {
         symbol: '📖',
         iconLabel: 'Open book icon',
         color: '#1EF1E5',
-        valueClassName: 'text-4xl sm:text-5xl'
+        valueClassName: 'text-3xl sm:text-4xl'
       },
       {
         label: 'Battles Won',
-        value: profileBattleWins > 0 ? `${profileBattleWins}` : '0 — Ready for your first victory!',
+        value: `${profileBattleWins}`,
+        helper: profileBattleWins > 0 ? 'Completed battle wins' : 'Ready for your first victory!',
         symbol: '🏆',
         iconLabel: 'Trophy icon',
         color: '#FFE8A3',
-        valueClassName: 'text-lg sm:text-2xl'
+        valueClassName: 'text-base sm:text-xl'
       }
     ];
 
     return (
-      <div className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_12%_20%,rgba(255,107,53,0.13),transparent_28%),#0A0F1E] text-white font-sans">
-        <main className="mx-auto flex h-[calc(100dvh-92px)] max-w-5xl flex-col gap-4 px-4 py-4 sm:px-6 md:px-10 animate-fade-up">
+      <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_12%_20%,rgba(255,107,53,0.13),transparent_28%),#0A0F1E] pb-32 text-white font-sans">
+        <main className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-5 sm:px-6 md:px-10 animate-fade-up">
           <div className="flex shrink-0 items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => navigatePath('/dashboard')}
-              className="inline-flex min-w-0 items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827]/90 px-4 py-2.5 font-sans text-sm font-bold text-[#FFB199] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+              className="inline-flex min-w-0 items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827]/90 px-3.5 py-2.5 font-sans text-sm font-bold text-[#FFB199] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35] sm:px-4"
             >
               <ChevronLeft className="h-4 w-4 shrink-0" />
               <span className="truncate">Back to Dashboard</span>
@@ -1700,17 +1702,17 @@ export default function App() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#FF6B35]/35 bg-[#FF6B35]/15 px-4 py-2.5 font-sans text-sm font-bold text-[#FFB199] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:bg-[#FF6B35] hover:text-white"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#FF6B35]/35 bg-[#FF6B35]/15 px-3.5 py-2.5 font-sans text-sm font-bold text-[#FFB199] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:bg-[#FF6B35] hover:text-white sm:px-4"
             >
               <LogOut className="h-4 w-4" />
               <span>Sign Out</span>
             </button>
           </div>
 
-          <section className="flex min-h-0 flex-1 flex-col gap-4">
+          <section className="flex flex-col gap-5">
             <div className="shrink-0">
               <div className="flex items-center gap-4 sm:gap-6">
-                <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-[#FFB36B]/40 bg-[radial-gradient(circle_at_50%_42%,#33220F_0%,#0A0F1E_54%,#FF6B35_58%,#2A1720_72%,#0A0F1E_100%)] shadow-[0_0_38px_rgba(255,107,53,0.35)] sm:h-32 sm:w-32">
+                <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-[#FFB36B]/40 bg-[radial-gradient(circle_at_50%_42%,#33220F_0%,#0A0F1E_54%,#FF6B35_58%,#2A1720_72%,#0A0F1E_100%)] shadow-[0_0_38px_rgba(255,107,53,0.35)] sm:h-28 sm:w-28">
                   <div className="absolute inset-3 rounded-full border border-[#FFD08A]/60" />
                   <div className="absolute inset-6 rounded-full border border-[#FF6B35]/45" />
                   <span className="relative font-heading text-4xl font-bold text-[#FF8A3D] drop-shadow-[0_2px_10px_rgba(255,107,53,0.55)] sm:text-5xl">
@@ -1720,37 +1722,42 @@ export default function App() {
 
                 <button
                   type="button"
-                  className="rounded-full border border-[#FF8A66]/45 bg-[#FF6B35]/20 px-5 py-3 font-sans text-sm font-extrabold text-white shadow-[0_12px_32px_rgba(255,107,53,0.18)] transition hover:bg-[#FF6B35]/30 sm:text-base"
+                  className="rounded-full border border-[#FF8A66]/45 bg-[#FF6B35]/20 px-5 py-3 font-sans text-sm font-bold text-white shadow-[0_12px_32px_rgba(255,107,53,0.18)] transition hover:bg-[#FF6B35]/30 sm:text-base"
                 >
                   Edit Profile
                 </button>
               </div>
 
-              <h1 className="mt-4 break-words font-heading text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl">
+              <h1 className="mt-4 break-words font-heading text-[2rem] font-bold leading-[1.08] tracking-tight text-white sm:text-4xl">
                 {username}
               </h1>
-              <p className="mt-1 break-words font-sans text-lg font-normal text-[#C4CAD8] sm:text-xl">
+              <p className="mt-2 break-words font-sans text-base font-normal text-[#C4CAD8] sm:text-lg">
                 {email}
               </p>
             </div>
 
-            <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-4 sm:gap-5">
+            <div className="grid grid-cols-2 gap-4 sm:gap-5">
               {profileStats.map(stat => (
                 <div
                   key={stat.label}
-                  className="flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[28px] border border-[#FF8A66]/55 bg-[radial-gradient(circle_at_50%_18%,rgba(255,255,255,0.10),transparent_28%),#0B1324]/95 px-3 py-4 text-center shadow-[0_0_22px_rgba(255,107,53,0.16),inset_0_1px_0_rgba(255,255,255,0.05)]"
+                  className="flex min-h-[178px] flex-col items-center justify-center rounded-[28px] border border-[#FF8A66]/55 bg-[radial-gradient(circle_at_50%_18%,rgba(255,255,255,0.10),transparent_28%),#0B1324]/95 px-4 py-5 text-center shadow-[0_0_22px_rgba(255,107,53,0.16),inset_0_1px_0_rgba(255,255,255,0.05)] sm:min-h-[210px]"
                 >
                   <span
-                    className="block text-5xl leading-none drop-shadow-[0_10px_24px_rgba(255,107,53,0.25)] sm:text-6xl"
+                    className="block text-5xl leading-none drop-shadow-[0_10px_24px_rgba(255,107,53,0.25)] sm:text-[4rem]"
                     role="img"
                     aria-label={stat.iconLabel}
                   >
                     {stat.symbol}
                   </span>
-                  <p className={`mt-4 max-w-[12rem] font-heading font-extrabold leading-tight ${stat.valueClassName}`} style={{ color: stat.color }}>
+                  <p className={`mt-4 max-w-[11rem] font-heading font-bold leading-snug ${stat.valueClassName}`} style={{ color: stat.color }}>
                     {stat.value}
                   </p>
-                  <p className="mt-2 font-sans text-sm font-medium leading-5 text-[#C4CAD8] sm:text-base">
+                  {stat.helper && (
+                    <p className="mt-1 max-w-[9rem] font-sans text-xs font-semibold leading-4 text-[#FFE0D4] sm:text-sm">
+                      {stat.helper}
+                    </p>
+                  )}
+                  <p className="mt-2 font-sans text-sm font-normal leading-5 text-[#C4CAD8] sm:text-base">
                     {stat.label}
                   </p>
                 </div>
