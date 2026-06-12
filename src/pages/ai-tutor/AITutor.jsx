@@ -6,11 +6,11 @@ const LIMIT_MESSAGE = "You've used your 5 free daily questions. Try again tomorr
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
-async function askTutor(message, history) {
+async function askTutor(message) {
   const response = await fetch('/api/ai-tutor', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history })
+    body: JSON.stringify({ message })
   });
 
   let data = {};
@@ -109,10 +109,7 @@ export default function AITutor({ user, navigatePath }) {
     setIsTyping(true);
 
     try {
-      const history = messages
-        .filter(message => message.id !== 'welcome')
-        .map(({ role, content }) => ({ role, content }));
-      const answer = await askTutor(prompt, history);
+      const answer = await askTutor(prompt);
 
       setMessages(current => [
         ...current,
