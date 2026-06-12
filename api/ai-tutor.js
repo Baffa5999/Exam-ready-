@@ -80,7 +80,7 @@ export async function handler(req, res) {
     const response = await askGemini(message.slice(0, 4000));
     return res.status(200).json({ response });
   } catch (error) {
-    console.error('AI Tutor API failed:', error);
+    console.error('AI Tutor Gemini API failed:', error);
     return res.status(500).json({ error: 'AI Tutor is unavailable right now. Please try again later.' });
   }
 }
