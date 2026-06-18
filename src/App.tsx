@@ -52,6 +52,7 @@ import PracticeConfigure from './pages/practice/PracticeConfigure';
 import PracticeReview from './pages/practice/PracticeReview';
 import AITutor from './pages/ai-tutor/AITutor';
 import Audiobook from './pages/audiobook/Audiobook';
+import Admin from './pages/admin/Admin';
 
 // Fonts link inside styles
 const fontStyles = `
@@ -183,7 +184,7 @@ const slugify = (value: string) => value.toLowerCase().replace(/&/g, 'and').repl
 const getSubjectFromSlug = (slug: string) => subjectLibrary.find(subject => slugify(subject.name) === slug)?.name || 'Mathematics';
 const getSubtopicFromSlug = (subject: string, slug: string) => subtopicsBySubject[subject]?.find(topic => slugify(topic) === slug) || subtopicsBySubject[subject]?.[0] || 'Algebra';
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'audiobook' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceConfigure' | 'practiceExamType' | 'practiceSession' | 'practiceReview' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'audiobook' | 'admin' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceConfigure' | 'practiceExamType' | 'practiceSession' | 'practiceReview' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
@@ -193,6 +194,7 @@ const viewToPath: Record<AppView, string> = {
   profile: '/profile',
   aiTutor: '/ai-tutor',
   audiobook: '/audiobook',
+  admin: '/admin',
   weakness: '/weakness',
   updates: '/updates',
   practice: '/practice',
@@ -223,6 +225,7 @@ function pathToView(pathname: string): AppView {
   if (routePath === '/profile') return 'profile';
   if (routePath === '/ai-tutor') return 'aiTutor';
   if (routePath === '/audiobook') return 'audiobook';
+  if (routePath === '/admin') return 'admin';
   if (routePath === '/weakness') return 'weakness';
   if (routePath === '/updates') return 'updates';
   if (routePath === '/practice') return 'practice';
@@ -282,7 +285,7 @@ export default function App() {
   const [leaderboardLoading, setLeaderboardLoading] = useState<boolean>(false);
 
   const publicViews: AppView[] = ['landing', 'signin'];
-  const protectedViews: AppView[] = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'audiobook', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'practiceReview', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'];
+  const protectedViews: AppView[] = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'audiobook', 'admin', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'practiceReview', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'];
 
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
@@ -2983,6 +2986,14 @@ export default function App() {
       {/* AUDIOBOOK PAGE */}
       {view === 'audiobook' && studentProfile && (
         <Audiobook navigatePath={navigatePath} user={currentUser} />
+      )}
+
+      {/* ADMIN PAGE */}
+      {view === 'admin' && studentProfile && (
+        <Admin
+          user={currentUser}
+          navigatePath={navigatePath}
+        />
       )}
 
       {/* WEAKNESS ASSASSIN PAGE */}
