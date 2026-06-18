@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BarChart3, CheckCircle, Edit3, FileText, Loader2, Newspaper, RefreshCw, Save, Trash2, Users } from 'lucide-react';
 import { supabase } from '../../supabase';
 
-const ADMIN_EMAIL = 'ahmedusmanbaffa7002@gmail.com';
+const ADMIN_EMAIL = 'usmanbaffa7002@gmail.com';
 const categories = ['JAMB', 'WAEC', 'NECO', 'Scholarship', 'General'];
 const statuses = ['draft', 'published'];
 
