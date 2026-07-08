@@ -97,6 +97,44 @@ h1, h2, h3, h4, h5, h6 {
   animation: float 5s ease-in-out infinite;
 }
 
+/* Flashcard reveal animations */
+@keyframes flashcardIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes flashcardAnswerIn {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.flashcard-reveal {
+  animation: flashcardIn 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.flashcard-answer {
+  animation: flashcardAnswerIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flashcard-reveal,
+  .flashcard-answer {
+    animation: none;
+  }
+}
+
 .animate-glow {
   animation: glow 6s ease-in-out infinite;
 }

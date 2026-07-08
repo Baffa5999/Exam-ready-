@@ -19,9 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
   Timer,
-  Search,
   BookMarked,
-  Share2,
   Copy,
   Loader2,
   MessageCircle,
@@ -38,7 +36,7 @@ import {
   PenLine,
   Swords,
   Crosshair,
-  NotebookTabs,
+  Layers,
   WandSparkles,
   UsersRound,
   CircleDotDashed,
@@ -53,6 +51,7 @@ import PracticeReview from './pages/practice/PracticeReview';
 import AITutor from './pages/ai-tutor/AITutor';
 import Audiobook from './pages/audiobook/Audiobook';
 import Admin from './pages/admin/Admin';
+import Flashcards from './pages/flashcards/Flashcards';
 
 // Fonts link inside styles
 const fontStyles = `
@@ -181,10 +180,9 @@ const fallbackPracticeSubtopicsByTopic: Record<string, Record<string, string[]>>
 
 const slugify = (value: string) => value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-const getSubjectFromSlug = (slug: string) => subjectLibrary.find(subject => slugify(subject.name) === slug)?.name || 'Mathematics';
-const getSubtopicFromSlug = (subject: string, slug: string) => subtopicsBySubject[subject]?.find(topic => slugify(topic) === slug) || subtopicsBySubject[subject]?.[0] || 'Algebra';
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'audiobook' | 'admin' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceConfigure' | 'practiceExamType' | 'practiceSession' | 'practiceReview' | 'cheatsheet' | 'cheatsheetSubject' | 'cheatsheetContent' | 'battle' | 'leaderboard';
+
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'audiobook' | 'admin' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceConfigure' | 'practiceExamType' | 'practiceSession' | 'practiceReview' | 'flashcards' | 'flashcardsSubject' | 'flashcardsDeck' | 'battle' | 'leaderboard';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
@@ -203,9 +201,9 @@ const viewToPath: Record<AppView, string> = {
   practiceExamType: '/practice/exam-type',
   practiceSession: '/practice/session',
   practiceReview: '/practice/review',
-  cheatsheet: '/cheatsheet',
-  cheatsheetSubject: '/cheatsheet',
-  cheatsheetContent: '/cheatsheet',
+  flashcards: '/flashcards',
+  flashcardsSubject: '/flashcards',
+  flashcardsDeck: '/flashcards',
   battle: '/battle',
   leaderboard: '/leaderboard'
 };
@@ -237,9 +235,9 @@ function pathToView(pathname: string): AppView {
   if (routePath.startsWith('/mock-exam/')) return 'practiceSession';
   if (routePath === '/battle') return 'battle';
   if (routePath === '/leaderboard') return 'leaderboard';
-  if (routePath === '/cheatsheet') return 'cheatsheet';
-  if (routePath.startsWith('/cheatsheet/')) {
-    return routePath.split('/').filter(Boolean).length >= 3 ? 'cheatsheetContent' : 'cheatsheetSubject';
+  if (routePath === '/flashcards') return 'flashcards';
+  if (routePath.startsWith('/flashcards/')) {
+    return routePath.split('/').filter(Boolean).length >= 3 ? 'flashcardsDeck' : 'flashcardsSubject';
   }
   return 'landing';
 }
@@ -266,7 +264,6 @@ export default function App() {
   const [expandedPracticeTopics, setExpandedPracticeTopics] = useState<Record<string, string[]>>({});
   const [availablePracticeSubtopics, setAvailablePracticeSubtopics] = useState<Record<string, PracticeTopicAvailability[]>>({});
   const [loadingPracticeAvailability, setLoadingPracticeAvailability] = useState<boolean>(false);
-  const [expandedCheatsheetSubject, setExpandedCheatsheetSubject] = useState<string | null>(null);
   const [questionIndex, setQuestionIndex] = useState<number>(0);
   const [sessionScore, setSessionScore] = useState<number>(0);
   const [practiceAnswerSubmitting, setPracticeAnswerSubmitting] = useState<boolean>(false);
@@ -285,7 +282,7 @@ export default function App() {
   const [leaderboardLoading, setLeaderboardLoading] = useState<boolean>(false);
 
   const publicViews: AppView[] = ['landing', 'signin'];
-  const protectedViews: AppView[] = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'audiobook', 'admin', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'practiceReview', 'cheatsheet', 'cheatsheetSubject', 'cheatsheetContent', 'battle', 'leaderboard'];
+  const protectedViews: AppView[] = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'audiobook', 'admin', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'practiceReview', 'flashcards', 'flashcardsSubject', 'flashcardsDeck', 'battle', 'leaderboard'];
 
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
@@ -1507,7 +1504,7 @@ export default function App() {
     const tabs = [
       { icon: Home, label: 'Home', href: '/dashboard', match: (path: string) => path === '/dashboard' },
       { icon: Crosshair, label: 'Practice', href: '/practice', match: (path: string) => path === '/practice' || path.startsWith('/practice/') },
-      { icon: NotebookTabs, label: 'Cheatsheet', href: '/cheatsheet', match: (path: string) => path === '/cheatsheet' || path.startsWith('/cheatsheet/') },
+      { icon: Layers, label: 'Flashcards', href: '/flashcards', match: (path: string) => path === '/flashcards' || path.startsWith('/flashcards/') },
       { icon: UsersRound, label: 'Battle', href: '/battle', match: (path: string) => path === '/battle' },
       { icon: CircleDotDashed, label: 'Leaderboard', href: '/leaderboard', match: (path: string) => path === '/leaderboard' }
     ];
@@ -2207,130 +2204,6 @@ export default function App() {
     );
   };
 
-  const renderCheatsheetPage = () => (
-    <div className={professionalPageClass}>
-      <main className={professionalMainClass}>
-        <section>
-          {renderProfessionalHeader('Cheatsheets', 'Quick revision for every topic.', NotebookTabs, '#2EC4B6')}
-          <div className="relative mt-5">
-            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#8B9CB8]" />
-            <input
-              type="search"
-              placeholder="Search topics"
-              className="w-full rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 px-12 py-4 font-sans text-sm font-normal text-white outline-none transition placeholder:text-[#8B9CB8] focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15)]"
-            />
-          </div>
-        </section>
-
-        <section className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {subjectLibrary.map(subject => (
-            <button
-              key={subject.name}
-              type="button"
-              onClick={() => navigatePath(`/cheatsheet/${slugify(subject.name)}`)}
-              className="group flex min-h-[132px] w-full flex-col rounded-2xl border bg-[#111827] p-4 text-left transition hover:-translate-y-0.5 hover:bg-[#141d2c]"
-              style={{ borderColor: subject.accent }}
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${subject.accent}1F`, color: subject.accent }}>
-                  <BookMarked className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="whitespace-normal break-words font-heading text-base font-semibold leading-5 text-white">{subject.name}</h2>
-                  <p className="mt-1 font-sans text-[13px] font-normal text-[#8B9CB8]">{subtopicsBySubject[subject.name]?.length || 0} topics</p>
-                </div>
-              </div>
-              <div className="mt-auto flex justify-end pt-5">
-                <span className="inline-flex items-center gap-1 font-sans text-sm font-semibold text-[#FF6B35] transition group-hover:text-[#ff865f]">
-                  Start Revision
-                  <ChevronRight className="h-4 w-4" />
-                </span>
-              </div>
-            </button>
-          ))}
-        </section>
-      </main>
-      {renderBottomNavigation()}
-    </div>
-  );
-
-  const renderCheatsheetSubjectPage = () => {
-    const subjectSlug = window.location.pathname.split('/').filter(Boolean)[1] || 'mathematics';
-    const subject = getSubjectFromSlug(subjectSlug);
-
-    return (
-      <div className={professionalPageClass}>
-        <main className={professionalMainClass}>
-          <button type="button" onClick={() => navigatePath('/cheatsheet')} className={professionalBackButtonClass}>
-            <ChevronLeft className="h-5 w-5" /> Back
-          </button>
-          {renderProfessionalHeader(subject, 'Choose a topic to open quick revision notes.', NotebookTabs, '#2EC4B6')}
-          <div className="mt-8 divide-y divide-white/10 rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-2">
-            {(subtopicsBySubject[subject] || []).map(topic => (
-              <button key={topic} type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}/${slugify(topic)}`)} className="flex w-full items-center justify-between px-4 py-4 text-left">
-                <span className="font-heading text-base font-bold text-white">{topic}</span>
-                <ChevronRight className="h-5 w-5 text-[#FF6B35]" />
-              </button>
-            ))}
-          </div>
-        </main>
-        {renderBottomNavigation()}
-      </div>
-    );
-  };
-
-  const renderCheatsheetContentPage = () => {
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    const subject = getSubjectFromSlug(segments[1] || 'mathematics');
-    const topic = getSubtopicFromSlug(subject, segments[2] || 'algebra');
-    const shareCheatsheet = async () => {
-      const shareData = {
-        title: `${topic} Cheatsheet`,
-        text: `Quick ExamReady revision notes for ${topic} in ${subject}.`,
-        url: window.location.href
-      };
-
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(window.location.href);
-        showBanner('success', 'Cheatsheet link copied.');
-      }
-    };
-    const sections = [
-      { title: 'Key Definitions', body: `${topic} questions usually test whether you understand the core terms, can identify examples quickly, and can avoid similar-looking distractors.` },
-      { title: 'Important Formulas', body: `Write down the main rule for ${topic}, note when each variable changes, and practice substituting values before looking at options.` },
-      { title: 'Must Know Facts', body: `Most exam questions in ${subject} reward speed and accuracy. Memorise the exceptions, standard examples, and common relationships.` },
-      { title: 'Common Exam Tips', body: `Underline keywords, eliminate impossible answers first, and check units, grammar, or definitions before choosing your final option.` }
-    ];
-
-    return (
-      <div className={professionalPageClass}>
-        <main className={professionalMainClass}>
-          <button type="button" onClick={() => navigatePath(`/cheatsheet/${slugify(subject)}`)} className={professionalBackButtonClass}>
-            <ChevronLeft className="h-5 w-5" /> Back
-          </button>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">{topic}</h1>
-          <p className="mt-2 text-sm font-semibold text-[#8B9CB8]">{subject}</p>
-
-          <div className="mt-8 space-y-5">
-            {sections.map(section => (
-              <section key={section.title} className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-5 md:p-6">
-                <h2 className="font-heading text-lg font-bold text-white">{section.title}</h2>
-                <p className="mt-3 font-sans text-sm font-normal leading-7 text-[#C8D2E4] md:text-base">{section.body}</p>
-              </section>
-            ))}
-          </div>
-        </main>
-
-        <div className="fixed inset-x-0 bottom-[72px] z-40 px-5 pb-4 md:bottom-0 md:pb-5">
-          <button type="button" onClick={shareCheatsheet} className="mx-auto flex w-full max-w-4xl items-center justify-center gap-2 rounded-2xl bg-[#FF6B35] px-6 py-4 font-bold text-white shadow-[0_16px_40px_rgba(255,107,53,0.25)] transition hover:bg-[#ff7c4d]">
-            <Share2 className="h-5 w-5" /> Share Cheatsheet
-          </button>
-        </div>
-      </div>
-    );
-  };
 
   const recentBattles = [
     { opponent: 'jamb_master', date: 'Today', yours: 16, theirs: 12, result: 'Win' },
@@ -3059,14 +2932,21 @@ export default function App() {
         />
       )}
 
-      {/* CHEATSHEET PAGE */}
-      {view === 'cheatsheet' && studentProfile && renderCheatsheetPage()}
-
-      {/* CHEATSHEET SUBJECT PAGE */}
-      {view === 'cheatsheetSubject' && studentProfile && renderCheatsheetSubjectPage()}
-
-      {/* CHEATSHEET CONTENT PAGE */}
-      {view === 'cheatsheetContent' && studentProfile && renderCheatsheetContentPage()}
+      {/* FLASHCARDS PAGES */}
+      {(view === 'flashcards' || view === 'flashcardsSubject' || view === 'flashcardsDeck') && studentProfile && (
+        <Flashcards
+          route={window.location.pathname}
+          user={currentUser}
+          navigatePath={navigatePath}
+          renderBottomNavigation={renderBottomNavigation}
+          subjectLibrary={subjectLibrary}
+          slugify={slugify}
+          professionalPageClass={professionalPageClass}
+          professionalMainClass={professionalMainClass}
+          professionalBackButtonClass={professionalBackButtonClass}
+          renderProfessionalHeader={renderProfessionalHeader}
+        />
+      )}
 
 
       {/* BATTLE PAGE */}
