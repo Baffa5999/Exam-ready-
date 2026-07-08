@@ -2814,6 +2814,7 @@ export default function App() {
       {/* STUDENT DASHBOARD INTERFACE */}
       {view === 'dashboard' && studentProfile && (() => {
         const username = getDashboardUsername() || 'Student';
+        const isAdmin = currentUser?.email?.toLowerCase() === 'usmanbaffa7002@gmail.com';
         const actionCards = [
           {
             title: 'JAMB Novel Audiobook',
@@ -2898,6 +2899,31 @@ export default function App() {
                   </div>
                 </div>
               </section>
+
+              {isAdmin && (
+                <section className="animate-fade-up">
+                  <button
+                    type="button"
+                    onClick={() => navigatePath('/admin')}
+                    className="group flex w-full cursor-pointer items-center gap-4 rounded-[22px] border border-[#FF6B35]/40 bg-gradient-to-br from-[#1A1A2E] to-[#111827] p-4 text-left shadow-[0_0_22px_rgba(255,107,53,0.15)] transition duration-200 hover:-translate-y-0.5 hover:border-[#FF6B35]/70 sm:p-5"
+                  >
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+                      style={{ backgroundColor: 'rgba(255,107,53,0.15)', color: '#FF6B35' }}
+                    >
+                      <PenLine className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h2 className="font-heading text-base font-semibold text-white">Admin Panel</h2>
+                        <span className="rounded-full bg-[#FF6B35]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FFB199]">Admin</span>
+                      </div>
+                      <p className="mt-1 font-sans text-[13px] font-normal leading-5 text-[#8B9CB8]">Manage updates and track platform totals</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 shrink-0 text-[#FF6B35] transition group-hover:translate-x-1" />
+                  </button>
+                </section>
+              )}
 
               <section className="grid grid-cols-1 gap-4 animate-fade-up">
                 {actionCards.map(card => {
