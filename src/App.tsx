@@ -3018,7 +3018,7 @@ export default function App() {
 
                 {/* Subtext */}
                 <p className="font-sans text-base md:text-lg text-[#8B9CB8] max-w-xl leading-relaxed">
-                  Practice with syllabus questions, master topics with smart cheatsheets, and battle your classmates. Everything you need to pass in one free app.
+                    Practice with syllabus questions, master topics with smart flashcards, and battle your classmates. Everything you need to pass in one free app.
                 </p>
 
                 {/* Buttons */}
@@ -3262,9 +3262,9 @@ export default function App() {
                   <BookMarked className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-heading font-bold text-xl text-white mb-2">Smart Cheatsheets</h3>
+                  <h3 className="font-heading font-bold text-xl text-white mb-2">Smart Flashcards</h3>
                   <p className="font-sans text-sm md:text-base text-[#8B9CB8] leading-relaxed">
-                    One page visual summaries of every JAMB topic. Key formulas and must know facts perfect for last minute revision.
+                    Study any topic one card at a time. Flip for answers, mark what you know, and drill the ones you are still learning.
                   </p>
                 </div>
               </div>
@@ -3412,7 +3412,7 @@ export default function App() {
                     &ldquo;
                   </span>
                   <p className="font-sans text-sm md:text-base text-white/90 leading-relaxed italic mb-6">
-                    The cheatsheets alone are worth it. I screenshot them and send to my study group every week. So much better than reading textbooks.
+                    The flashcards alone are worth it. I drill them with my study group every week. So much better than reading textbooks.
                   </p>
                 </div>
                 
