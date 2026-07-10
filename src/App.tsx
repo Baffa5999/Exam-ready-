@@ -37,7 +37,6 @@ import {
   Swords,
   Crosshair,
   Layers,
-  WandSparkles,
   UsersRound,
   CircleDotDashed,
   Headphones,
@@ -48,7 +47,6 @@ import InstallPrompt from './components/InstallPrompt';
 import WeaknessAssassin from './pages/weakness/WeaknessAssassin';
 import PracticeConfigure from './pages/practice/PracticeConfigure';
 import PracticeReview from './pages/practice/PracticeReview';
-import AITutor from './pages/ai-tutor/AITutor';
 import Audiobook from './pages/audiobook/Audiobook';
 import Admin from './pages/admin/Admin';
 import Flashcards from './pages/flashcards/Flashcards';
@@ -182,7 +180,7 @@ const slugify = (value: string) => value.toLowerCase().replace(/&/g, 'and').repl
 
 
 
-type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'aiTutor' | 'audiobook' | 'admin' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceConfigure' | 'practiceExamType' | 'practiceSession' | 'practiceReview' | 'flashcards' | 'flashcardsSubject' | 'flashcardsDeck' | 'battle' | 'leaderboard';
+type AppView = 'landing' | 'signin' | 'onboarding' | 'dashboard' | 'profile' | 'audiobook' | 'admin' | 'weakness' | 'updates' | 'practice' | 'practiceSubjects' | 'practiceConfigure' | 'practiceExamType' | 'practiceSession' | 'practiceReview' | 'flashcards' | 'flashcardsSubject' | 'flashcardsDeck' | 'battle' | 'leaderboard';
 
 const viewToPath: Record<AppView, string> = {
   landing: '/',
@@ -190,7 +188,6 @@ const viewToPath: Record<AppView, string> = {
   onboarding: '/onboarding',
   dashboard: '/dashboard',
   profile: '/profile',
-  aiTutor: '/ai-tutor',
   audiobook: '/audiobook',
   admin: '/admin',
   weakness: '/weakness',
@@ -221,7 +218,6 @@ function pathToView(pathname: string): AppView {
   if (routePath === '/onboarding') return 'onboarding';
   if (routePath === '/dashboard') return 'dashboard';
   if (routePath === '/profile') return 'profile';
-  if (routePath === '/ai-tutor') return 'aiTutor';
   if (routePath === '/audiobook') return 'audiobook';
   if (routePath === '/admin') return 'admin';
   if (routePath === '/weakness') return 'weakness';
@@ -282,7 +278,7 @@ export default function App() {
   const [leaderboardLoading, setLeaderboardLoading] = useState<boolean>(false);
 
   const publicViews: AppView[] = ['landing', 'signin'];
-  const protectedViews: AppView[] = ['onboarding', 'dashboard', 'profile', 'aiTutor', 'audiobook', 'admin', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'practiceReview', 'flashcards', 'flashcardsSubject', 'flashcardsDeck', 'battle', 'leaderboard'];
+  const protectedViews: AppView[] = ['onboarding', 'dashboard', 'profile', 'audiobook', 'admin', 'weakness', 'updates', 'practice', 'practiceSubjects', 'practiceConfigure', 'practiceExamType', 'practiceSession', 'practiceReview', 'flashcards', 'flashcardsSubject', 'flashcardsDeck', 'battle', 'leaderboard'];
 
   const navigateTo = (nextView: AppView, options: { replace?: boolean } = {}) => {
     const nextPath = viewToPath[nextView];
@@ -469,8 +465,9 @@ export default function App() {
       const { data, error } = await supabase
         .from('updates')
         .select('category, title, preview, content, created_at, published_at')
+        .eq('status', 'published')
         .order('created_at', { ascending: false })
-        .limit(2);
+        .limit(50);
 
       if (cancelled) return;
 
@@ -635,6 +632,8 @@ export default function App() {
     if (data) {
       const profile = buildProfileFromSupabase(user, data);
       setStudentProfile(profile);
+      // Fire-and-forget: update streak based on today's date vs last active date.
+      void checkAndUpdateStreak(user.id);
       if (shouldRedirectToSignedInStart()) {
         navigateTo('dashboard', { replace: true });
       }
@@ -754,41 +753,42 @@ export default function App() {
     showBanner('success', `Goal changed to ${exam} 2026. Keep studying!`);
   };
 
-  // Handle mock study sessions.
-  const handleSimulatePractice = async () => {
-    if (!currentUser || !studentProfile) return;
-    
-    // Simulate updating study telemetry.
-    const newQuestions = studentProfile.questionsPracticed + 15;
-    const newStreak = studentProfile.streak + (Math.random() > 0.7 ? 1 : 0);
-    const newAccuracy = Math.min(100, Math.max(50, studentProfile.accuracy + (Math.random() > 0.5 ? 2 : -1)));
-    const updatedAt = new Date().toISOString();
+  // Check today's date against last_streak_date and increment/reset streak accordingly.
+  // Called on login and after each completed practice session.
+  const checkAndUpdateStreak = async (userId: string) => {
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-    const { error } = await supabase
+    const { data, error: fetchError } = await supabase
       .from('profiles')
-      .update({
-        questions_practiced: newQuestions,
-        streak: newStreak,
-        accuracy: newAccuracy,
-        updated_at: updatedAt
-      })
-      .eq('id', currentUser.id);
+      .select('streak, last_streak_date')
+      .eq('id', userId)
+      .maybeSingle();
 
-    if (error) {
-      console.error('Supabase practice metrics update failed:', error);
-      showBanner('error', 'Failed updating practice metrics in Supabase.');
+    if (fetchError || !data) return;
+
+    const lastDate: string | null = data.last_streak_date ?? null;
+    const currentStreak: number = data.streak ?? 0;
+
+    // Already updated today — nothing to do.
+    if (lastDate === today) return;
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    const newStreak = lastDate === yesterdayStr ? currentStreak + 1 : 1;
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ streak: newStreak, last_streak_date: today })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.info('Streak update failed silently:', updateError);
       return;
     }
 
-    setStudentProfile(prev => prev ? {
-      ...prev,
-      questionsPracticed: newQuestions,
-      streak: newStreak,
-      accuracy: newAccuracy,
-      updatedAt
-    } : null);
-    
-    showBanner('success', 'Study session saved! 15 syllabus questions completed.');
+    setStudentProfile(prev => prev ? { ...prev, streak: newStreak } : null);
   };
 
   const resetAuthFormMessages = () => {
@@ -1644,6 +1644,59 @@ export default function App() {
   );
 
 
+  const renderUpdatesPage = () => {
+    const getCategoryColor = (category: string) => {
+      const key = category.toLowerCase();
+      if (key === 'jamb') return { bg: 'bg-[#FF6B35]', text: 'text-white' };
+      if (key === 'waec') return { bg: 'bg-[#2EC4B6]', text: 'text-white' };
+      if (key === 'neco') return { bg: 'bg-[#0EA5E9]', text: 'text-white' };
+      if (key === 'scholarship') return { bg: 'bg-[#F59E0B]', text: 'text-white' };
+      return { bg: 'bg-[#6B7280]', text: 'text-white' };
+    };
+
+    return (
+      <div className={professionalPageClass}>
+        <main className={professionalMainClass}>
+          <button type="button" onClick={() => navigatePath('/dashboard')} className={professionalBackButtonClass}>
+            <ChevronLeft className="h-4 w-4 shrink-0" /> Back
+          </button>
+
+          {renderProfessionalHeader('Exam Updates', 'Latest news, registration dates, and scholarship information.', Newspaper, '#2EC4B6')}
+
+          {dashboardUpdates.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[#111827] py-16 text-center">
+              <Newspaper className="mb-4 h-10 w-10 text-[#8B9CB8]" />
+              <p className="font-heading text-lg font-semibold text-white">No updates yet</p>
+              <p className="mt-1 font-sans text-sm text-[#8B9CB8]">Check back soon for exam news and announcements.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {dashboardUpdates.map((update, index) => {
+                const colors = getCategoryColor(update.category);
+                return (
+                  <article
+                    key={index}
+                    className="rounded-[22px] border border-[rgba(255,255,255,0.07)] bg-[#111827] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition hover:border-[rgba(255,255,255,0.12)]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <span className={`inline-block shrink-0 rounded-full px-3 py-1 font-sans text-[11px] font-bold uppercase tracking-wide ${colors.bg} ${colors.text}`}>
+                        {update.category}
+                      </span>
+                      <span className="shrink-0 font-sans text-xs text-[#8B9CB8]">{update.date}</span>
+                    </div>
+                    <h2 className="mt-3 font-heading text-base font-bold leading-snug text-white sm:text-lg">{update.title}</h2>
+                    <p className="mt-2 font-sans text-sm leading-6 text-[#8B9CB8] line-clamp-4">{update.preview}</p>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </main>
+        {renderBottomNavigation()}
+      </div>
+    );
+  };
+
   const renderProfilePage = () => {
     const username = getDashboardUsername();
     const email = currentUser?.email || studentProfile?.email || 'No email available';
@@ -2050,6 +2103,8 @@ export default function App() {
     if (questionIndex >= totalQuestions) {
       const percent = totalQuestions > 0 ? Math.round((sessionScore / totalQuestions) * 100) : 0;
       const message = percent > 70 ? 'Excellent work!' : percent >= 50 ? 'Good effort!' : 'Keep practicing!';
+      // Update streak when a session finishes — fires once when the result screen mounts.
+      if (currentUser) void checkAndUpdateStreak(currentUser.id);
 
       return (
         <div className="flex min-h-screen items-center justify-center bg-[#0A0F1E] px-5 py-10 text-white">
@@ -2685,15 +2740,6 @@ export default function App() {
             actionText: 'Listen Now'
           },
           {
-            title: 'AI Tutor',
-            description: 'Ask anything about your exam topics instantly',
-            href: '/ai-tutor',
-            icon: WandSparkles,
-            accent: '#FF6B35',
-            iconBg: 'rgba(255,107,53,0.15)',
-            actionText: 'Open'
-          },
-          {
             title: 'Weakness Assassin',
             description: 'See your weak topics and practice them',
             href: '/weakness',
@@ -2860,14 +2906,6 @@ export default function App() {
       {/* PROFILE PLACEHOLDER PAGE */}
       {view === 'profile' && studentProfile && renderProfilePage()}
 
-      {/* AI TUTOR PAGE */}
-      {view === 'aiTutor' && studentProfile && (
-        <AITutor
-          user={currentUser}
-          navigatePath={navigatePath}
-        />
-      )}
-
       {/* AUDIOBOOK PAGE */}
       {view === 'audiobook' && studentProfile && (
         <Audiobook navigatePath={navigatePath} user={currentUser} />
@@ -2889,8 +2927,8 @@ export default function App() {
           renderBottomNavigation={renderBottomNavigation}
         />
       )}
-      {/* UPDATES PLACEHOLDER PAGE */}
-      {view === 'updates' && studentProfile && renderPlaceholderPage('Exam Updates', 'Latest exam, scholarship, and school news will appear here soon.')}
+      {/* UPDATES PAGE */}
+      {view === 'updates' && studentProfile && renderUpdatesPage()}
 
 
       {/* PRACTICE PAGE */}
