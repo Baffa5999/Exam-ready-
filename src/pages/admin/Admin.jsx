@@ -1,6 +1,96 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { BarChart3, CheckCircle, Edit3, FileText, Layers, Loader2, Newspaper, Plus, RefreshCw, Save, Trash2, Users, X } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Bold, Code, Italic, Link2, List, ListOrdered, Quote, BarChart3, CheckCircle, Edit3, FileText, Heading2, Layers, Loader2, Newspaper, Plus, RefreshCw, RemoveFormatting, Save, Trash2, Users, X } from 'lucide-react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
 import { supabase } from '../../supabase';
+
+// ─── Rich Text Editor ─────────────────────────────────────────────────────────
+function ToolbarButton({ onClick, active, title, children }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onMouseDown={e => { e.preventDefault(); onClick(); }}
+      className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm transition ${
+        active
+          ? 'bg-[#FF6B35] text-white'
+          : 'text-[#C4CAD8] hover:bg-white/10 hover:text-white'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function RichEditor({ value, onChange }) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-[#2EC4B6] underline' } }),
+    ],
+    content: value || '',
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    editorProps: {
+      attributes: {
+        class: 'min-h-[280px] w-full outline-none text-white font-sans text-sm leading-7 prose prose-invert max-w-none',
+      },
+    },
+  });
+
+  const addLink = useCallback(() => {
+    if (!editor) return;
+    const url = window.prompt('Enter URL (e.g. https://example.com)');
+    if (!url) return;
+    if (editor.state.selection.empty) {
+      editor.chain().focus().insertContent(`<a href="${url}">${url}</a>`).run();
+    } else {
+      editor.chain().focus().setLink({ href: url }).run();
+    }
+  }, [editor]);
+
+  if (!editor) return null;
+
+  const toolbarGroups = [
+    [
+      { icon: <Bold className="h-4 w-4" />, title: 'Bold', action: () => editor.chain().focus().toggleBold().run(), active: editor.isActive('bold') },
+      { icon: <Italic className="h-4 w-4" />, title: 'Italic', action: () => editor.chain().focus().toggleItalic().run(), active: editor.isActive('italic') },
+      { icon: <Code className="h-4 w-4" />, title: 'Inline code', action: () => editor.chain().focus().toggleCode().run(), active: editor.isActive('code') },
+    ],
+    [
+      { icon: <Heading2 className="h-4 w-4" />, title: 'Heading', action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: editor.isActive('heading', { level: 2 }) },
+      { icon: <List className="h-4 w-4" />, title: 'Bullet list', action: () => editor.chain().focus().toggleBulletList().run(), active: editor.isActive('bulletList') },
+      { icon: <ListOrdered className="h-4 w-4" />, title: 'Numbered list', action: () => editor.chain().focus().toggleOrderedList().run(), active: editor.isActive('orderedList') },
+      { icon: <Quote className="h-4 w-4" />, title: 'Blockquote', action: () => editor.chain().focus().toggleBlockquote().run(), active: editor.isActive('blockquote') },
+    ],
+    [
+      { icon: <Link2 className="h-4 w-4" />, title: 'Add link', action: addLink, active: editor.isActive('link') },
+      { icon: <RemoveFormatting className="h-4 w-4" />, title: 'Clear formatting', action: () => editor.chain().focus().unsetAllMarks().clearNodes().run(), active: false },
+    ],
+  ];
+
+  return (
+    <div className="mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#111827] focus-within:border-[#FF6B35]/60">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-white/10 bg-[#0B1324]/70 px-2 py-1.5">
+        {toolbarGroups.map((group, gi) => (
+          <React.Fragment key={gi}>
+            {gi > 0 && <div className="mx-1.5 h-5 w-px bg-white/10" />}
+            {group.map(btn => (
+              <ToolbarButton key={btn.title} onClick={btn.action} active={btn.active} title={btn.title}>
+                {btn.icon}
+              </ToolbarButton>
+            ))}
+          </React.Fragment>
+        ))}
+      </div>
+      {/* Editor area */}
+      <div className="px-4 py-3">
+        <EditorContent editor={editor} />
+      </div>
+    </div>
+  );
+}
 
 const ADMIN_EMAIL = 'usmanbaffa7002@gmail.com';
 const categories = ['JAMB', 'WAEC', 'NECO', 'Scholarship', 'General'];
@@ -49,7 +139,10 @@ export default function Admin({ user, navigatePath }) {
     if (user && !isAdmin) navigatePath('/dashboard', {}, { replace: true });
   }, [isAdmin, navigatePath, user]);
 
-  const updatePreview = useMemo(() => updateForm.content.trim().slice(0, 160), [updateForm.content]);
+  const updatePreview = useMemo(() => {
+    const stripped = updateForm.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    return stripped.slice(0, 160);
+  }, [updateForm.content]);
   const availableSubtopics = SUBTOPICS_BY_SUBJECT[cardForm.subject] || [];
 
   const showMessage = (type, text) => {
@@ -288,19 +381,38 @@ export default function Admin({ user, navigatePath }) {
 
         {/* ── Write Update ── */}
         {activeTab === 'write' && (
-          <form onSubmit={handleUpdateSubmit} className="space-y-4 rounded-[24px] border border-white/10 bg-[#0B1324]/85 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <form onSubmit={handleUpdateSubmit} className="space-y-5 rounded-[24px] border border-white/10 bg-[#0B1324]/85 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-8">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-heading text-xl font-bold text-white">{editingUpdateId ? 'Edit Update' : 'Write Update'}</h2>
-              {editingUpdateId && <button type="button" onClick={resetUpdateForm} className="text-sm font-bold text-[#FFB199] hover:text-[#FF6B35]">Cancel edit</button>}
+              <h2 className="font-heading text-2xl font-bold text-white">{editingUpdateId ? 'Edit Update' : 'Write Update'}</h2>
+              {editingUpdateId && (
+                <button type="button" onClick={resetUpdateForm} className="text-sm font-bold text-[#FFB199] hover:text-[#FF6B35]">
+                  Cancel edit
+                </button>
+              )}
             </div>
+
             <label className="block">
               <span className={labelClass}>Title</span>
-              <input value={updateForm.title} onChange={e => setUpdateForm(prev => ({ ...prev, title: e.target.value }))} className={inputClass} />
+              <input
+                value={updateForm.title}
+                onChange={e => setUpdateForm(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="e.g. JAMB 2025 Registration Now Open"
+                className={`${inputClass} text-base`}
+              />
             </label>
-            <label className="block">
+
+            <div className="block">
               <span className={labelClass}>Content</span>
-              <textarea value={updateForm.content} onChange={e => setUpdateForm(prev => ({ ...prev, content: e.target.value }))} rows={8} className={`${inputClass} resize-y`} />
-            </label>
+              <RichEditor
+                key={editingUpdateId ?? 'new'}
+                value={updateForm.content}
+                onChange={content => setUpdateForm(prev => ({ ...prev, content }))}
+              />
+              <p className="mt-1.5 text-[11px] text-[#8B9CB8]">
+                Supports bold, italic, headings, lists, blockquotes, and links.
+              </p>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block">
                 <span className={labelClass}>Category</span>
@@ -315,8 +427,13 @@ export default function Admin({ user, navigatePath }) {
                 </select>
               </label>
             </div>
-            <button type="submit" disabled={updateSubmitting} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#FF6B35] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#ff7c4d] disabled:cursor-not-allowed disabled:opacity-60">
-              {updateSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+
+            <button
+              type="submit"
+              disabled={updateSubmitting}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF6B35] px-6 py-4 text-base font-bold text-white shadow-[0_8px_28px_rgba(255,107,53,0.3)] transition hover:bg-[#ff7c4d] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            >
+              {updateSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
               {editingUpdateId ? 'Save Changes' : 'Publish Update'}
             </button>
           </form>
