@@ -128,8 +128,8 @@ interface LeaderboardStudent {
   userId: string;
   username: string;
   exam?: string;
-  score: number;
-  streak: number;
+  points: number;
+  accuracy: number;
   current?: boolean;
 }
 
@@ -272,7 +272,6 @@ export default function App() {
   const [sessionAnswers, setSessionAnswers] = useState<Array<{ question: PracticeQuestion; selectedAnswer: number; correctAnswer: number; isCorrect: boolean } | undefined>>([]);
   const [battleCode, setBattleCode] = useState<string>('');
   const [joinBattleCode, setJoinBattleCode] = useState<string>('');
-  const [leaderboardRange, setLeaderboardRange] = useState<'Weekly' | 'Monthly' | 'All Time'>('All Time');
   const [leaderboardSubject, setLeaderboardSubject] = useState<string>('All Subjects');
   const [leaderboardRows, setLeaderboardRows] = useState<LeaderboardStudent[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState<boolean>(false);
@@ -1200,6 +1199,16 @@ export default function App() {
       .from('student_performance')
       .upsert(payload, { onConflict: 'user_id, subtopic' });
 
+    // Record question attempt for leaderboard scoring (fire-and-forget).
+    const { error: rpcError } = await supabase.rpc('record_question_attempt', {
+      p_subject: question.subject,
+      p_correct: isCorrect
+    });
+
+    if (rpcError) {
+      console.warn('Failed to record question attempt for leaderboard:', rpcError);
+    }
+
     if (upsertError) {
       console.warn('Unable to upsert practice performance:', upsertError);
       return;
@@ -1276,64 +1285,35 @@ export default function App() {
     const loadLeaderboard = async () => {
       setLeaderboardLoading(true);
 
-      const { data: performanceRows, error: performanceError } = await supabase
-        .from('student_performance')
-        .select('user_id, questions_correct')
-        .limit(5000);
+      const viewName = leaderboardSubject === 'All Subjects' 
+        ? 'leaderboard_all_time' 
+        : 'leaderboard_by_subject';
+
+      let query = supabase.from(viewName).select('*').limit(100);
+
+      if (leaderboardSubject !== 'All Subjects') {
+        query = query.eq('subject', leaderboardSubject);
+      }
+
+      const { data: leaderboardData, error: leaderboardError } = await query;
 
       if (cancelled) return;
 
-      if (performanceError || !performanceRows) {
-        console.info('Unable to load leaderboard performance data; showing empty rankings.', performanceError);
+      if (leaderboardError || !leaderboardData) {
+        console.info('Unable to load leaderboard data:', leaderboardError);
         setLeaderboardRows([]);
         setLeaderboardLoading(false);
         return;
       }
 
-      const totalsByUser = new Map<string, number>();
-      (performanceRows as Array<Record<string, any>>).forEach(row => {
-        const userId = row.user_id;
-        if (!userId) return;
-        totalsByUser.set(userId, (totalsByUser.get(userId) || 0) + (Number(row.questions_correct) || 0));
-      });
-
-      const rankedTotals = Array.from(totalsByUser.entries())
-        .sort(([, firstTotal], [, secondTotal]) => secondTotal - firstTotal)
-        .slice(0, 20);
-      const userIds = rankedTotals.map(([userId]) => userId);
-
-      if (userIds.length === 0) {
-        setLeaderboardRows([]);
-        setLeaderboardLoading(false);
-        return;
-      }
-
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, exam_type, exam_types, streak')
-        .in('id', userIds);
-
-      if (cancelled) return;
-
-      if (profileError) {
-        console.info('Unable to load leaderboard profiles; using fallback display names.', profileError);
-      }
-
-      const profilesById = new Map<string, Record<string, any>>((profiles || []).map((profile: Record<string, any>) => [profile.id, profile]));
-      const nextRows = rankedTotals.map(([userId, totalCorrect], index) => {
-        const profile = profilesById.get(userId) || {};
-        const examType = profile.exam_type || profile.examTypes?.[0] || profile.exam_types?.[0];
-
-        return {
-          rank: index + 1,
-          userId,
-          username: profile.username || profile.full_name || `student_${userId.slice(0, 6)}`,
-          exam: examType,
-          score: totalCorrect,
-          streak: Number(profile.streak) || 0,
-          current: currentUser?.id === userId
-        };
-      });
+      const nextRows = (leaderboardData as Array<any>).map((row, index) => ({
+        rank: index + 1,
+        userId: row.user_id,
+        username: row.username,
+        points: row.points || 0,
+        accuracy: row.accuracy || 0,
+        current: currentUser?.id === row.user_id
+      }));
 
       setLeaderboardRows(nextRows);
       setLeaderboardLoading(false);
@@ -2414,11 +2394,10 @@ export default function App() {
         </div>
         <div className="min-w-0">
           <p className={`break-words font-heading font-medium leading-tight text-white ${usernameClass(student.username, 'text-sm sm:text-base')}`}>{student.username}</p>
-          {student.exam && <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{student.exam}</p>}
         </div>
         <div className="text-right">
-          <p className="font-heading text-sm font-semibold text-white sm:text-base">{student.score.toLocaleString()}</p>
-          <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">correct answers</p>
+          <p className="font-heading text-sm font-semibold text-white sm:text-base">{student.points.toLocaleString()}</p>
+          <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{student.accuracy}%</p>
         </div>
       </div>
     );
@@ -2428,27 +2407,13 @@ export default function App() {
         <main className={professionalMainClass}>
           {renderProfessionalHeader('Leaderboard', 'See how you rank nationally.', Trophy, '#FFD700')}
 
-          <section className="space-y-4">
-            <div className="flex items-end gap-6 border-b border-[rgba(255,255,255,0.08)]">
-              {(['Weekly', 'Monthly', 'All Time'] as const).map(range => (
-                <button key={range} type="button" onClick={() => setLeaderboardRange(range)} className={`border-b-2 px-0 pb-3 font-sans text-sm font-normal transition ${leaderboardRange === range ? 'border-[#FF6B35] text-white' : 'border-transparent text-[#8B9CB8] hover:text-white'}`}>
-                  {range}
-                </button>
-              ))}
-            </div>
-            <div className="-mx-5 flex gap-5 overflow-x-auto border-b border-[rgba(255,255,255,0.08)] px-5 md:mx-0 md:px-0">
-              {filters.map(filter => (
-                <button key={filter} type="button" onClick={() => setLeaderboardSubject(filter)} className={`shrink-0 border-b-2 pb-3 font-sans text-sm font-normal transition ${leaderboardSubject === filter ? 'border-[#FF6B35] text-white' : 'border-transparent text-[#8B9CB8] hover:text-white'}`}>
-                  {filter}
-                </button>
-              ))}
-            </div>
-            {leaderboardRange !== 'All Time' && (
-              <p className="rounded-2xl border border-[#FF6B35]/20 bg-[#FF6B35]/10 px-4 py-3 font-sans text-xs font-normal leading-5 text-[#FFB199]">
-                Weekly and Monthly filters are coming soon. Showing all-time correct answers for now.
-              </p>
-            )}
-          </section>
+          <div className="-mx-5 flex gap-5 overflow-x-auto border-b border-[rgba(255,255,255,0.08)] px-5 md:mx-0 md:px-0 mb-4">
+            {filters.map(filter => (
+              <button key={filter} type="button" onClick={() => setLeaderboardSubject(filter)} className={`shrink-0 border-b-2 pb-3 font-sans text-sm font-normal transition ${leaderboardSubject === filter ? 'border-[#FF6B35] text-white' : 'border-transparent text-[#8B9CB8] hover:text-white'}`}>
+                {filter}
+              </button>
+            ))}
+          </div>
 
           {leaderboardLoading ? (
             <section className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-8 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
@@ -2480,8 +2445,7 @@ export default function App() {
                         </div>
                         <div className="min-w-0">
                           <p className={`break-words font-heading font-semibold leading-tight text-white ${usernameClass(student.username, 'text-sm sm:text-base')}`}>{student.username}</p>
-                          <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{student.score.toLocaleString()} correct answers</p>
-                          {student.exam && <p className="mt-1 inline-flex rounded-full border border-white/10 px-2 py-0.5 font-sans text-[10px] font-semibold text-[#8B9CB8]">{student.exam}</p>}
+                          <p className="mt-1 font-sans text-xs font-normal text-[#8B9CB8]">{student.points.toLocaleString()} points · {student.accuracy}% accuracy</p>
                         </div>
                       </div>
                     );
