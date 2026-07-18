@@ -2699,8 +2699,8 @@ export default function App() {
             description: 'Listen to the recommended novel for JAMB English',
             href: '/audiobook',
             icon: Headphones,
-            accent: '#00BBF9',
-            iconBg: 'rgba(0,187,249,0.15)',
+            emoji: '🎧',
+            tileClass: 'from-[#4DA3FF] to-[#236BFF]',
             actionText: 'Listen Now'
           },
           {
@@ -2708,9 +2708,35 @@ export default function App() {
             description: 'See your weak topics and practice them',
             href: '/weakness',
             icon: Crosshair,
-            accent: '#FF6B35',
-            iconBg: 'rgba(255,107,53,0.15)',
+            emoji: '🎯',
+            tileClass: 'from-[#2EC4B6] to-[#168C80]',
             actionText: 'View Weaknesses'
+          },
+          {
+            title: 'Flashcards',
+            description: 'Drill key facts and definitions quickly',
+            href: '/flashcards',
+            icon: Layers,
+            emoji: '🧠',
+            tileClass: 'from-[#9B5DE5] to-[#5D2E91]',
+            actionText: 'Study Cards'
+          }
+        ];
+        const statCards = [
+          {
+            label: 'Day Streak',
+            value: studentProfile.streak ?? 0,
+            emoji: '🔥'
+          },
+          {
+            label: 'Questions',
+            value: dashboardPerformance.questions,
+            emoji: '📖'
+          },
+          {
+            label: 'Accuracy',
+            value: `${dashboardPerformance.accuracy}%`,
+            emoji: '🎯'
           }
         ];
         const getUpdateCategoryClass = (category: string) => {
@@ -2723,119 +2749,110 @@ export default function App() {
         };
 
         return (
-          <div className={`${professionalPageClass} scroll-smooth`}>
-            <nav className="sticky top-0 z-40 flex h-20 items-center border-b border-[rgba(255,255,255,0.08)] bg-[#0A0F1E]/95 px-5 backdrop-blur-md md:px-10">
-              <span className="font-heading text-[22px] font-bold tracking-tight text-white">
-                Exam<span className="text-[#FF6B35]">Ready</span>
-              </span>
-            </nav>
-
-            <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-5 md:px-10 md:py-8">
-              <section className="animate-fade-up rounded-2xl border border-[rgba(255,107,53,0.2)] bg-gradient-to-br from-[#1A1A2E] to-[#111827] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.2)] sm:p-6">
-                <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-h-screen overflow-x-hidden bg-[#F5F7FB] pb-32 font-sans text-[#111827]">
+            <main className="mx-auto max-w-6xl space-y-5 px-4 py-5 sm:px-5 md:px-10 md:py-8">
+              <section className="animate-fade-up overflow-hidden rounded-[30px] bg-gradient-to-br from-[#1266F1] via-[#1E88FF] to-[#74C0FF] p-5 text-white shadow-[0_22px_55px_rgba(18,102,241,0.24)] sm:p-6">
+                <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                      Hi <span className="inline-block max-w-[16ch] truncate align-bottom">{username}</span> <span aria-hidden="true">👋</span>
-                    </h1>
-                    <p className="mt-2 font-sans text-sm font-normal leading-6 text-[#8B9CB8]">Ready to study today?</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/20 text-lg font-bold uppercase shadow-[0_8px_25px_rgba(0,0,0,0.12)]">
+                        {username.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">ExamReady</p>
+                        <h1 className="truncate font-heading text-2xl font-bold leading-tight sm:text-3xl">
+                          Hi, {username}
+                        </h1>
+                      </div>
+                    </div>
+                    <p className="mt-4 max-w-xl text-sm font-medium leading-6 text-white/85">Your study planner is ready. Pick a tool below and keep your exam prep moving.</p>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => navigatePath('/profile')}
-                    className="inline-flex w-auto items-center justify-center gap-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-white/5 px-3 py-2 font-sans text-xs font-semibold text-white transition hover:bg-white/10 hover:text-[#FF6B35]"
+                    className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-white/25 bg-white/15 p-3 text-white shadow-[0_10px_24px_rgba(0,0,0,0.12)] backdrop-blur transition hover:bg-white/25"
+                    aria-label="View Profile"
                   >
-                    <UserIcon className="h-4 w-4" />
-                    View Profile
+                    <UserIcon className="h-5 w-5" />
                   </button>
                 </div>
 
-                <div className="mt-5 grid grid-cols-3 gap-3 md:gap-4">
-                  <div className="rounded-[22px] border border-[#FF8A66]/35 bg-[#0B1324]/85 p-3 text-center shadow-[0_0_16px_rgba(255,107,53,0.10)] sm:p-4">
-                    <span className="mx-auto block text-3xl leading-none" role="img" aria-label="Flame icon">🔥</span>
-                    <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{studentProfile.streak ?? 0}</p>
-                    <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Day Streak</p>
-                  </div>
-                  <div className="rounded-[22px] border border-[#FF8A66]/35 bg-[#0B1324]/85 p-3 text-center shadow-[0_0_16px_rgba(255,107,53,0.10)] sm:p-4">
-                    <span className="mx-auto block text-3xl leading-none" role="img" aria-label="Open book icon">📖</span>
-                    <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{dashboardPerformance.questions}</p>
-                    <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Questions</p>
-                  </div>
-                  <div className="rounded-[22px] border border-[#FF8A66]/35 bg-[#0B1324]/85 p-3 text-center shadow-[0_0_16px_rgba(255,107,53,0.10)] sm:p-4">
-                    <span className="mx-auto block text-3xl leading-none" role="img" aria-label="Bullseye target icon">🎯</span>
-                    <p className="mt-3 truncate font-heading text-xl font-bold leading-none text-white sm:text-2xl">{dashboardPerformance.accuracy}%</p>
-                    <p className="mt-2 font-sans text-[13px] font-normal leading-4 text-[#8B9CB8]">Accuracy</p>
-                  </div>
+                <div className="mt-5 grid grid-cols-3 gap-3">
+                  {statCards.map(stat => (
+                    <article key={stat.label} className="rounded-[22px] bg-white/95 p-3 text-center shadow-[0_12px_26px_rgba(0,0,0,0.12)]">
+                      <span className="mx-auto block text-2xl leading-none" role="img" aria-label={`${stat.label} icon`}>{stat.emoji}</span>
+                      <p className="mt-2 truncate font-heading text-xl font-bold leading-none text-[#111827]">{stat.value}</p>
+                      <p className="mt-1 text-[11px] font-semibold leading-4 text-[#6B7280]">{stat.label}</p>
+                    </article>
+                  ))}
                 </div>
               </section>
 
-              {isAdmin && (
-                <section className="animate-fade-up">
-                  <button
-                    type="button"
-                    onClick={() => navigatePath('/admin')}
-                    className="group flex w-full cursor-pointer items-center gap-4 rounded-[22px] border border-[#FF6B35]/40 bg-gradient-to-br from-[#1A1A2E] to-[#111827] p-4 text-left shadow-[0_0_22px_rgba(255,107,53,0.15)] transition duration-200 hover:-translate-y-0.5 hover:border-[#FF6B35]/70 sm:p-5"
-                  >
-                    <div
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
-                      style={{ backgroundColor: 'rgba(255,107,53,0.15)', color: '#FF6B35' }}
+              <section className="animate-fade-up space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-heading text-lg font-bold text-[#111827]">Study tools</h2>
+                  <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8B9CB8]">Today</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+                  {actionCards.map(card => {
+                    const CardIcon = card.icon;
+                    return (
+                      <button
+                        key={card.title}
+                        type="button"
+                        onClick={() => navigatePath(card.href)}
+                        className={`group min-h-[148px] rounded-[26px] bg-gradient-to-br ${card.tileClass} p-4 text-left text-white shadow-[0_16px_35px_rgba(15,23,42,0.14)] transition duration-200 hover:-translate-y-0.5`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 text-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]" role="img" aria-label={`${card.title} icon`}>
+                            {card.emoji}
+                          </div>
+                          <CardIcon className="h-5 w-5 text-white/75" />
+                        </div>
+                        <h3 className="mt-4 font-heading text-base font-bold leading-tight">{card.title}</h3>
+                        <p className="mt-1 overflow-hidden text-xs font-medium leading-4 text-white/80" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{card.description}</p>
+                        <span className="mt-4 inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold text-white transition group-hover:bg-white/30">
+                          {card.actionText}
+                          <ChevronRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+                        </span>
+                      </button>
+                    );
+                  })}
+
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => navigatePath('/admin')}
+                      className="group min-h-[148px] rounded-[26px] bg-gradient-to-br from-[#1A1A2E] to-[#111827] p-4 text-left text-white shadow-[0_16px_35px_rgba(15,23,42,0.16)] transition duration-200 hover:-translate-y-0.5"
                     >
-                      <PenLine className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h2 className="font-heading text-base font-semibold text-white">Admin Panel</h2>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FF6B35]/20 text-[#FFB199] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                          <PenLine className="h-5 w-5" />
+                        </div>
                         <span className="rounded-full bg-[#FF6B35]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FFB199]">Admin</span>
                       </div>
-                      <p className="mt-1 font-sans text-[13px] font-normal leading-5 text-[#8B9CB8]">Manage updates and track platform totals</p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-[#FF6B35] transition group-hover:translate-x-1" />
-                  </button>
-                </section>
-              )}
-
-              <section className="grid grid-cols-1 gap-4 animate-fade-up">
-                {actionCards.map(card => {
-                  const CardIcon = card.icon;
-                  return (
-                    <button
-                      key={card.title}
-                      type="button"
-                      onClick={() => navigatePath(card.href)}
-                      className="group flex cursor-pointer flex-col rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] text-left transition duration-200 hover:-translate-y-0.5 hover:border-white/15"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div
-                          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
-                          style={{ backgroundColor: card.iconBg, color: card.accent }}
-                        >
-                          <CardIcon className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h2 className="font-heading text-base font-semibold text-white">{card.title}</h2>
-                          <p className="mt-1 overflow-hidden font-sans text-[13px] font-normal leading-5 text-[#8B9CB8]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{card.description}</p>
-                        </div>
-                      </div>
-                      <div className="mt-4 flex justify-end">
-                        <span className="inline-flex items-center gap-1 rounded-full px-3 py-2 font-sans text-xs font-semibold transition group-hover:bg-white/5" style={{ color: card.accent }}>
-                          {card.actionText}
-                          <ChevronRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                        </span>
-                      </div>
+                      <h3 className="mt-4 font-heading text-base font-bold leading-tight">Admin Panel</h3>
+                      <p className="mt-1 overflow-hidden text-xs font-medium leading-4 text-white/70" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>Manage updates and track platform totals</p>
+                      <span className="mt-4 inline-flex items-center gap-1 rounded-full bg-[#FF6B35]/15 px-3 py-1.5 text-xs font-bold text-[#FFB199] transition group-hover:bg-[#FF6B35]/25">
+                        Open
+                        <ChevronRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+                      </span>
                     </button>
-                  );
-                })}
+                  )}
+                </div>
               </section>
 
-              <section className="animate-fade-up">
+              <section className="animate-fade-up rounded-[28px] bg-white p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)] sm:p-5">
                 <div className="flex items-center justify-between gap-4">
-                  <h2 className="font-heading text-lg font-bold text-white sm:text-xl">Latest Updates</h2>
+                  <h2 className="font-heading text-lg font-bold text-[#111827]">Latest Updates</h2>
                   <button
                     type="button"
                     onClick={() => navigatePath('/updates')}
-                    className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-[#FF6B35] transition hover:text-[#ff7c4d]"
+                    className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-[#1266F1] transition hover:text-[#0B57D0]"
                   >
-                    See All
+                    View all
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -2846,16 +2863,16 @@ export default function App() {
                       key={`${update.category}-${update.title}-${index}`}
                       type="button"
                       onClick={() => navigatePath('/updates')}
-                      className="w-full rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] text-left transition hover:border-[#FF6B35]/30"
+                      className="w-full rounded-[22px] border border-[#E6EAF2] bg-[#F8FAFE] p-4 text-left transition hover:border-[#1266F1]/30 hover:bg-white"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span className={`rounded-full px-3 py-1 text-[11px] font-bold text-white ${getUpdateCategoryClass(update.category)}`}>
                           {update.category}
                         </span>
-                        <span className="shrink-0 text-xs font-medium text-[#8B9CB8]">{update.date}</span>
+                        <span className="shrink-0 text-xs font-semibold text-[#8B9CB8]">{update.date}</span>
                       </div>
-                      <h3 className="mt-3 truncate font-heading text-sm font-bold leading-5 text-white sm:text-base">{update.title}</h3>
-                      <p className="mt-2 overflow-hidden font-sans text-[13px] font-normal leading-5 text-[#8B9CB8]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{update.preview}</p>
+                      <h3 className="mt-3 truncate font-heading text-sm font-bold leading-5 text-[#111827] sm:text-base">{update.title}</h3>
+                      <p className="mt-2 overflow-hidden text-[13px] font-normal leading-5 text-[#6B7280]" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{update.preview}</p>
                     </button>
                   ))}
                 </div>
@@ -2946,7 +2963,7 @@ export default function App() {
       {/* ONBOARDING FLOW */}
       {view === 'onboarding' && studentProfile && (
         <Onboarding
-          initialName={currentUser?.displayName || studentProfile.displayName || ''}
+          initialName={(currentUser?.user_metadata?.display_name as string) || (currentUser?.user_metadata?.full_name as string) || studentProfile.displayName || ''}
           onComplete={handleOnboardingComplete}
           onSignOut={handleSignOut}
         />
