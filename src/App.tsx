@@ -42,6 +42,7 @@ import {
   Headphones,
   User as UserIcon
 } from 'lucide-react';
+import ErrorBoundary from './components/ErrorBoundary';
 import Onboarding from './components/Onboarding';
 import InstallPrompt from './components/InstallPrompt';
 import WeaknessAssassin from './pages/weakness/WeaknessAssassin';
@@ -76,9 +77,28 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <Home />
-    </div>
+    <ErrorBoundary>
+      <div className="app">
+        <Home
+          username={user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}
+          avatarInitial={(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
+          streak={0}
+          questionsAnswered={0}
+          accuracy={0}
+          weakTopicCount={0}
+          audiobookCurrentChapter={1}
+          audiobookTotalChapters={12}
+          latestUpdateTitle="Check back soon"
+          onNavigate={(path) => {
+            console.log('Navigate to:', path);
+          }}
+          onOpenProfile={() => {
+            console.log('Open profile');
+          }}
+          renderBottomNavigation={() => <div />}
+        />
+      </div>
+    </ErrorBoundary>
   );
 }
 
