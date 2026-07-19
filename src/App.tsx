@@ -51,3 +51,35 @@ import Audiobook from './pages/audiobook/Audiobook';
 import Admin from './pages/admin/Admin';
 import Flashcards from './pages/flashcards/Flashcards';
 import Home from './pages/home/Home';
+
+function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Initialize auth state
+    const initializeAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user || null);
+      setLoading(false);
+    };
+
+    initializeAuth();
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return <Onboarding />;
+  }
+
+  return (
+    <div className="app">
+      <Home />
+    </div>
+  );
+}
+
+export default App;
