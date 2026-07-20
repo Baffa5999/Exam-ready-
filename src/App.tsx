@@ -11,6 +11,12 @@ import BottomNavigation from './components/BottomNavigation';
 import Onboarding from './components/Onboarding';
 import InstallPrompt from './components/InstallPrompt';
 import Home from './pages/home/Home';
+import PracticeConfigure from './pages/practice/PracticeConfigure';
+import PracticeReview from './pages/practice/PracticeReview';
+import Audiobook from './pages/audiobook/Audiobook';
+import WeaknessAssassin from './pages/weakness/WeaknessAssassin';
+import Flashcards from './pages/flashcards/Flashcards';
+import Admin from './pages/admin/Admin';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -67,7 +73,7 @@ function App() {
     }
   };
 
-  const handleNavigate = (path: string) => {
+  const handleNavigate = (path: string, state?: Record<string, unknown>) => {
     console.log('Navigating to:', path);
     setCurrentPath(path);
     // Scroll to top on navigation
@@ -100,7 +106,7 @@ function App() {
     <ErrorBoundary>
       <InstallPrompt />
       <div className="app min-h-screen bg-[#0A0F1E]">
-        {/* Render Home screen */}
+        {/* Home Screen */}
         {(currentPath === '/' || currentPath === '/home') && (
           <Home
             username={user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}
@@ -122,77 +128,131 @@ function App() {
           />
         )}
 
-        {/* Placeholder screens for other pages */}
-        {currentPath === '/practice' && (
-          <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
-            <p className="text-2xl mb-4">Practice Page</p>
-            <p className="text-sm text-gray-400">(To be implemented)</p>
+        {/* Practice */}
+        {(currentPath === '/practice' || currentPath.startsWith('/practice')) && (
+          <div className="pb-36">
+            <PracticeConfigure
+              navigatePath={handleNavigate}
+              renderBottomNavigation={() => (
+                <BottomNavigation currentPath={currentPath} onNavigate={handleNavigate} />
+              )}
+            />
+          </div>
+        )}
+
+        {/* Practice Review */}
+        {currentPath === '/practice/review' && (
+          <div className="pb-36">
+            <PracticeReview
+              failedQuestions={[]}
+              navigatePath={handleNavigate}
+            />
             <BottomNavigation currentPath={currentPath} onNavigate={handleNavigate} />
           </div>
         )}
 
+        {/* Audiobook */}
+        {currentPath === '/audiobook' && (
+          <div className="pb-36">
+            <Audiobook
+              navigatePath={handleNavigate}
+              user={user}
+            />
+            <BottomNavigation currentPath={currentPath} onNavigate={handleNavigate} />
+          </div>
+        )}
+
+        {/* Weakness Assassin */}
+        {currentPath === '/weakness' && (
+          <div className="pb-36">
+            <WeaknessAssassin
+              user={user}
+              navigatePath={handleNavigate}
+              renderBottomNavigation={() => (
+                <BottomNavigation currentPath={currentPath} onNavigate={handleNavigate} />
+              )}
+            />
+          </div>
+        )}
+
+        {/* Flashcards */}
         {currentPath === '/flashcards' && (
-          <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
-            <p className="text-2xl mb-4">Flashcards Page</p>
-            <p className="text-sm text-gray-400">(To be implemented)</p>
-            <BottomNavigation currentPath={currentPath} onNavigate={handleNavigate} />
+          <div className="pb-36">
+            <Flashcards
+              route={currentPath}
+              user={user}
+              navigatePath={handleNavigate}
+              renderBottomNavigation={() => (
+                <BottomNavigation currentPath={currentPath} onNavigate={handleNavigate} />
+              )}
+              subjectLibrary={[
+                { name: 'Mathematics', accent: '#FF6B35', gradient: 'from-[#FF6B35]/20' },
+                { name: 'English', accent: '#2EC4B6', gradient: 'from-[#2EC4B6]/20' },
+                { name: 'Physics', accent: '#10B981', gradient: 'from-[#10B981]/20' },
+                { name: 'Chemistry', accent: '#F59E0B', gradient: 'from-[#F59E0B]/20' },
+                { name: 'Biology', accent: '#06B6D4', gradient: 'from-[#06B6D4]/20' },
+              ]}
+              slugify={(name: string) => name.toLowerCase().replace(/\s+/g, '-')}
+              professionalPageClass="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,107,53,0.10),transparent_34%),#0A0F1E] pb-36 text-white font-sans"
+              professionalMainClass="mx-auto max-w-4xl px-4 py-6 sm:px-6 md:px-10 md:py-8"
+              professionalBackButtonClass="inline-flex min-w-0 items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827]/90 px-4 py-2.5 font-sans text-sm font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]"
+              renderProfessionalHeader={(title: string, description: string, HeaderIcon: any, accent?: string) => (
+                <div className="mt-8 text-center">
+                  <div className="flex justify-center mb-4">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl" style={{ backgroundColor: `${accent || '#FF6B35'}1F`, color: accent || '#FF6B35' }}>
+                      <HeaderIcon className="h-7 w-7" />
+                    </div>
+                  </div>
+                  <h1 className="font-heading text-2xl font-bold text-white">{title}</h1>
+                  <p className="mt-2 font-sans text-sm leading-6 text-[#8B9CB8]">{description}</p>
+                </div>
+              )}
+            />
           </div>
         )}
 
+        {/* Battle - Not Yet Built */}
         {currentPath === '/battle' && (
           <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
-            <p className="text-2xl mb-4">Battle Page</p>
-            <p className="text-sm text-gray-400">(To be implemented)</p>
+            <p className="text-2xl mb-4">⚔️ Battle</p>
+            <p className="text-sm text-gray-400">(Not yet implemented)</p>
             <BottomNavigation currentPath={currentPath} onNavigate={handleNavigate} />
           </div>
         )}
 
+        {/* Leaderboard - Not Yet Built */}
         {currentPath === '/leaderboard' && (
           <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
-            <p className="text-2xl mb-4">Leaderboard Page</p>
-            <p className="text-sm text-gray-400">(To be implemented)</p>
+            <p className="text-2xl mb-4">🏆 Leaderboard</p>
+            <p className="text-sm text-gray-400">(Not yet implemented)</p>
             <BottomNavigation currentPath={currentPath} onNavigate={handleNavigate} />
           </div>
         )}
 
-        {currentPath === '/audiobook' && (
-          <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
-            <p className="text-2xl mb-4">Audiobook Page</p>
-            <p className="text-sm text-gray-400">(To be implemented)</p>
-            <BottomNavigation currentPath={currentPath} onNavigate={handleNavigate} />
-          </div>
-        )}
-
-        {currentPath === '/weakness' && (
-          <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
-            <p className="text-2xl mb-4">Weakness Assassin Page</p>
-            <p className="text-sm text-gray-400">(To be implemented)</p>
-            <BottomNavigation currentPath={currentPath} onNavigate={handleNavigate} />
-          </div>
-        )}
-
+        {/* Updates - Not Yet Built */}
         {currentPath === '/updates' && (
           <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
-            <p className="text-2xl mb-4">Updates Page</p>
-            <p className="text-sm text-gray-400">(To be implemented)</p>
+            <p className="text-2xl mb-4">📰 Updates</p>
+            <p className="text-sm text-gray-400">(Not yet implemented)</p>
             <BottomNavigation currentPath={currentPath} onNavigate={handleNavigate} />
           </div>
         )}
 
-        {/* Show 404 if path not recognized */}
+        {/* 404 - Unknown Route */}
         {![
           '/',
           '/home',
           '/practice',
+          '/practice/review',
+          '/audiobook',
+          '/weakness',
           '/flashcards',
           '/battle',
           '/leaderboard',
-          '/audiobook',
-          '/weakness',
           '/updates'
         ].includes(currentPath) && (
           <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
-            <p className="text-2xl mb-4">Page Not Found</p>
+            <p className="text-2xl mb-4">404 - Page Not Found</p>
             <button
               onClick={() => handleNavigate('/')}
               className="mt-4 px-4 py-2 bg-[#FF6B35] hover:bg-[#E85A25] rounded-lg transition"
