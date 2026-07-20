@@ -6,51 +6,9 @@
 import React, { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { 
-  LogOut, 
-  Flame, 
-  CheckCircle, 
-  Award, 
-  BookOpen, 
-  Users, 
-  Trophy, 
-  ChevronRight, 
-  ChevronLeft,
-  ChevronDown,
-  ChevronUp,
-  Timer,
-  BookMarked,
-  Copy,
-  Loader2,
-  MessageCircle,
-  Newspaper,
-  Target,
-  ArrowRight,
-  Sparkles,
-  RefreshCw,
-  FileText,
-  Eye,
-  EyeOff,
-  Mail,
-  Home,
-  PenLine,
-  Swords,
-  Crosshair,
-  Layers,
-  UsersRound,
-  CircleDotDashed,
-  Headphones,
-  User as UserIcon
-} from 'lucide-react';
 import ErrorBoundary from './components/ErrorBoundary';
 import Onboarding from './components/Onboarding';
 import InstallPrompt from './components/InstallPrompt';
-import WeaknessAssassin from './pages/weakness/WeaknessAssassin';
-import PracticeConfigure from './pages/practice/PracticeConfigure';
-import PracticeReview from './pages/practice/PracticeReview';
-import Audiobook from './pages/audiobook/Audiobook';
-import Admin from './pages/admin/Admin';
-import Flashcards from './pages/flashcards/Flashcards';
 import Home from './pages/home/Home';
 
 function App() {
@@ -60,24 +18,78 @@ function App() {
   useEffect(() => {
     // Initialize auth state
     const initializeAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user || null);
-      setLoading(false);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user || null);
+      } catch (error) {
+        console.error('Failed to initialize auth:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
     initializeAuth();
   }, []);
 
+  const handleOnboardingComplete = async (data: {
+    displayName: string;
+    username: string;
+  }) => {
+    try {
+      // Update user metadata in Supabase
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: data.displayName,
+          username: data.username,
+        }
+      });
+
+      if (error) throw error;
+
+      // Refresh user state
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user || null);
+    } catch (error) {
+      console.error('Failed to complete onboarding:', error);
+      throw error;
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Failed to sign out:', error);
+    }
+  };
+
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0A0F1E] text-white">
+        <div className="text-center">
+          <p className="text-lg">Loading your study space...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
-    return <Onboarding />;
+    return (
+      <ErrorBoundary>
+        <Onboarding
+          initialName={user?.user_metadata?.full_name || ''}
+          onComplete={handleOnboardingComplete}
+          onSignOut={handleSignOut}
+        />
+      </ErrorBoundary>
+    );
   }
 
   return (
     <ErrorBoundary>
+      <InstallPrompt />
       <div className="app">
         <Home
           username={user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}
