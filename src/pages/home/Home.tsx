@@ -69,10 +69,15 @@ export default function Home({
             <button
               type="button"
               onClick={onOpenProfile}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-[#FF6B35]/35 bg-[#FF6B35]/15 font-heading text-sm font-bold text-[#FFB199] transition hover:bg-[#FF6B35]/25"
+              className="group flex flex-col items-center gap-1"
               aria-label="View profile"
             >
-              {avatarInitial}
+              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[#FF6B35]/35 bg-[#FF6B35]/15 font-heading text-sm font-bold text-[#FFB199] transition group-hover:bg-[#FF6B35]/25">
+                {avatarInitial}
+              </span>
+              <span className="font-sans text-[10px] font-medium text-[#8B9CB8] transition group-hover:text-[#FFB199]">
+                View Profile
+              </span>
             </button>
           </div>
         </header>

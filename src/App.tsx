@@ -20,6 +20,7 @@ import Flashcards from './pages/flashcards/Flashcards';
 import Leaderboard from './pages/leaderboard/Leaderboard';
 import Admin from './pages/admin/Admin';
 import Battle from './pages/battle/Battle';
+import Profile from './pages/profile/Profile';
 
 const subjectLibrary = [
   { name: 'Mathematics', accent: '#00BBF9', gradient: 'from-[#00BBF9] to-[#006DFF]' },
@@ -341,6 +342,18 @@ function App() {
           </div>
         )}
 
+        {/* Profile */}
+        {currentPath === '/profile' && (
+          <div className="pb-36">
+            <Profile
+              user={user}
+              navigatePath={handleNavigate}
+              renderBottomNavigation={renderBottomNavigation}
+              onSignOut={handleSignOut}
+            />
+          </div>
+        )}
+
         {/* Updates - placeholder */}
         {currentPath === '/updates' && (
           <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
@@ -356,7 +369,7 @@ function App() {
           '/practice', '/practice/subjects', '/practice/exam-type',
           '/practice/configure', '/practice/review',
           '/audiobook', '/weakness', '/flashcards',
-          '/battle', '/leaderboard', '/updates', '/admin',
+          '/battle', '/leaderboard', '/updates', '/admin', '/profile',
         ].includes(currentPath) && !currentPath.startsWith('/flashcards/') && !currentPath.startsWith('/mock-exam/') && !currentPath.startsWith('/practice/configure') && (
           <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
             <p className="text-2xl mb-4">404 - Page Not Found</p>
