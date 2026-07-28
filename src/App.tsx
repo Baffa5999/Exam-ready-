@@ -19,6 +19,7 @@ import WeaknessAssassin from './pages/weakness/WeaknessAssassin';
 import Flashcards from './pages/flashcards/Flashcards';
 import Leaderboard from './pages/leaderboard/Leaderboard';
 import Admin from './pages/admin/Admin';
+import Battle from './pages/battle/Battle';
 
 const subjectLibrary = [
   { name: 'Mathematics', accent: '#00BBF9', gradient: 'from-[#00BBF9] to-[#006DFF]' },
@@ -329,12 +330,14 @@ function App() {
           <Admin navigatePath={handleNavigate} user={user} />
         )}
 
-        {/* Battle - placeholder */}
+        {/* Battle */}
         {currentPath === '/battle' && (
-          <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
-            <p className="text-2xl mb-4">Battle</p>
-            <p className="text-sm text-gray-400">(Not yet implemented)</p>
-            {renderBottomNavigation()}
+          <div className="pb-36">
+            <Battle
+              user={user}
+              navigatePath={handleNavigate}
+              renderBottomNavigation={renderBottomNavigation}
+            />
           </div>
         )}
 
