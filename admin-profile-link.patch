@@ -1,0 +1,48 @@
+diff --git a/src/pages/profile/Profile.tsx b/src/pages/profile/Profile.tsx
+index d318a15..399c3a1 100644
+--- a/src/pages/profile/Profile.tsx
++++ b/src/pages/profile/Profile.tsx
+@@ -15,8 +15,11 @@ import {
+   Shield,
+   Calendar,
+   AlertCircle,
++  Settings,
+ } from 'lucide-react';
+ 
++const ADMIN_EMAIL = 'usmanbaffa7002@gmail.com';
++
+ interface ProfileProps {
+   user: User;
+   navigatePath: (path: string, state?: Record<string, unknown>, options?: { replace?: boolean }) => void;
+@@ -46,6 +49,7 @@ export default function Profile({ user, navigatePath, renderBottomNavigation, on
+   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+ 
+   const avatarInitial = (displayName || user.email || 'U')[0].toUpperCase();
++  const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL;
+ 
+   useEffect(() => {
+     let cancelled = false;
+@@ -257,6 +261,23 @@ export default function Profile({ user, navigatePath, renderBottomNavigation, on
+               </div>
+               <ChevronLeft className="h-5 w-5 rotate-180 text-[#8B9CB8]" />
+             </button>
++
++            {isAdmin && (
++              <button
++                type="button"
++                onClick={() => navigatePath('/admin')}
++                className="flex w-full items-center gap-4 rounded-2xl border border-amber-400/30 bg-amber-500/5 p-4 text-left transition hover:border-amber-400/50 hover:bg-amber-500/10"
++              >
++                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/15 text-amber-400">
++                  <Settings className="h-5 w-5" />
++                </div>
++                <div className="min-w-0 flex-1">
++                  <p className="font-heading text-sm font-semibold text-white">Admin Panel</p>
++                  <p className="mt-0.5 font-sans text-xs text-[#8B9CB8]">Manage questions, flashcards & content</p>
++                </div>
++                <ChevronLeft className="h-5 w-5 rotate-180 text-amber-400" />
++              </button>
++            )}
+           </div>
+         </section>
+ 
