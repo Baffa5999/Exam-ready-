@@ -21,6 +21,8 @@ import Leaderboard from './pages/leaderboard/Leaderboard';
 import Admin from './pages/admin/Admin';
 import Battle from './pages/battle/Battle';
 import Profile from './pages/profile/Profile';
+import Auth from './pages/auth/Auth';
+import Landing from './pages/landing/Landing';
 
 const subjectLibrary = [
   { name: 'Mathematics', accent: '#00BBF9', gradient: 'from-[#00BBF9] to-[#006DFF]' },
@@ -193,13 +195,31 @@ function App() {
   }
 
   if (!user) {
+    // Pre-auth routing: landing page or sign-in form
+    const isSignInRoute = currentPath === '/signin';
+
+    const handleSignedIn = async () => {
+      // Re-fetch user from Supabase after sign-in
+      try {
+        const { data: { user: newUser } } = await supabase.auth.getUser();
+        setUser(newUser || null);
+        // Reset path to home so user lands on dashboard
+        handleNavigate('/', {}, { replace: true });
+      } catch (error) {
+        console.error('Failed to refresh user after sign-in:', error);
+      }
+    };
+
     return (
       <ErrorBoundary>
-        <Onboarding
-          initialName={user?.user_metadata?.full_name || ''}
-          onComplete={handleOnboardingComplete}
-          onSignOut={handleSignOut}
-        />
+        {isSignInRoute ? (
+          <Auth
+            onSignIn={handleSignedIn}
+            onNavigateLanding={() => handleNavigate('/', {}, { replace: true })}
+          />
+        ) : (
+          <Landing onNavigateSignIn={() => handleNavigate('/signin', {}, { replace: true })} />
+        )}
       </ErrorBoundary>
     );
   }
@@ -349,7 +369,10 @@ function App() {
               user={user}
               navigatePath={handleNavigate}
               renderBottomNavigation={renderBottomNavigation}
-              onSignOut={handleSignOut}
+              onSignOut={() => {
+                handleSignOut();
+                handleNavigate('/', {}, { replace: true });
+              }}
             />
           </div>
         )}
@@ -369,7 +392,7 @@ function App() {
           '/practice', '/practice/subjects', '/practice/exam-type',
           '/practice/configure', '/practice/review',
           '/audiobook', '/weakness', '/flashcards',
-          '/battle', '/leaderboard', '/updates', '/admin', '/profile',
+          '/battle', '/leaderboard', '/updates', '/admin', '/profile', '/signin',
         ].includes(currentPath) && !currentPath.startsWith('/flashcards/') && !currentPath.startsWith('/mock-exam/') && !currentPath.startsWith('/practice/configure') && (
           <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
             <p className="text-2xl mb-4">404 - Page Not Found</p>

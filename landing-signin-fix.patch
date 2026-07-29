@@ -1,0 +1,723 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 9083584..41d0136 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -21,6 +21,8 @@ import Leaderboard from './pages/leaderboard/Leaderboard';
+ import Admin from './pages/admin/Admin';
+ import Battle from './pages/battle/Battle';
+ import Profile from './pages/profile/Profile';
++import Auth from './pages/auth/Auth';
++import Landing from './pages/landing/Landing';
+ 
+ const subjectLibrary = [
+   { name: 'Mathematics', accent: '#00BBF9', gradient: 'from-[#00BBF9] to-[#006DFF]' },
+@@ -193,13 +195,31 @@ function App() {
+   }
+ 
+   if (!user) {
++    // Pre-auth routing: landing page or sign-in form
++    const isSignInRoute = currentPath === '/signin';
++
++    const handleSignedIn = async () => {
++      // Re-fetch user from Supabase after sign-in
++      try {
++        const { data: { user: newUser } } = await supabase.auth.getUser();
++        setUser(newUser || null);
++        // Reset path to home so user lands on dashboard
++        handleNavigate('/', {}, { replace: true });
++      } catch (error) {
++        console.error('Failed to refresh user after sign-in:', error);
++      }
++    };
++
+     return (
+       <ErrorBoundary>
+-        <Onboarding
+-          initialName={user?.user_metadata?.full_name || ''}
+-          onComplete={handleOnboardingComplete}
+-          onSignOut={handleSignOut}
+-        />
++        {isSignInRoute ? (
++          <Auth
++            onSignIn={handleSignedIn}
++            onNavigateLanding={() => handleNavigate('/', {}, { replace: true })}
++          />
++        ) : (
++          <Landing onNavigateSignIn={() => handleNavigate('/signin', {}, { replace: true })} />
++        )}
+       </ErrorBoundary>
+     );
+   }
+@@ -349,7 +369,10 @@ function App() {
+               user={user}
+               navigatePath={handleNavigate}
+               renderBottomNavigation={renderBottomNavigation}
+-              onSignOut={handleSignOut}
++              onSignOut={() => {
++                handleSignOut();
++                handleNavigate('/', {}, { replace: true });
++              }}
+             />
+           </div>
+         )}
+@@ -369,7 +392,7 @@ function App() {
+           '/practice', '/practice/subjects', '/practice/exam-type',
+           '/practice/configure', '/practice/review',
+           '/audiobook', '/weakness', '/flashcards',
+-          '/battle', '/leaderboard', '/updates', '/admin', '/profile',
++          '/battle', '/leaderboard', '/updates', '/admin', '/profile', '/signin',
+         ].includes(currentPath) && !currentPath.startsWith('/flashcards/') && !currentPath.startsWith('/mock-exam/') && !currentPath.startsWith('/practice/configure') && (
+           <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
+             <p className="text-2xl mb-4">404 - Page Not Found</p>
+diff --git a/src/pages/auth/Auth.tsx b/src/pages/auth/Auth.tsx
+new file mode 100644
+index 0000000..a51a2b4
+--- /dev/null
++++ b/src/pages/auth/Auth.tsx
+@@ -0,0 +1,377 @@
++import React, { useState } from 'react';
++import { supabase } from '../../supabase';
++import { Mail, Eye, EyeOff, Loader2, CheckCircle } from 'lucide-react';
++
++interface AuthProps {
++  onSignIn: () => void;
++  onNavigateLanding: () => void;
++}
++
++type AuthMode = 'signin' | 'signup';
++type AuthErrors = Partial<Record<'fullName' | 'email' | 'password' | 'confirmPassword' | 'general', string>>;
++
++export default function Auth({ onSignIn, onNavigateLanding }: AuthProps) {
++  const [mode, setMode] = useState<AuthMode>('signin');
++  const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
++  const [errors, setErrors] = useState<AuthErrors>({});
++  const [showPassword, setShowPassword] = useState(false);
++  const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState('');
++  const [loading, setLoading] = useState(false);
++
++  const updateField = (field: keyof typeof form, value: string) => {
++    setForm(f => ({ ...f, [field]: value }));
++    setErrors(e => ({ ...e, [field]: undefined, general: undefined }));
++  };
++
++  const resetMessages = () => {
++    setErrors({});
++  };
++
++  const resetConfirmation = () => {
++    setPendingConfirmationEmail('');
++    resetMessages();
++  };
++
++  const mapSignInError = (message: string) => {
++    const normalized = message.toLowerCase();
++    if (normalized.includes('not found') || normalized.includes('user not found')) {
++      setErrors({ email: 'No account found with this email.' });
++      return;
++    }
++    if (normalized.includes('invalid') || normalized.includes('credentials') || normalized.includes('password')) {
++      setErrors({ password: 'Incorrect password. Please try again.' });
++      return;
++    }
++    setErrors({ general: message || 'Unable to sign in. Please try again.' });
++  };
++
++  const mapSignUpError = (message: string) => {
++    const normalized = message.toLowerCase();
++    if (normalized.includes('registered') || normalized.includes('already') || normalized.includes('exists')) {
++      setErrors({ email: 'An account with this email already exists. Sign in instead.' });
++      return;
++    }
++    if (normalized.includes('password')) {
++      setErrors({ password: 'Password must be at least 6 characters.' });
++      return;
++    }
++    setErrors({ general: message || 'Unable to create your account. Please try again.' });
++  };
++
++  const handleSignIn = async () => {
++    resetMessages();
++    const email = form.email.trim();
++
++    if (!email) {
++      setErrors({ email: 'Enter your email.' });
++      return;
++    }
++    if (!form.password) {
++      setErrors({ password: 'Enter your password.' });
++      return;
++    }
++
++    setLoading(true);
++    const { data, error } = await supabase.auth.signInWithPassword({
++      email,
++      password: form.password,
++    });
++
++    if (error) {
++      if (error.message.toLowerCase().includes('email not confirmed')) {
++        setPendingConfirmationEmail(email);
++      } else {
++        mapSignInError(error.message);
++      }
++      setLoading(false);
++      return;
++    }
++
++    if (data.user) {
++      onSignIn();
++    }
++    setLoading(false);
++  };
++
++  const handleSignUp = async () => {
++    resetMessages();
++    const fullName = form.fullName.trim();
++    const email = form.email.trim();
++
++    if (!fullName) {
++      setErrors({ fullName: 'Enter your full name.' });
++      return;
++    }
++    if (!email) {
++      setErrors({ email: 'Enter your email.' });
++      return;
++    }
++    if (form.password.length < 6) {
++      setErrors({ password: 'Password must be at least 6 characters.' });
++      return;
++    }
++    if (form.password !== form.confirmPassword) {
++      setErrors({ confirmPassword: 'Passwords do not match.' });
++      return;
++    }
++
++    setLoading(true);
++    const { data, error } = await supabase.auth.signUp({
++      email,
++      password: form.password,
++      options: {
++        data: {
++          full_name: fullName,
++          display_name: fullName,
++        },
++      },
++    });
++
++    if (error) {
++      mapSignUpError(error.message);
++      setLoading(false);
++      return;
++    }
++
++    if (data.user && data.user.identities && data.user.identities.length === 0) {
++      setErrors({ email: 'An account with this email already exists. Sign in instead.' });
++      setLoading(false);
++      return;
++    }
++
++    if (data.session?.user) {
++      onSignIn();
++    } else {
++      setPendingConfirmationEmail(email);
++      setForm({ fullName: '', email, password: '', confirmPassword: '' });
++    }
++
++    setLoading(false);
++  };
++
++  const handleResendConfirmation = async () => {
++    if (!pendingConfirmationEmail) return;
++    resetMessages();
++    setLoading(true);
++    const { error } = await supabase.auth.resend({
++      type: 'signup',
++      email: pendingConfirmationEmail,
++    });
++
++    if (error) {
++      setErrors({ general: 'Unable to resend the confirmation email. Please try again.' });
++      setLoading(false);
++      return;
++    }
++
++    setErrors({ general: undefined });
++    setErrors(e => ({ ...e, general: 'Confirmation email resent. Check your inbox.' }));
++    setLoading(false);
++  };
++
++  const handleSubmit = (e: React.FormEvent) => {
++    e.preventDefault();
++    if (mode === 'signin') handleSignIn();
++    else handleSignUp();
++  };
++
++  const inputClass =
++    'w-full rounded-2xl border border-white/10 bg-[#111827] px-5 py-4 font-sans text-sm text-white outline-none transition-all placeholder:text-slate-500 focus:border-[#FF6B35] focus:shadow-[0_0_0_4px_rgba(255,107,53,0.15)]';
++
++  return (
++    <div className="min-h-screen flex items-center justify-center relative bg-[#0A0F1E] px-4 py-10 font-sans text-white">
++      <div className="absolute h-[min(520px,90vw)] w-[min(520px,90vw)] rounded-full bg-[radial-gradient(rgba(255,107,53,0.18),transparent_70%)] blur-3xl pointer-events-none z-0" />
++
++      <div className="w-full max-w-md bg-[#111827]/95 border border-white/10 rounded-[24px] p-5 sm:p-8 shadow-[0_45px_100px_rgba(0,0,0,0.7)] relative z-10">
++        <button
++          type="button"
++          onClick={onNavigateLanding}
++          className="absolute right-4 top-4 font-sans text-xs font-semibold text-[#8B9CB8] hover:text-white transition"
++        >
++          ← Back
++        </button>
++
++        <div className="text-center mb-6">
++          <span className="font-heading font-bold text-[28px] tracking-tight">
++            Exam<span className="text-[#FF6B35]">Ready</span>
++          </span>
++        </div>
++
++        {pendingConfirmationEmail ? (
++          <div className="text-center py-4">
++            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FF6B35]/15 text-[#FF6B35]">
++              <Mail className="h-7 w-7" />
++            </div>
++            <h2 className="font-heading font-bold text-2xl tracking-tight mb-3">Check your email</h2>
++            <p className="text-sm leading-6 text-[#8B9CB8]">
++              We sent a confirmation link to{' '}
++              <span className="break-all font-semibold text-white">{pendingConfirmationEmail}</span>.
++              Click the link to activate your account.
++            </p>
++            {errors.general && (
++              <p className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-400">
++                {errors.general}
++              </p>
++            )}
++            <button
++              type="button"
++              onClick={handleResendConfirmation}
++              disabled={loading}
++              className="mt-6 w-full rounded-2xl bg-[#FF6B35] px-6 py-4 text-sm font-bold text-white transition hover:bg-[#ff7c4d] disabled:opacity-60"
++            >
++              {loading ? 'Sending...' : 'Resend Email'}
++            </button>
++            <button
++              type="button"
++              onClick={() => {
++                setMode('signin');
++                resetConfirmation();
++              }}
++              className="mt-4 text-xs font-semibold text-[#FF6B35] hover:text-[#ff7c4d]"
++            >
++              Back to Sign In
++            </button>
++          </div>
++        ) : (
++          <>
++            <div className="grid grid-cols-2 gap-4 mb-6 border-b border-white/10">
++              <button
++                type="button"
++                onClick={() => {
++                  setMode('signin');
++                  resetConfirmation();
++                }}
++                className={`pb-3 font-heading text-sm font-bold transition-colors border-b-2 ${
++                  mode === 'signin'
++                    ? 'border-[#FF6B35] text-white'
++                    : 'border-transparent text-[#8B9CB8] hover:text-white'
++                }`}
++              >
++                Sign In
++              </button>
++              <button
++                type="button"
++                onClick={() => {
++                  setMode('signup');
++                  resetConfirmation();
++                }}
++                className={`pb-3 font-heading text-sm font-bold transition-colors border-b-2 ${
++                  mode === 'signup'
++                    ? 'border-[#FF6B35] text-white'
++                    : 'border-transparent text-[#8B9CB8] hover:text-white'
++                }`}
++              >
++                Sign Up
++              </button>
++            </div>
++
++            <div className="text-center mb-6">
++              <h2 className="font-heading font-bold text-2xl tracking-tight mb-2">
++                {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
++              </h2>
++              <p className="text-sm text-[#8B9CB8]">
++                {mode === 'signin'
++                  ? 'Sign in to continue your preparation.'
++                  : 'Join thousands of students preparing for JAMB, WAEC & NECO.'}
++              </p>
++            </div>
++
++            <form className="space-y-4" onSubmit={handleSubmit}>
++              {mode === 'signup' && (
++                <div>
++                  <input
++                    type="text"
++                    value={form.fullName}
++                    onChange={e => updateField('fullName', e.target.value)}
++                    placeholder="Enter your full name"
++                    className={inputClass}
++                  />
++                  {errors.fullName && <p className="mt-2 text-xs text-red-400">{errors.fullName}</p>}
++                </div>
++              )}
++
++              <div>
++                <input
++                  type="email"
++                  value={form.email}
++                  onChange={e => updateField('email', e.target.value)}
++                  placeholder="Enter your email"
++                  className={inputClass}
++                />
++                {errors.email && <p className="mt-2 text-xs text-red-400">{errors.email}</p>}
++              </div>
++
++              <div>
++                <div className="relative">
++                  <input
++                    type={showPassword ? 'text' : 'password'}
++                    value={form.password}
++                    onChange={e => updateField('password', e.target.value)}
++                    placeholder={mode === 'signin' ? 'Enter your password' : 'Create a password'}
++                    className={`${inputClass} pr-12`}
++                  />
++                  <button
++                    type="button"
++                    onClick={() => setShowPassword(p => !p)}
++                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8B9CB8] hover:text-[#FF6B35]"
++                    aria-label={showPassword ? 'Hide password' : 'Show password'}
++                  >
++                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
++                  </button>
++                </div>
++                {errors.password && <p className="mt-2 text-xs text-red-400">{errors.password}</p>}
++              </div>
++
++              {mode === 'signup' && (
++                <div>
++                  <input
++                    type={showPassword ? 'text' : 'password'}
++                    value={form.confirmPassword}
++                    onChange={e => updateField('confirmPassword', e.target.value)}
++                    placeholder="Confirm your password"
++                    className={inputClass}
++                  />
++                  {errors.confirmPassword && (
++                    <p className="mt-2 text-xs text-red-400">{errors.confirmPassword}</p>
++                  )}
++                </div>
++              )}
++
++              {errors.general && <p className="text-sm text-red-400">{errors.general}</p>}
++
++              <button
++                type="submit"
++                disabled={loading}
++                className="w-full rounded-2xl bg-[#FF6B35] px-6 py-4 text-sm font-bold text-white transition hover:bg-[#ff7c4d] disabled:cursor-not-allowed disabled:opacity-60"
++              >
++                {loading ? (
++                  <span className="inline-flex items-center gap-2">
++                    <Loader2 className="h-4 w-4 animate-spin" /> Please wait...
++                  </span>
++                ) : mode === 'signin' ? (
++                  'Sign In'
++                ) : (
++                  'Create Account'
++                )}
++              </button>
++            </form>
++
++            <p className="mt-6 text-center text-sm text-[#8B9CB8]">
++              {mode === 'signin' ? "Don't have an account " : 'Already have an account '}
++              <button
++                type="button"
++                onClick={() => {
++                  setMode(mode === 'signin' ? 'signup' : 'signin');
++                  resetConfirmation();
++                }}
++                className="font-semibold text-[#FF6B35] hover:text-[#ff7c4d]"
++              >
++                {mode === 'signin' ? 'Create one' : 'Sign In'}
++              </button>
++            </p>
++          </>
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/src/pages/landing/Landing.tsx b/src/pages/landing/Landing.tsx
+new file mode 100644
+index 0000000..8166a73
+--- /dev/null
++++ b/src/pages/landing/Landing.tsx
+@@ -0,0 +1,263 @@
++import React from 'react';
++import {
++  CheckCircle,
++  Flame,
++  BookOpen,
++  Swords,
++  Sparkles,
++  Target,
++  Trophy,
++} from 'lucide-react';
++
++interface LandingProps {
++  onNavigateSignIn: () => void;
++}
++
++export default function Landing({ onNavigateSignIn }: LandingProps) {
++  return (
++    <div className="min-h-screen bg-[#0A0F1E] text-white font-sans">
++      {/* NAVBAR */}
++      <nav className="fixed top-0 left-0 right-0 h-20 bg-[rgba(10,15,30,0.95)] backdrop-blur-md border-b border-[rgba(255,255,255,0.08)] z-50 flex items-center justify-between px-6 md:px-12">
++        <span className="font-heading font-bold text-[22px] tracking-tight">
++          Exam<span className="text-[#FF6B35]">Ready</span>
++        </span>
++        <button
++          type="button"
++          onClick={onNavigateSignIn}
++          className="border border-[rgba(255,107,53,0.4)] text-[#FF6B35] font-medium text-sm rounded-full py-2 px-5 transition-all hover:bg-[#FF6B35] hover:text-white"
++        >
++          Sign In
++        </button>
++      </nav>
++
++      {/* HERO */}
++      <section className="pt-32 pb-20 md:pt-44 md:pb-32 px-6 md:px-12 max-w-7xl mx-auto relative">
++        <div className="absolute top-0 left-0 w-96 h-96 bg-[radial-gradient(rgba(255,107,53,0.08),transparent_70%)] pointer-events-none -translate-x-1/2 -translate-y-1/2" />
++
++        <div className="flex flex-col lg:flex-row items-center justify-between gap-12 relative">
++          {/* Left: Content */}
++          <div className="w-full lg:w-[60%] flex flex-col items-start space-y-6 text-left">
++            <div className="inline-flex items-center gap-1.5 bg-[rgba(255,107,53,0.12)] border border-[rgba(255,107,53,0.3)] text-[#FF6B35] text-xs font-semibold px-3 py-1.5 rounded-full">
++              <CheckCircle className="h-3.5 w-3.5" /> Built for Nigerian Students
++            </div>
++
++            <h1 className="font-heading font-bold text-3xl sm:text-4xl md:text-5xl leading-[1.1] tracking-tight">
++              Pass JAMB,<br />
++              WAEC & NECO.<br />
++              <span className="text-[#FF6B35] block mt-1">Stop Guessing.</span>
++            </h1>
++
++            <p className="text-base md:text-lg text-[#8B9CB8] max-w-xl leading-relaxed">
++              Practice with syllabus questions, master topics with smart cheatsheets, and battle your classmates. Everything you need to pass in one free app.
++            </p>
++
++            <div className="flex flex-wrap gap-4 w-full sm:w-auto">
++              <button
++                type="button"
++                onClick={onNavigateSignIn}
++                className="bg-[#FF6B35] hover:bg-[#ff7c4d] text-white font-bold py-3.5 px-7 rounded-xl transition shadow-md hover:shadow-[0_0_20px_rgba(255,107,53,0.4)] active:scale-95 text-center w-full sm:w-auto"
++              >
++                Start Practicing Free
++              </button>
++              <a
++                href="#features"
++                className="bg-transparent hover:bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.15)] text-white font-medium py-3.5 px-7 rounded-xl transition active:scale-95 text-center w-full sm:w-auto"
++              >
++                See Features
++              </a>
++            </div>
++
++            <div className="flex flex-wrap gap-y-2 gap-x-6 text-xs text-[#8B9CB8] pt-2">
++              <span className="flex items-center gap-1">
++                <span className="text-[#FF6B35] font-bold">✓</span> Free forever to start
++              </span>
++              <span className="flex items-center gap-1">
++                <span className="text-[#FF6B35] font-bold">✓</span> No credit card needed
++              </span>
++              <span className="flex items-center gap-1">
++                <span className="text-[#FF6B35] font-bold">✓</span> JAMB, WAEC & NECO
++              </span>
++            </div>
++          </div>
++
++          {/* Right: Phone Mockup */}
++          <div className="w-full lg:w-[40%] flex items-center justify-center relative pt-8 lg:pt-0">
++            <div className="absolute h-[min(400px,90vw)] w-[min(400px,90vw)] rounded-full bg-[radial-gradient(rgba(255,107,53,0.15),transparent_70%)] blur-2xl pointer-events-none -z-10" />
++
++            <div className="h-[460px] w-[230px] sm:h-[520px] sm:w-[260px] bg-[#1A1A2E] border-2 border-[rgba(255,255,255,0.1)] rounded-[36px] shadow-[0_40px_80px_rgba(0,0,0,0.6),0_0_60px_rgba(255,107,53,0.15)] overflow-hidden flex flex-col relative -rotate-[5deg] hover:rotate-0 transition-transform duration-500">
++              <div className="w-full h-8 bg-[#1A1A2E] flex justify-between items-center px-6 relative z-10 text-[10px] text-[rgba(255,255,255,0.4)]">
++                <span>9:41</span>
++                <div className="w-12 h-3.5 bg-black rounded-full absolute left-1/2 -translate-x-1/2 top-2" />
++              </div>
++
++              <div className="flex-1 bg-[#0F0F1D] px-4 py-3 flex flex-col justify-between overflow-y-auto">
++                <div className="flex items-center justify-between mb-3">
++                  <div>
++                    <span className="text-[10px] text-[rgba(255,255,255,0.4)] block">Good morning</span>
++                    <span className="text-xs font-bold text-white">Chidera</span>
++                  </div>
++                  <div className="w-6 h-6 bg-gradient-to-tr from-[#FF6B35] to-[#FF9500] rounded-full flex items-center justify-center text-[10px] font-bold text-white">
++                    C
++                  </div>
++                </div>
++
++                <div className="bg-gradient-to-br from-[#FF6B35] to-[#F15BB5] p-3 rounded-2xl shadow-lg mb-3 flex flex-col justify-between h-[100px]">
++                  <div className="flex justify-between items-center text-[10px] text-white/90">
++                    <span className="font-medium">JAMB 2026 Target</span>
++                    <span className="bg-white/20 px-1.5 py-0.5 rounded text-[8px]">Active</span>
++                  </div>
++                  <div className="my-1">
++                    <div className="text-xl font-bold text-white leading-none">280</div>
++                    <span className="text-[8px] text-white/80">Goal Score</span>
++                  </div>
++                  <div className="w-full">
++                    <div className="h-1.5 bg-black/20 rounded-full overflow-hidden">
++                      <div className="h-full bg-white rounded-full w-[72%]" />
++                    </div>
++                  </div>
++                </div>
++
++                <div className="grid grid-cols-3 gap-2 mb-3">
++                  <div className="bg-[#111827] border border-[rgba(255,255,255,0.05)] p-2 rounded-xl text-center">
++                    <span className="flex items-center justify-center gap-1 text-xs font-semibold text-white">
++                      <Flame className="h-3 w-3 text-[#FF6B35]" />9
++                    </span>
++                    <span className="text-[8px] text-[rgba(255,255,255,0.4)] uppercase">Streak</span>
++                  </div>
++                  <div className="bg-[#111827] border border-[rgba(255,255,255,0.05)] p-2 rounded-xl text-center">
++                    <span className="text-xs font-semibold text-white block">847</span>
++                    <span className="text-[8px] text-[rgba(255,255,255,0.4)] uppercase">Qs</span>
++                  </div>
++                  <div className="bg-[#111827] border border-[rgba(255,255,255,0.05)] p-2 rounded-xl text-center">
++                    <span className="text-xs font-semibold text-[#FF6B35] block">73%</span>
++                    <span className="text-[8px] text-[rgba(255,255,255,0.4)] uppercase">Acc</span>
++                  </div>
++                </div>
++
++                <div className="space-y-2 flex-1 flex flex-col justify-end">
++                  <div className="text-[9px] text-[rgba(255,255,255,0.4)] font-medium uppercase tracking-wider mb-0.5">
++                    Recommended
++                  </div>
++                  <div className="bg-[#111827] border border-[rgba(255,255,255,0.05)] p-2 rounded-xl flex items-center justify-between">
++                    <div className="flex items-center gap-2">
++                      <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
++                      <div>
++                        <div className="text-[10px] font-bold text-white">Chemistry</div>
++                        <div className="text-[8px] text-[rgba(255,255,255,0.4)]">Functional Groups</div>
++                      </div>
++                    </div>
++                    <span className="text-[6px] font-bold bg-[rgba(255,107,53,0.12)] text-[#FF6B35] border border-[rgba(255,107,53,0.3)] px-1 py-0.5 rounded">
++                      WEAK
++                    </span>
++                  </div>
++                  <div className="bg-[#111827] border border-[rgba(255,255,255,0.05)] p-2 rounded-xl flex items-center justify-between">
++                    <div className="flex items-center gap-2">
++                      <span className="w-2 h-2 rounded-full bg-[#00BBF9]" />
++                      <div>
++                        <div className="text-[10px] font-bold text-white">Mathematics</div>
++                        <div className="text-[8px] text-[rgba(255,255,255,0.4)]">Circle Theorems</div>
++                      </div>
++                    </div>
++                  </div>
++                </div>
++              </div>
++            </div>
++          </div>
++        </div>
++      </section>
++
++      {/* FEATURES */}
++      <section id="features" className="py-20 px-6 md:px-12 max-w-7xl mx-auto">
++        <div className="text-center mb-12">
++          <p className="font-sans text-[11px] font-bold uppercase tracking-[0.28em] text-[#FFB199] mb-3">
++            Everything You Need
++          </p>
++          <h2 className="font-heading text-3xl md:text-4xl font-bold tracking-tight">
++            Built to make you <span className="text-[#FF6B35]">pass</span>
++          </h2>
++        </div>
++
++        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
++          {[
++            {
++              icon: BookOpen,
++              title: 'Practice Questions',
++              description: 'Thousands of past questions from JAMB, WAEC & NECO. Filter by subject, topic, and difficulty.',
++              accent: '#00BBF9',
++            },
++            {
++              icon: Sparkles,
++              title: 'AI Tutor',
++              description: 'Ask anything about your exam topics and get instant, clear explanations powered by AI.',
++              accent: '#FF6B35',
++            },
++            {
++              icon: Swords,
++              title: 'Battle Friends',
++              description: 'Challenge classmates to head-to-head quizzes. Share a code, compete, and see who knows more.',
++              accent: '#9B5DE5',
++            },
++            {
++              icon: Target,
++              title: 'Weakness Assassin',
++              description: 'Automatically identifies your weak topics and builds practice sessions to fix them.',
++              accent: '#00FF87',
++            },
++            {
++              icon: Trophy,
++              title: 'Leaderboard',
++              description: 'Climb the rankings and see how you stack up against other students across Nigeria.',
++              accent: '#F15BB5',
++            },
++            {
++              icon: Flame,
++              title: 'Daily Streaks',
++              description: 'Build a study habit with daily streaks. Stay consistent and watch your scores improve.',
++              accent: '#FF6B35',
++            },
++          ].map(feature => (
++            <div
++              key={feature.title}
++              className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#111827]/85 p-6 transition hover:border-[#FF6B35]/30"
++            >
++              <div
++                className="flex h-12 w-12 items-center justify-center rounded-xl"
++                style={{ backgroundColor: `${feature.accent}15`, color: feature.accent }}
++              >
++                <feature.icon className="h-6 w-6" />
++              </div>
++              <h3 className="mt-4 font-heading text-lg font-bold text-white">{feature.title}</h3>
++              <p className="mt-2 text-sm leading-6 text-[#8B9CB8]">{feature.description}</p>
++            </div>
++          ))}
++        </div>
++      </section>
++
++      {/* CTA */}
++      <section className="py-20 px-6 md:px-12">
++        <div className="mx-auto max-w-3xl rounded-[28px] border border-[#FF6B35]/20 bg-gradient-to-br from-[#1A1A2E] via-[#141827] to-[#111827] p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.32)] md:p-12">
++          <h2 className="font-heading text-3xl md:text-4xl font-bold tracking-tight">
++            Ready to start <span className="text-[#FF6B35]">acing</span> your exams?
++          </h2>
++          <p className="mt-4 text-base text-[#8B9CB8] max-w-xl mx-auto">
++            Join thousands of Nigerian students already using ExamReady to prepare for their exams. It&apos;s free.
++          </p>
++          <button
++            type="button"
++            onClick={onNavigateSignIn}
++            className="mt-8 bg-[#FF6B35] hover:bg-[#ff7c4d] text-white font-bold py-4 px-8 rounded-xl transition shadow-md hover:shadow-[0_0_20px_rgba(255,107,53,0.4)] active:scale-95"
++          >
++            Get Started — It&apos;s Free
++          </button>
++        </div>
++      </section>
++
++      {/* FOOTER */}
++      <footer className="border-t border-[rgba(255,255,255,0.08)] py-8 px-6 text-center">
++        <p className="text-xs text-[#6B7688]">
++          © {new Date().getFullYear()} ExamReady. Built for Nigerian students.
++        </p>
++      </footer>
++    </div>
++  );
++}
