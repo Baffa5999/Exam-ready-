@@ -3,6 +3,7 @@ import {
   Bell,
   BookOpen,
   Crosshair,
+  Film,
   Flame,
   Headphones,
   Megaphone,
@@ -154,8 +155,8 @@ export default function Home({
           />
         </section>
 
-        {/* 8. Third row — 1 full-width card */}
-        <section>
+        {/* 8. Third row — 2 medium cards */}
+        <section className="grid grid-cols-2 gap-3">
           <FeatureCard
             icon={Swords}
             label="Battle"
@@ -163,6 +164,15 @@ export default function Home({
             href="/battle"
             onNavigate={onNavigate}
             accentColor="#FF6B35"
+            variant="medium"
+          />
+          <FeatureCard
+            icon={Film}
+            label="Video Lessons"
+            subtext="Watch & learn"
+            href="/videos"
+            onNavigate={onNavigate}
+            accentColor="#2EC4B6"
             variant="medium"
           />
         </section>
