@@ -24,6 +24,7 @@ import Profile from './pages/profile/Profile';
 import Auth from './pages/auth/Auth';
 import Landing from './pages/landing/Landing';
 import Videos from './pages/videos/Videos';
+import Updates from './pages/updates/Updates';
 
 const subjectLibrary = [
   { name: 'Mathematics', accent: '#00BBF9', gradient: 'from-[#00BBF9] to-[#006DFF]' },
@@ -49,6 +50,7 @@ function App() {
   const [accuracy, setAccuracy] = useState(0);
   const [weakTopicCount, setWeakTopicCount] = useState(0);
   const [profileExists, setProfileExists] = useState(false);
+  const [latestUpdateTitle, setLatestUpdateTitle] = useState<string>('Check back soon');
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -135,6 +137,26 @@ function App() {
 
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  // Load latest update title for Home card
+  useEffect(() => {
+    let cancelled = false;
+    const loadLatest = async () => {
+      const { data } = await supabase
+        .from('updates')
+        .select('title')
+        .eq('status', 'published')
+        .order('published_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled && data?.title) {
+        setLatestUpdateTitle(data.title);
+      }
+    };
+    void loadLatest();
+    return () => { cancelled = true; };
+  }, []);
 
   // Sync with browser navigation
   useEffect(() => {
@@ -245,7 +267,7 @@ function App() {
             weakTopicCount={weakTopicCount}
             audiobookCurrentChapter={1}
             audiobookTotalChapters={12}
-            latestUpdateTitle="Check back soon"
+            latestUpdateTitle={latestUpdateTitle}
             onNavigate={handleNavigate}
             onOpenProfile={() => handleNavigate('/profile')}
             renderBottomNavigation={renderBottomNavigation}
@@ -388,12 +410,14 @@ function App() {
           </div>
         )}
 
-        {/* Updates - placeholder */}
-        {currentPath === '/updates' && (
-          <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
-            <p className="text-2xl mb-4">Updates</p>
-            <p className="text-sm text-gray-400">(Not yet implemented)</p>
-            {renderBottomNavigation()}
+        {/* Updates */}
+        {(currentPath === '/updates' || currentPath.startsWith('/updates/')) && (
+          <div className="pb-36">
+            <Updates
+              route={currentPath}
+              navigatePath={handleNavigate}
+              renderBottomNavigation={renderBottomNavigation}
+            />
           </div>
         )}
 
@@ -404,7 +428,7 @@ function App() {
           '/practice/configure', '/practice/review',
           '/audiobook', '/weakness', '/flashcards',
           '/battle', '/leaderboard', '/updates', '/admin', '/profile', '/signin', '/videos',
-        ].includes(currentPath) && !currentPath.startsWith('/flashcards/') && !currentPath.startsWith('/mock-exam/') && !currentPath.startsWith('/practice/configure') && (
+        ].includes(currentPath) && !currentPath.startsWith('/flashcards/') && !currentPath.startsWith('/mock-exam/') && !currentPath.startsWith('/practice/configure') && !currentPath.startsWith('/updates/') && (
           <div className="min-h-screen flex flex-col items-center justify-center pb-36 bg-[#0A0F1E] text-white">
             <p className="text-2xl mb-4">404 - Page Not Found</p>
             <button
