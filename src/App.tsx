@@ -13,6 +13,8 @@ import InstallPrompt from './components/InstallPrompt';
 import Home from './pages/home/Home';
 import PracticeFlow from './pages/practice/PracticeFlow';
 import PracticeConfigure from './pages/practice/PracticeConfigure';
+import PracticeSession from './pages/practice/PracticeSession';
+import PracticeResults from './pages/practice/PracticeResults';
 import PracticeReview from './pages/practice/PracticeReview';
 import Audiobook from './pages/audiobook/Audiobook';
 import WeaknessAssassin from './pages/weakness/WeaknessAssassin';
@@ -249,6 +251,8 @@ function App() {
 
   const isPracticeRoute = currentPath === '/practice' || currentPath === '/practice/subjects' || currentPath === '/practice/exam-type';
   const isPracticeConfigure = currentPath === '/practice/configure' || currentPath.startsWith('/practice/configure');
+  const isPracticeSession = currentPath === '/practice/session';
+  const isPracticeResults = currentPath === '/practice/results';
   const isPracticeReview = currentPath === '/practice/review';
   const isMockExam = currentPath.startsWith('/mock-exam/');
 
@@ -289,6 +293,28 @@ function App() {
             <PracticeConfigure
               navigatePath={handleNavigate}
               renderBottomNavigation={renderBottomNavigation}
+            />
+          </div>
+        )}
+
+        {/* Practice Session (quiz) */}
+        {isPracticeSession && (
+          <div className="pb-36">
+            <PracticeSession
+              navigatePath={handleNavigate}
+              renderBottomNavigation={renderBottomNavigation}
+              user={user}
+            />
+          </div>
+        )}
+
+        {/* Practice Results */}
+        {isPracticeResults && (
+          <div className="pb-36">
+            <PracticeResults
+              navigatePath={handleNavigate}
+              renderBottomNavigation={renderBottomNavigation}
+              user={user}
             />
           </div>
         )}
@@ -359,7 +385,7 @@ function App() {
               renderProfessionalHeader={(title: string, description: string, HeaderIcon: React.ElementType, accent?: string) => (
                 <section className="rounded-[28px] border border-[#FF6B35]/20 bg-gradient-to-br from-[#1A1A2E] via-[#141827] to-[#111827] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-6">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" style={{ backgroundColor: `${accent || '#FF6B35'}1F`, color: accent || '#FF6B35' }}>
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" style={{ backgroundColor: accent }}>
                       <HeaderIcon className="h-7 w-7" />
                     </div>
                     <div className="min-w-0">
@@ -425,7 +451,7 @@ function App() {
         {![
           '/', '/home', '/dashboard',
           '/practice', '/practice/subjects', '/practice/exam-type',
-          '/practice/configure', '/practice/review',
+          '/practice/configure', '/practice/session', '/practice/results', '/practice/review',
           '/audiobook', '/weakness', '/flashcards',
           '/battle', '/leaderboard', '/updates', '/admin', '/profile', '/signin', '/videos',
         ].includes(currentPath) && !currentPath.startsWith('/flashcards/') && !currentPath.startsWith('/mock-exam/') && !currentPath.startsWith('/practice/configure') && !currentPath.startsWith('/updates/') && (
