@@ -43,10 +43,18 @@ const professionalPageClass = 'min-h-screen overflow-x-hidden bg-[radial-gradien
 const professionalMainClass = 'mx-auto max-w-5xl space-y-7 px-4 py-6 sm:px-6 md:px-10 md:py-8 animate-fade-up';
 const professionalBackButtonClass = 'inline-flex min-w-0 items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[#111827]/90 px-4 py-2.5 font-sans text-sm font-bold text-[#FF8A66] shadow-[0_10px_30px_rgba(0,0,0,0.22)] transition hover:border-[#FF6B35]/50 hover:text-[#FF6B35]';
 
+const normalizePath = (path: string) => {
+  try {
+    return new URL(path, window.location.origin).pathname || '/';
+  } catch {
+    return path.split('?')[0] || '/';
+  }
+};
+
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const [currentPath, setCurrentPath] = useState(() => normalizePath(window.location.pathname));
   const [streak, setStreak] = useState(0);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [accuracy, setAccuracy] = useState(0);
@@ -163,7 +171,7 @@ function App() {
   // Sync with browser navigation
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPath(window.location.pathname);
+      setCurrentPath(normalizePath(window.location.pathname));
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -171,12 +179,13 @@ function App() {
   }, []);
 
   const handleNavigate = useCallback((path: string, state?: Record<string, unknown>, options?: { replace?: boolean }) => {
+    const normalizedPath = normalizePath(path);
     if (options?.replace) {
       window.history.replaceState(state || {}, '', path);
     } else {
       window.history.pushState(state || {}, '', path);
     }
-    setCurrentPath(path);
+    setCurrentPath(normalizedPath);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
@@ -251,8 +260,8 @@ function App() {
 
   const isPracticeRoute = currentPath === '/practice' || currentPath === '/practice/subjects' || currentPath === '/practice/exam-type';
   const isPracticeConfigure = currentPath === '/practice/configure' || currentPath.startsWith('/practice/configure');
-  const isPracticeSession = currentPath === '/practice/session';
-  const isPracticeResults = currentPath === '/practice/results';
+  const isPracticeSession = currentPath === '/practice/session' || currentPath.startsWith('/practice/session');
+  const isPracticeResults = currentPath === '/practice/results' || currentPath.startsWith('/practice/results');
   const isPracticeReview = currentPath === '/practice/review';
   const isMockExam = currentPath.startsWith('/mock-exam/');
 
