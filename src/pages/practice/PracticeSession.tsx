@@ -38,21 +38,15 @@ const getOptions = (question: Question) => [
 const getCorrectOptionKey = (question: Question) => {
   const normalized = `${question.correct_answer || ''}`.trim().toLowerCase();
   const optionKeys = ['a', 'b', 'c', 'd'];
-  
-  // Check if it's a direct key match
-  const directKeyIndex = optionKeys.findIndex(key => 
-    normalized === key || normalized === `option_${key}`
-  );
+
+  const directKeyIndex = optionKeys.findIndex(key => normalized === key || normalized === `option_${key}`);
   if (directKeyIndex >= 0) return optionKeys[directKeyIndex].toUpperCase();
 
-  // Check if it matches option text
   const options = getOptions(question);
-  const textMatch = options.find(opt => 
-    `${opt.text}`.trim().toLowerCase() === normalized
-  );
+  const textMatch = options.find(opt => `${opt.text}`.trim().toLowerCase() === normalized);
   if (textMatch) return textMatch.key;
 
-  return 'A'; // Fallback
+  return 'A';
 };
 
 export default function PracticeSession({ navigatePath, renderBottomNavigation, user }: PracticeSessionProps) {
@@ -65,14 +59,13 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
   const [sessionAnswers, setSessionAnswers] = useState<SessionAnswer[]>([]);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
-  // Parse URL params to get selections
   const getSessionParams = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
     const topicsStr = params.get('topics');
     const limitStr = params.get('limit');
-    
+
     let topics: Array<{ subject: string; topic: string }> = [];
-    
+
     if (topicsStr) {
       try {
         topics = JSON.parse(topicsStr);
@@ -85,7 +78,6 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
     return { topics, limit };
   }, []);
 
-  // Load questions from Supabase
   useEffect(() => {
     const loadQuestions = async () => {
       try {
@@ -100,7 +92,6 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
           return;
         }
 
-        // Build query conditions
         const subqueries = await Promise.all(
           topics.map(({ subject, topic }) =>
             supabase
@@ -119,7 +110,7 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
             continue;
           }
           if (data) {
-            allQuestions.push(...data as Question[]);
+            allQuestions.push(...(data as Question[]));
           }
         }
 
@@ -129,7 +120,6 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
           return;
         }
 
-        // Shuffle and limit
         const shuffled = allQuestions.sort(() => Math.random() - 0.5).slice(0, limit);
         setQuestions(shuffled);
         setLoading(false);
@@ -148,23 +138,17 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
   const correctOption = currentQuestion ? getCorrectOptionKey(currentQuestion) : '';
 
   const handleSelectAnswer = (optionKey: string) => {
-    if (!answered) {
-      setSelectedAnswer(optionKey);
-    }
-  };
+    if (answered || !currentQuestion) return;
 
-  const handleSubmitAnswer = () => {
-    if (!selectedAnswer || !currentQuestion) return;
+    const isCorrect = optionKey === correctOption;
+    const currentAnswer: SessionAnswer = {
+      questionId: currentQuestion.id,
+      selectedAnswer: optionKey,
+      isCorrect,
+    };
 
-    const isCorrect = selectedAnswer === correctOption;
-    setSessionAnswers([
-      ...sessionAnswers,
-      {
-        questionId: currentQuestion.id,
-        selectedAnswer,
-        isCorrect,
-      },
-    ]);
+    setSelectedAnswer(optionKey);
+    setSessionAnswers(prev => [...prev, currentAnswer]);
     setAnswered(true);
   };
 
@@ -173,27 +157,24 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
       setCurrentIndex(currentIndex + 1);
       setSelectedAnswer(null);
       setAnswered(false);
-    } else {
-      // Session complete
-      handleSessionComplete();
+      return;
     }
-  };
 
-  const handleSessionComplete = () => {
-    const correctCount = sessionAnswers.filter(a => a.isCorrect).length;
-    const accuracy = Math.round((correctCount / sessionAnswers.length) * 100);
+    const correctCount = sessionAnswers.filter(a => a.isCorrect).length + (selectedAnswer === correctOption ? 1 : 0);
+    const totalQuestions = questions.length;
+    const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
 
     navigatePath('/practice/results', {
-      sessionAnswers,
+      sessionAnswers: [...sessionAnswers, ...(selectedAnswer ? [{ questionId: currentQuestion.id, selectedAnswer, isCorrect: selectedAnswer === correctOption }] : [])],
       questions,
       correctCount,
-      totalQuestions: sessionAnswers.length,
+      totalQuestions,
       accuracy,
     });
   };
 
   const handleBackClick = () => {
-    if (sessionAnswers.length > 0) {
+    if (sessionAnswers.length > 0 || answered) {
       setShowExitConfirm(true);
     } else {
       navigatePath('/practice/subjects');
@@ -225,7 +206,7 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
         </p>
         <button
           onClick={() => navigatePath('/practice/subjects')}
-          className="px-6 py-3 bg-[#FF6B35] hover:bg-[#E85A25] rounded-lg font-semibold text-white transition"
+          className="px-6 py-3 bg-[#FF6B35] hover:bg-[#E85A25] rounded-xl font-semibold text-white transition"
         >
           Back to Subjects
         </button>
@@ -235,25 +216,24 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E] text-white pb-36">
-      {/* Exit Confirmation Modal */}
+    <div className="min-h-screen bg-[#071524] text-white pb-36">
       {showExitConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur px-5">
-          <div className="rounded-2xl border border-[rgba(255,255,255,0.1)] bg-[#0B1324]/95 p-6 max-w-sm w-full text-center">
-            <p className="font-heading text-xl font-bold mb-2">Exit Practice?</p>
-            <p className="text-[#8B9CB8] mb-6">
-              You've answered {sessionAnswers.length} question{sessionAnswers.length !== 1 ? 's' : ''}. Your progress will be lost.
+          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0B1324]/95 p-6 text-center">
+            <p className="mb-2 font-heading text-xl font-bold">Exit Practice?</p>
+            <p className="mb-6 text-sm leading-6 text-[#8B9CB8]">
+              You have answered {sessionAnswers.length} question{sessionAnswers.length !== 1 ? 's' : ''}. Your progress will be lost.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowExitConfirm(false)}
-                className="flex-1 px-4 py-2 rounded-lg border border-[rgba(255,255,255,0.1)] text-white hover:bg-[#111827] transition font-semibold"
+                className="flex-1 rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/5"
               >
                 Continue
               </button>
               <button
                 onClick={handleConfirmExit}
-                className="flex-1 px-4 py-2 rounded-lg bg-[#FF6B35] hover:bg-[#E85A25] text-white transition font-semibold"
+                className="flex-1 rounded-xl bg-[#FF6B35] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#E85A25]"
               >
                 Exit
               </button>
@@ -262,140 +242,101 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
         </div>
       )}
 
-      {/* Top Bar */}
-      <div className="sticky top-0 z-40 border-b border-[rgba(255,255,255,0.1)] bg-[#0A0F1E]/95 backdrop-blur">
+      <div className="sticky top-0 z-40 border-b border-white/10 bg-[#071524]/95 backdrop-blur-xl">
         <div className="mx-auto max-w-4xl px-5 py-4">
           <div className="flex items-center justify-between gap-4">
             <button
+              type="button"
               onClick={handleBackClick}
-              className="inline-flex items-center gap-2 text-[#FF8A66] hover:text-[#FFB199] transition font-semibold text-sm"
-              aria-label="Back"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#FF8A66] transition hover:text-[#FFB199]"
+              aria-label="Exit practice"
             >
               <ChevronLeft className="h-5 w-5" />
-              Exit
+              <span>Exit</span>
             </button>
-            <div className="text-center">
-              <p className="font-sans text-sm font-semibold text-[#8B9CB8]">
-                Question {currentIndex + 1} of {questions.length}
-              </p>
-            </div>
-            <div className="w-12" />
-          </div>
 
-          {/* Progress Bar */}
-          <div className="mt-3 h-1 w-full rounded-full bg-[#111827] overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-[#FF6B35] to-[#2EC4B6] transition-all duration-300"
-              style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-            />
+            <p className="text-center font-heading text-2xl font-bold text-white sm:text-3xl">
+              Question {currentIndex + 1} of {questions.length}
+            </p>
+
+            <div className="w-12" />
           </div>
         </div>
       </div>
 
-      {/* Question Card */}
       <main className="mx-auto max-w-4xl px-5 py-8">
-        <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
-          {/* Question Text */}
-          <h2 className="font-heading text-xl sm:text-2xl font-bold text-white leading-relaxed">
-            {currentQuestion.question}
-          </h2>
+        <section className="rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] sm:p-6">
+          {currentQuestion.question && (
+            <h2 className="mb-6 text-lg font-bold leading-relaxed text-white sm:text-2xl">
+              {currentQuestion.question}
+            </h2>
+          )}
 
-          {/* Answer Options */}
-          <div className="mt-8 space-y-3">
-            {options.map((option) => {
+          <div className="space-y-3">
+            {options.map(option => {
               const isSelected = selectedAnswer === option.key;
               const isCorrect = option.key === correctOption;
-              const wasSelected = sessionAnswers.some(
-                a => a.questionId === currentQuestion.id && a.selectedAnswer === option.key
-              );
+              const showResultState = answered;
 
-              let borderColor = 'border-[rgba(255,255,255,0.1)]';
-              let bgColor = 'bg-[#111827]';
-              let textColor = 'text-[#C8D2E4]';
+              const cardClasses = showResultState
+                ? isCorrect
+                  ? 'border-[#2EC4B6] bg-[#1B3A38] text-[#7CE7D6]'
+                  : isSelected
+                    ? 'border-[#FF6B35] bg-[#3B2A22] text-[#FFB199]'
+                    : 'border-white/10 bg-[#101A2C] text-[#C8D2E4]'
+                : isSelected
+                  ? 'border-[#2EC4B6] bg-[#163C3C] text-[#B9F5E8]'
+                  : 'border-white/10 bg-[#101A2C] text-[#C8D2E4]';
 
-              if (answered) {
-                // After submitting, show correct and incorrect states
-                if (isCorrect) {
-                  borderColor = 'border-[#00FF87]/50';
-                  bgColor = 'bg-[#00FF87]/10';
-                  textColor = 'text-[#00FF87]';
-                } else if (isSelected && !isCorrect) {
-                  borderColor = 'border-[#FF6B35]/50';
-                  bgColor = 'bg-[#FF6B35]/10';
-                  textColor = 'text-[#FFB199]';
-                }
-              } else if (isSelected) {
-                // Before submitting, highlight selected option
-                borderColor = 'border-[#FF6B35]';
-                bgColor = 'bg-[#FF6B35]/15';
-                textColor = 'text-[#FFB199]';
-              }
+              const letterClasses = showResultState
+                ? isCorrect
+                  ? 'bg-[#2EC4B6] text-[#071524]'
+                  : isSelected
+                    ? 'bg-[#FF6B35] text-white'
+                    : 'border border-white/10 bg-transparent text-[#B8C4D8]'
+                : isSelected
+                  ? 'bg-[#2EC4B6] text-[#071524]'
+                  : 'border border-white/10 bg-transparent text-[#B8C4D8]';
 
               return (
                 <button
                   key={option.key}
+                  type="button"
                   onClick={() => handleSelectAnswer(option.key)}
                   disabled={answered}
-                  className={`w-full rounded-xl border-2 ${borderColor} ${bgColor} px-6 py-4 text-left transition ${
-                    answered ? 'cursor-default' : 'hover:border-[#FF6B35]/50 cursor-pointer'
-                  }`}
+                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left transition duration-200 ${cardClasses} ${answered ? 'cursor-default' : 'hover:border-[#2EC4B6]/60 hover:bg-[#101A2C]'}`}
                 >
-                  <div className="flex items-start gap-4">
-                    <div
-                      className={`shrink-0 flex h-8 w-8 items-center justify-center rounded-lg font-sans font-bold text-sm ${
-                        answered && isCorrect
-                          ? 'bg-[#00FF87] text-[#0A0F1E]'
-                          : answered && isSelected && !isCorrect
-                            ? 'bg-[#FF6B35] text-white'
-                            : 'border border-[rgba(255,255,255,0.2)] text-[#8B9CB8]'
-                      }`}
-                    >
+                  <div className="flex items-center gap-4">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg font-bold ${letterClasses}`}>
                       {option.key}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className={`font-sans text-sm sm:text-base font-medium ${textColor} break-words`}>
-                        {option.text}
-                      </p>
-                    </div>
+                    <span className="text-lg font-semibold sm:text-xl">{option.text}</span>
                   </div>
+
+                  <span className="text-lg font-semibold text-[#DCE7F6] opacity-90">{option.key === 'A' ? '1/8' : option.key === 'B' ? '1/12' : option.key === 'C' ? '1/6' : '1/4'}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Explanation (shown after answering) */}
           {answered && currentQuestion.explanation && (
-            <div className="mt-6 rounded-lg border border-[rgba(255,255,255,0.08)] bg-[#111827]/50 p-4">
-              <p className="font-sans text-xs font-bold uppercase text-[#8B9CB8] mb-2">Explanation</p>
-              <p className="font-sans text-sm leading-6 text-[#C8D2E4]">
-                {currentQuestion.explanation}
-              </p>
+            <div className="mt-6 rounded-2xl border border-white/10 bg-[#111827]/50 p-4">
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-[#8B9CB8]">Explanation</p>
+              <p className="text-sm leading-6 text-[#C8D2E4]">{currentQuestion.explanation}</p>
             </div>
           )}
         </section>
 
-        {/* Action Buttons */}
-        <div className="mt-8 flex gap-3 justify-center">
-          {!answered ? (
+        <div className="mt-6 flex justify-end">
+          {answered ? (
             <button
-              onClick={handleSubmitAnswer}
-              disabled={!selectedAnswer}
-              className={`px-8 py-3 rounded-xl font-semibold text-white transition ${
-                selectedAnswer
-                  ? 'bg-[#FF6B35] hover:bg-[#E85A25]'
-                  : 'bg-[#555] cursor-not-allowed text-[#999]'
-              }`}
-            >
-              Submit Answer
-            </button>
-          ) : (
-            <button
+              type="button"
               onClick={handleNextQuestion}
-              className="px-8 py-3 rounded-xl bg-[#2EC4B6] hover:bg-[#1BA89A] text-white font-semibold transition"
+              className="rounded-xl bg-[#2EC4B6] px-6 py-3 text-sm font-bold text-[#071524] transition hover:bg-[#38D7C5]"
             >
               {currentIndex === questions.length - 1 ? 'See Results' : 'Next Question'}
             </button>
-          )}
+          ) : null}
         </div>
       </main>
 
