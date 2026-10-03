@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../supabase';
-import { ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -18,8 +18,8 @@ interface Question {
 
 interface SessionAnswer {
   questionId: string;
-  selectedAnswer: string;
-  isCorrect: boolean;
+  selectedAnswer: string | null;
+  isCorrect?: boolean;
 }
 
 interface PracticeSessionProps {
@@ -54,9 +54,7 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [answered, setAnswered] = useState(false);
-  const [sessionAnswers, setSessionAnswers] = useState<SessionAnswer[]>([]);
+  const [sessionAnswers, setSessionAnswers] = useState<Map<string, string | null>>(new Map());
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const getSessionParams = useCallback(() => {
@@ -122,6 +120,12 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
 
         const shuffled = allQuestions.sort(() => Math.random() - 0.5).slice(0, limit);
         setQuestions(shuffled);
+        
+        // Initialize sessionAnswers with all questions set to null
+        const answers = new Map<string, string | null>();
+        shuffled.forEach(q => answers.set(q.id, null));
+        setSessionAnswers(answers);
+        
         setLoading(false);
       } catch (err) {
         console.error('Failed to load questions:', err);
@@ -135,46 +139,54 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
 
   const currentQuestion = questions[currentIndex];
   const options = currentQuestion ? getOptions(currentQuestion) : [];
-  const correctOption = currentQuestion ? getCorrectOptionKey(currentQuestion) : '';
+  const selectedAnswer = currentQuestion ? sessionAnswers.get(currentQuestion.id) || null : null;
 
   const handleSelectAnswer = (optionKey: string) => {
-    if (answered || !currentQuestion) return;
+    if (!currentQuestion) return;
+    
+    const newAnswers = new Map(sessionAnswers);
+    newAnswers.set(currentQuestion.id, optionKey);
+    setSessionAnswers(newAnswers);
+  };
 
-    const isCorrect = optionKey === correctOption;
-    const currentAnswer: SessionAnswer = {
-      questionId: currentQuestion.id,
-      selectedAnswer: optionKey,
-      isCorrect,
-    };
-
-    setSelectedAnswer(optionKey);
-    setSessionAnswers(prev => [...prev, currentAnswer]);
-    setAnswered(true);
+  const handlePreviousQuestion = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
   };
 
   const handleNextQuestion = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
-      setSelectedAnswer(null);
-      setAnswered(false);
-      return;
     }
+  };
 
-    const correctCount = sessionAnswers.filter(a => a.isCorrect).length + (selectedAnswer === correctOption ? 1 : 0);
-    const totalQuestions = questions.length;
-    const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+  const handleSubmit = () => {
+    // Calculate results
+    const answers: SessionAnswer[] = questions.map(q => {
+      const userAnswer = sessionAnswers.get(q.id) || null;
+      const correctOption = getCorrectOptionKey(q);
+      return {
+        questionId: q.id,
+        selectedAnswer: userAnswer,
+        isCorrect: userAnswer === correctOption,
+      };
+    });
+
+    const correctCount = answers.filter(a => a.isCorrect).length;
+    const accuracy = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
 
     navigatePath('/practice/results', {
-      sessionAnswers: [...sessionAnswers, ...(selectedAnswer ? [{ questionId: currentQuestion.id, selectedAnswer, isCorrect: selectedAnswer === correctOption }] : [])],
+      sessionAnswers: answers,
       questions,
       correctCount,
-      totalQuestions,
+      totalQuestions: questions.length,
       accuracy,
     });
   };
 
   const handleBackClick = () => {
-    if (sessionAnswers.length > 0 || answered) {
+    if (sessionAnswers.size > 0 && Array.from(sessionAnswers.values()).some(v => v !== null)) {
       setShowExitConfirm(true);
     } else {
       navigatePath('/practice/subjects');
@@ -187,7 +199,7 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0A0F1E] text-white pb-36">
+      <div className="min-h-screen flex items-center justify-center bg-[#071524] text-white pb-36">
         <div className="text-center">
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-[#FF6B35] mb-4" />
           <p className="text-lg">Loading questions...</p>
@@ -198,7 +210,7 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
 
   if (error || questions.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0A0F1E] text-white pb-36 px-5">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#071524] text-white pb-36 px-5">
         <AlertCircle className="h-12 w-12 text-[#FF6B35] mb-4" />
         <h1 className="text-2xl font-bold text-center mb-3">Unable to Load Questions</h1>
         <p className="text-[#8B9CB8] text-center mb-6 max-w-sm">
@@ -216,13 +228,13 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
   }
 
   return (
-    <div className="min-h-screen bg-[#071524] text-white pb-36">
+    <div className="min-h-screen bg-[#071524] text-white pb-36 flex flex-col">
       {showExitConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur px-5">
           <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0B1324]/95 p-6 text-center">
             <p className="mb-2 font-heading text-xl font-bold">Exit Practice?</p>
             <p className="mb-6 text-sm leading-6 text-[#8B9CB8]">
-              You have answered {sessionAnswers.length} question{sessionAnswers.length !== 1 ? 's' : ''}. Your progress will be lost.
+              Your progress will be lost. Are you sure you want to exit?
             </p>
             <div className="flex gap-3">
               <button
@@ -242,8 +254,9 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
         </div>
       )}
 
+      {/* Top Bar - Sticky */}
       <div className="sticky top-0 z-40 border-b border-white/10 bg-[#071524]/95 backdrop-blur-xl">
-        <div className="mx-auto max-w-4xl px-5 py-4">
+        <div className="mx-auto w-full max-w-4xl px-5 py-4">
           <div className="flex items-center justify-between gap-4">
             <button
               type="button"
@@ -255,7 +268,7 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
               <span>Exit</span>
             </button>
 
-            <p className="text-center font-heading text-2xl font-bold text-white sm:text-3xl">
+            <p className="text-center font-heading text-xl font-bold text-white sm:text-2xl">
               Question {currentIndex + 1} of {questions.length}
             </p>
 
@@ -264,81 +277,80 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
         </div>
       </div>
 
-      <main className="mx-auto max-w-4xl px-5 py-8">
-        <section className="rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] sm:p-6">
-          {currentQuestion.question && (
-            <h2 className="mb-6 text-lg font-bold leading-relaxed text-white sm:text-2xl">
+      {/* Main Content - Scrollable */}
+      <main className="flex-1 mx-auto w-full max-w-4xl px-5 py-6 overflow-y-auto">
+        <section className="rounded-[28px] border border-white/10 bg-[#0B1324]/85 p-4 sm:p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
+          {/* Question Text */}
+          {currentQuestion && (
+            <h2 className="mb-6 text-base font-bold leading-relaxed text-white sm:text-lg">
               {currentQuestion.question}
             </h2>
           )}
 
-          <div className="space-y-3">
+          {/* Answer Options */}
+          <div className="space-y-2">
             {options.map(option => {
               const isSelected = selectedAnswer === option.key;
-              const isCorrect = option.key === correctOption;
-              const showResultState = answered;
 
-              const cardClasses = showResultState
-                ? isCorrect
-                  ? 'border-[#2EC4B6] bg-[#1B3A38] text-[#7CE7D6]'
-                  : isSelected
-                    ? 'border-[#FF6B35] bg-[#3B2A22] text-[#FFB199]'
-                    : 'border-white/10 bg-[#101A2C] text-[#C8D2E4]'
-                : isSelected
-                  ? 'border-[#2EC4B6] bg-[#163C3C] text-[#B9F5E8]'
-                  : 'border-white/10 bg-[#101A2C] text-[#C8D2E4]';
+              const cardClasses = isSelected
+                ? 'border-[#2EC4B6] bg-[#163C3C] text-[#B9F5E8]'
+                : 'border-white/10 bg-[#101A2C] text-[#C8D2E4] hover:border-[#2EC4B6]/60';
 
-              const letterClasses = showResultState
-                ? isCorrect
-                  ? 'bg-[#2EC4B6] text-[#071524]'
-                  : isSelected
-                    ? 'bg-[#FF6B35] text-white'
-                    : 'border border-white/10 bg-transparent text-[#B8C4D8]'
-                : isSelected
-                  ? 'bg-[#2EC4B6] text-[#071524]'
-                  : 'border border-white/10 bg-transparent text-[#B8C4D8]';
+              const letterClasses = isSelected
+                ? 'bg-[#2EC4B6] text-[#071524]'
+                : 'border border-white/10 bg-transparent text-[#B8C4D8]';
 
               return (
                 <button
                   key={option.key}
                   type="button"
                   onClick={() => handleSelectAnswer(option.key)}
-                  disabled={answered}
-                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left transition duration-200 ${cardClasses} ${answered ? 'cursor-default' : 'hover:border-[#2EC4B6]/60 hover:bg-[#101A2C]'}`}
+                  className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition duration-200 ${cardClasses}`}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg font-bold ${letterClasses}`}>
-                      {option.key}
-                    </div>
-                    <span className="text-lg font-semibold sm:text-xl">{option.text}</span>
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${letterClasses}`}>
+                    {option.key}
                   </div>
-
-                  <span className="text-lg font-semibold text-[#DCE7F6] opacity-90">{option.key === 'A' ? '1/8' : option.key === 'B' ? '1/12' : option.key === 'C' ? '1/6' : '1/4'}</span>
+                  <span className="flex-1 text-sm font-medium sm:text-base">{option.text}</span>
                 </button>
               );
             })}
           </div>
-
-          {answered && currentQuestion.explanation && (
-            <div className="mt-6 rounded-2xl border border-white/10 bg-[#111827]/50 p-4">
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-[#8B9CB8]">Explanation</p>
-              <p className="text-sm leading-6 text-[#C8D2E4]">{currentQuestion.explanation}</p>
-            </div>
-          )}
         </section>
+      </main>
 
-        <div className="mt-6 flex justify-end">
-          {answered ? (
+      {/* Navigation Buttons - Fixed at bottom */}
+      <div className="mx-auto w-full max-w-4xl px-5 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={handlePreviousQuestion}
+            disabled={currentIndex === 0}
+            className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-[#FF8A66] transition hover:border-[#FF6B35]/50 hover:text-[#FFB199] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span>Previous</span>
+          </button>
+
+          {currentIndex === questions.length - 1 ? (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="rounded-xl bg-[#2EC4B6] px-6 py-2 text-sm font-bold text-[#071524] transition hover:bg-[#38D7C5]"
+            >
+              Submit
+            </button>
+          ) : (
             <button
               type="button"
               onClick={handleNextQuestion}
-              className="rounded-xl bg-[#2EC4B6] px-6 py-3 text-sm font-bold text-[#071524] transition hover:bg-[#38D7C5]"
+              className="flex items-center gap-2 rounded-xl bg-[#2EC4B6] px-4 py-2 text-sm font-semibold text-[#071524] transition hover:bg-[#38D7C5]"
             >
-              {currentIndex === questions.length - 1 ? 'See Results' : 'Next Question'}
+              <span>Next</span>
+              <ChevronRight className="h-4 w-4" />
             </button>
-          ) : null}
+          )}
         </div>
-      </main>
+      </div>
 
       {renderBottomNavigation()}
     </div>
