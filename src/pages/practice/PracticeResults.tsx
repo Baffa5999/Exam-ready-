@@ -18,7 +18,7 @@ interface Question {
 
 interface SessionAnswer {
   questionId: string;
-  selectedAnswer: string;
+  selectedAnswer: string | null;
   isCorrect: boolean;
 }
 
@@ -38,28 +38,15 @@ const getOptions = (question: Question) => [
 const getCorrectOptionKey = (question: Question) => {
   const normalized = `${question.correct_answer || ''}`.trim().toLowerCase();
   const optionKeys = ['a', 'b', 'c', 'd'];
-  
-  const directKeyIndex = optionKeys.findIndex(key => 
-    normalized === key || normalized === `option_${key}`
-  );
+
+  const directKeyIndex = optionKeys.findIndex(key => normalized === key || normalized === `option_${key}`);
   if (directKeyIndex >= 0) return optionKeys[directKeyIndex].toUpperCase();
 
   const options = getOptions(question);
-  const textMatch = options.find(opt => 
-    `${opt.text}`.trim().toLowerCase() === normalized
-  );
+  const textMatch = options.find(opt => `${opt.text}`.trim().toLowerCase() === normalized);
   if (textMatch) return textMatch.key;
 
   return 'A';
-};
-
-const getOptionText = (question: Question, key: string) => {
-  const keyLower = key.toLowerCase();
-  if (keyLower === 'a') return question.option_a;
-  if (keyLower === 'b') return question.option_b;
-  if (keyLower === 'c') return question.option_c;
-  if (keyLower === 'd') return question.option_d;
-  return '';
 };
 
 export default function PracticeResults({ navigatePath, renderBottomNavigation, user }: PracticeResultsProps) {
@@ -69,13 +56,17 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
   const correctCount: number = state.correctCount || 0;
   const totalQuestions: number = state.totalQuestions || sessionAnswers.length;
   const accuracy: number = state.accuracy || 0;
+  
+  // Session configuration to pass through
+  const sessionSelections: Array<{ subject: string; topic: string }> = state.selections || [];
+  const sessionSubtopics: string[] = state.subtopics || [];
+  const sessionLimit: number = state.limit || 20;
 
   const [saving, setSaving] = useState(true);
   const [savingError, setSavingError] = useState<string | null>(null);
   const [showReviewMistakes, setShowReviewMistakes] = useState(false);
   const [reviewIndex, setReviewIndex] = useState(0);
 
-  // Record results to Supabase
   useEffect(() => {
     const saveResults = async () => {
       if (!user || sessionAnswers.length === 0 || questions.length === 0) {
@@ -84,12 +75,10 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
       }
 
       try {
-        // Get the subject and subtopic from the first question
         const firstQuestion = questions[0];
         const subject = firstQuestion.subject;
         const subtopic = firstQuestion.subtopic;
 
-        // Record each question attempt
         const attemptPromises = sessionAnswers.map(answer => {
           const question = questions.find(q => q.id === answer.questionId);
           if (!question) return null;
@@ -109,7 +98,6 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
 
         await Promise.all(attemptPromises.filter(Boolean));
 
-        // Update or create student_performance record
         const { data: existingPerf } = await supabase
           .from('student_performance')
           .select('id, questions_attempted, questions_correct, accuracy_percentage')
@@ -146,7 +134,6 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
             });
         }
 
-        // Award leaderboard points (10 points per correct answer)
         const points = correctCount * 10;
         const { data: existingLeaderboard } = await supabase
           .from('leaderboard')
@@ -180,9 +167,27 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
     void saveResults();
   }, [user, sessionAnswers, questions, correctCount, totalQuestions, accuracy]);
 
+  const handleTryAgain = () => {
+    // Re-trigger the configure screen with the same selections
+    const navigationState = {
+      subjects: Array.from(new Set(sessionSelections.map(s => s.subject))),
+      subtopics: sessionSubtopics,
+      selections: sessionSelections,
+      limit: sessionLimit,
+    };
+
+    const params = new URLSearchParams({
+      subtopics: JSON.stringify(sessionSubtopics),
+      topics: JSON.stringify(sessionSelections),
+    });
+
+    // Navigate to configure with the same selections
+    navigatePath(`/practice/configure?${params.toString()}`, navigationState, { replace: true });
+  };
+
   if (saving) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0A0F1E] text-white pb-36">
+      <div className="min-h-screen flex items-center justify-center bg-[#071524] text-white pb-36">
         <div className="text-center">
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-[#FF6B35] mb-4" />
           <p className="text-lg">Saving your results...</p>
@@ -193,14 +198,14 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
 
   if (sessionAnswers.length === 0 || questions.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0A0F1E] text-white pb-36 px-5">
-        <p className="text-2xl font-bold mb-3">No Results Found</p>
-        <p className="text-[#8B9CB8] text-center mb-6">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#071524] text-white pb-36 px-5">
+        <p className="mb-3 text-2xl font-bold">No Results Found</p>
+        <p className="mb-6 max-w-sm text-center text-[#8B9CB8]">
           It looks like the session data is missing. Please start a new practice session.
         </p>
         <button
           onClick={() => navigatePath('/practice/subjects')}
-          className="px-6 py-3 bg-[#FF6B35] hover:bg-[#E85A25] rounded-lg font-semibold text-white transition"
+          className="rounded-xl bg-[#FF6B35] px-6 py-3 font-semibold text-white transition hover:bg-[#E85A25]"
         >
           Back to Subjects
         </button>
@@ -214,36 +219,34 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
       const question = questions.find(q => q.id === answer.questionId);
       return question ? { ...answer, question } : null;
     })
-    .filter((item): item is { questionId: string; selectedAnswer: string; isCorrect: boolean; question: Question } => item !== null && !item.isCorrect);
+    .filter((item): item is { questionId: string; selectedAnswer: string | null; isCorrect: boolean; question: Question } => item !== null && !item.isCorrect);
 
   const firstQuestion = questions[0];
   const subtopicName = firstQuestion.subtopic;
 
-  // Determine reaction based on accuracy
   const getReaction = (acc: number) => {
-    if (acc >= 80) return 'Great job! 🎉';
-    if (acc >= 50) return 'Good effort! 👍';
-    return 'Keep practicing! 💪';
+    if (acc >= 80) return 'Great job!';
+    if (acc >= 50) return 'Good effort!';
+    return 'Keep practicing!';
   };
 
   const getAccuracyColor = (acc: number) => {
-    if (acc >= 80) return '#00FF87'; // Green/teal
-    if (acc >= 50) return '#FFB199'; // Orange
-    return '#FF8A6E'; // Darker orange
+    if (acc >= 80) return '#2EC4B6';
+    if (acc >= 50) return '#FFB199';
+    return '#FF8A66';
   };
 
-  // Review Mistakes view
   if (showReviewMistakes) {
     const currentMistake = failedQuestions[reviewIndex];
     if (!currentMistake) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-[#0A0F1E] text-white pb-36 px-5">
-          <CheckCircle className="h-12 w-12 text-[#00FF87] mb-4" />
-          <p className="text-2xl font-bold mb-3 text-center">No Mistakes!</p>
-          <p className="text-[#8B9CB8] text-center mb-6">You got all questions correct! 🎉</p>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#071524] text-white pb-36 px-5">
+          <CheckCircle className="mb-4 h-12 w-12 text-[#2EC4B6]" />
+          <p className="mb-3 text-2xl font-bold text-center">No Mistakes!</p>
+          <p className="mb-6 text-center text-[#8B9CB8]">You got all questions correct! 🎉</p>
           <button
             onClick={() => setShowReviewMistakes(false)}
-            className="px-6 py-3 bg-[#2EC4B6] hover:bg-[#1BA89A] rounded-lg font-semibold text-white transition"
+            className="rounded-xl bg-[#2EC4B6] px-6 py-3 font-semibold text-[#071524] transition hover:bg-[#38D7C5]"
           >
             Back to Results
           </button>
@@ -258,121 +261,83 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
     const options = getOptions(question);
 
     return (
-      <div className="min-h-screen bg-[#0A0F1E] text-white pb-36">
-        {/* Top Bar */}
-        <div className="sticky top-0 z-40 border-b border-[rgba(255,255,255,0.1)] bg-[#0A0F1E]/95 backdrop-blur">
+      <div className="min-h-screen bg-[#071524] text-white pb-36">
+        <div className="sticky top-0 z-40 border-b border-white/10 bg-[#071524]/95 backdrop-blur-xl">
           <div className="mx-auto max-w-4xl px-5 py-4">
             <div className="flex items-center justify-between gap-4">
               <button
+                type="button"
                 onClick={() => setShowReviewMistakes(false)}
-                className="inline-flex items-center gap-2 text-[#FF8A66] hover:text-[#FFB199] transition font-semibold text-sm"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-[#FF8A66] hover:text-[#FFB199]"
               >
                 <ChevronLeft className="h-5 w-5" />
                 Back
               </button>
-              <div className="text-center">
-                <p className="font-sans text-sm font-semibold text-[#8B9CB8]">
-                  Mistake {reviewIndex + 1} of {failedQuestions.length}
-                </p>
-              </div>
-              <div className="w-12" />
-            </div>
 
-            {/* Progress Bar */}
-            <div className="mt-3 h-1 w-full rounded-full bg-[#111827] overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-[#FF6B35] to-[#2EC4B6] transition-all duration-300"
-                style={{ width: `${((reviewIndex + 1) / failedQuestions.length) * 100}%` }}
-              />
+              <p className="text-center font-heading text-xl font-bold text-white">
+                Mistake {reviewIndex + 1} of {failedQuestions.length}
+              </p>
+
+              <div className="w-12" />
             </div>
           </div>
         </div>
 
-        {/* Question Card */}
         <main className="mx-auto max-w-4xl px-5 py-8">
-          <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
-            <h2 className="font-heading text-xl sm:text-2xl font-bold text-white leading-relaxed">
-              {question.question}
-            </h2>
+          <section className="rounded-[28px] border border-white/10 bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] sm:p-6">
+            <h2 className="mb-6 text-lg font-bold leading-relaxed text-white sm:text-2xl">{question.question}</h2>
 
-            {/* Answer Options */}
-            <div className="mt-8 space-y-3">
-              {options.map((option) => {
+            <div className="space-y-3">
+              {options.map(option => {
                 const isCorrect = option.key === correctAnswer;
                 const wasSelected = option.key === selectedAnswer;
 
-                let borderColor = 'border-[rgba(255,255,255,0.1)]';
-                let bgColor = 'bg-[#111827]';
-                let textColor = 'text-[#C8D2E4]';
+                let classes = 'border-white/10 bg-[#101A2C] text-[#C8D2E4]';
+                if (isCorrect) classes = 'border-[#2EC4B6] bg-[#163C3C] text-[#B9F5E8]';
+                else if (wasSelected) classes = 'border-[#FF6B35] bg-[#3B2A22] text-[#FFB199]';
 
-                if (isCorrect) {
-                  borderColor = 'border-[#00FF87]/50';
-                  bgColor = 'bg-[#00FF87]/10';
-                  textColor = 'text-[#00FF87]';
-                } else if (wasSelected) {
-                  borderColor = 'border-[#FF6B35]/50';
-                  bgColor = 'bg-[#FF6B35]/10';
-                  textColor = 'text-[#FFB199]';
-                }
+                let letterClasses = 'border border-white/10 bg-transparent text-[#B8C4D8]';
+                if (isCorrect) letterClasses = 'bg-[#2EC4B6] text-[#071524]';
+                else if (wasSelected) letterClasses = 'bg-[#FF6B35] text-white';
 
                 return (
-                  <div
-                    key={option.key}
-                    className={`w-full rounded-xl border-2 ${borderColor} ${bgColor} px-6 py-4 transition`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div
-                        className={`shrink-0 flex h-8 w-8 items-center justify-center rounded-lg font-sans font-bold text-sm ${
-                          isCorrect
-                            ? 'bg-[#00FF87] text-[#0A0F1E]'
-                            : wasSelected
-                              ? 'bg-[#FF6B35] text-white'
-                              : 'border border-[rgba(255,255,255,0.2)] text-[#8B9CB8]'
-                        }`}
-                      >
+                  <div key={option.key} className={`flex w-full items-center justify-between rounded-2xl border px-4 py-4 ${classes}`}>
+                    <div className="flex items-center gap-4">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg font-bold ${letterClasses}`}>
                         {option.key}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className={`font-sans text-sm sm:text-base font-medium ${textColor} break-words`}>
-                          {option.text}
-                        </p>
-                        {isCorrect && (
-                          <p className="mt-1 text-xs text-[#00FF87] font-semibold">✓ Correct answer</p>
-                        )}
-                        {wasSelected && !isCorrect && (
-                          <p className="mt-1 text-xs text-[#FF6B35] font-semibold">✗ Your answer</p>
-                        )}
-                      </div>
+                      <span className="text-lg font-semibold sm:text-xl">{option.text}</span>
                     </div>
+
+                    {isCorrect && <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#2EC4B6]">Correct</span>}
+                    {wasSelected && !isCorrect && <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#FF6B35]">Your answer</span>}
                   </div>
                 );
               })}
             </div>
 
-            {/* Explanation */}
             {question.explanation && (
-              <div className="mt-6 rounded-lg border border-[rgba(255,255,255,0.08)] bg-[#111827]/50 p-4">
-                <p className="font-sans text-xs font-bold uppercase text-[#8B9CB8] mb-2">Explanation</p>
-                <p className="font-sans text-sm leading-6 text-[#C8D2E4]">
-                  {question.explanation}
-                </p>
+              <div className="mt-6 rounded-2xl border border-white/10 bg-[#111827]/50 p-4">
+                <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-[#8B9CB8]">Explanation</p>
+                <p className="text-sm leading-6 text-[#C8D2E4]">{question.explanation}</p>
               </div>
             )}
           </section>
 
-          {/* Navigation */}
-          <div className="mt-8 flex gap-3 justify-center">
+          <div className="mt-8 flex justify-center gap-3">
             <button
+              type="button"
               onClick={() => reviewIndex > 0 && setReviewIndex(reviewIndex - 1)}
               disabled={reviewIndex === 0}
-              className="px-6 py-3 rounded-xl border border-[rgba(255,255,255,0.1)] hover:border-[#FF6B35]/50 text-[#FF8A66] hover:text-[#FFB199] font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-xl border border-white/10 px-6 py-3 text-sm font-semibold text-[#FF8A66] transition hover:border-[#FF6B35]/50 hover:text-[#FFB199] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Previous
             </button>
             <button
+              type="button"
               onClick={() => reviewIndex < failedQuestions.length - 1 && setReviewIndex(reviewIndex + 1)}
               disabled={reviewIndex === failedQuestions.length - 1}
-              className="px-6 py-3 rounded-xl border border-[rgba(255,255,255,0.1)] hover:border-[#2EC4B6]/50 text-[#2EC4B6] hover:text-[#00FF87] font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-xl border border-white/10 px-6 py-3 text-sm font-semibold text-[#2EC4B6] transition hover:border-[#2EC4B6]/50 hover:text-[#7CE7D6] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next
             </button>
@@ -384,25 +349,19 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
     );
   }
 
-  // Main Results view
   return (
-    <div className="min-h-screen bg-[#0A0F1E] text-white pb-36">
+    <div className="min-h-screen bg-[#071524] text-white pb-36">
       {savingError && (
-        <div className="bg-[#FF6B35]/10 border border-[#FF6B35]/30 text-[#FFB199] px-4 py-3 text-sm">
+        <div className="border border-[#FF6B35]/30 bg-[#FF6B35]/10 px-4 py-3 text-sm text-[#FFB199]">
           {savingError}
         </div>
       )}
 
-      {/* Results Card */}
-      <main className="mx-auto max-w-2xl px-5 py-12">
-        {/* Score Section */}
-        <section className="text-center mb-10">
-          <div className="relative inline-flex items-center justify-center mb-6">
-            {/* Circular progress ring */}
-            <svg className="w-32 h-32" viewBox="0 0 120 120">
-              {/* Background circle */}
-              <circle cx="60" cy="60" r="54" fill="none" stroke="#111827" strokeWidth="8" />
-              {/* Progress circle */}
+      <main className="mx-auto max-w-2xl px-5 py-10 sm:py-12">
+        <section className="mb-8 text-center">
+          <div className="relative inline-flex items-center justify-center">
+            <svg className="h-32 w-32" viewBox="0 0 120 120" aria-label="Accuracy ring">
+              <circle cx="60" cy="60" r="54" fill="none" stroke="#101A2C" strokeWidth="8" />
               <circle
                 cx="60"
                 cy="60"
@@ -413,57 +372,46 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
                 strokeDasharray={`${(accuracy / 100) * 339.29} 339.29`}
                 strokeLinecap="round"
                 transform="rotate(-90 60 60)"
-                style={{ transition: 'stroke-dasharray 1s ease' }}
               />
             </svg>
             <div className="absolute text-center">
-              <p className="font-heading text-4xl font-bold text-white">
-                {correctCount}/{totalQuestions}
-              </p>
-              <p className="font-sans text-sm font-semibold text-[#8B9CB8] mt-1">
-                {accuracy}%
-              </p>
+              <p className="font-heading text-4xl font-bold text-white">{correctCount}/{totalQuestions}</p>
+              <p className="mt-1 text-sm font-semibold text-[#8B9CB8]">{accuracy}%</p>
             </div>
           </div>
 
-          <p className="font-heading text-2xl font-bold text-white mb-2">
-            {getReaction(accuracy)}
-          </p>
-          <p className="font-sans text-sm text-[#8B9CB8]">
+          <p className="mt-5 font-heading text-3xl font-bold text-white">{getReaction(accuracy)}</p>
+          <p className="mt-2 text-sm text-[#8B9CB8]">
             You practiced <span className="font-semibold text-[#FFB199]">{subtopicName}</span>
           </p>
         </section>
 
-        {/* Breakdown Stats */}
-        <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-6 mb-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
+        <section className="mb-8 rounded-[28px] border border-white/10 bg-[#0B1324]/85 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)]">
           <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <CheckCircle className="h-5 w-5 text-[#00FF87]" />
-                <p className="font-sans text-xs uppercase font-bold text-[#8B9CB8]">Correct</p>
+            <div className="rounded-2xl border border-white/10 bg-[#101A2C] p-4 text-center">
+              <div className="mb-2 flex items-center justify-center gap-2">
+                <CheckCircle className="h-5 w-5 text-[#2EC4B6]" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8B9CB8]">Correct</span>
               </div>
-              <p className="font-heading text-2xl font-bold text-[#00FF87]">
-                {correctCount}
-              </p>
+              <p className="font-heading text-3xl font-bold text-[#2EC4B6]">{correctCount}</p>
             </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
+
+            <div className="rounded-2xl border border-white/10 bg-[#101A2C] p-4 text-center">
+              <div className="mb-2 flex items-center justify-center gap-2">
                 <XCircle className="h-5 w-5 text-[#FF6B35]" />
-                <p className="font-sans text-xs uppercase font-bold text-[#8B9CB8]">Incorrect</p>
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8B9CB8]">Incorrect</span>
               </div>
-              <p className="font-heading text-2xl font-bold text-[#FF6B35]">
-                {totalQuestions - correctCount}
-              </p>
+              <p className="font-heading text-3xl font-bold text-[#FF6B35]">{totalQuestions - correctCount}</p>
             </div>
           </div>
         </section>
 
-        {/* Action Buttons */}
         <div className="space-y-3">
           {failedQuestions.length > 0 && (
             <button
+              type="button"
               onClick={() => setShowReviewMistakes(true)}
-              className="w-full px-6 py-4 rounded-xl bg-[#2EC4B6] hover:bg-[#1BA89A] text-white font-semibold transition flex items-center justify-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2EC4B6] px-6 py-4 text-sm font-bold text-[#071524] transition hover:bg-[#38D7C5]"
             >
               <BookOpen className="h-5 w-5" />
               Review {failedQuestions.length} Mistake{failedQuestions.length !== 1 ? 's' : ''}
@@ -471,16 +419,18 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
           )}
 
           <button
-            onClick={() => navigatePath('/practice/configure', {}, { replace: true })}
-            className="w-full px-6 py-4 rounded-xl bg-[#FF6B35] hover:bg-[#E85A25] text-white font-semibold transition flex items-center justify-center gap-2"
+            type="button"
+            onClick={handleTryAgain}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6B35] px-6 py-4 text-sm font-bold text-white transition hover:bg-[#E85A25]"
           >
             <RotateCcw className="h-5 w-5" />
             Try Again
           </button>
 
           <button
+            type="button"
             onClick={() => navigatePath('/practice/subjects', {}, { replace: true })}
-            className="w-full px-6 py-4 rounded-xl border border-[rgba(255,255,255,0.1)] hover:border-[#FF6B35]/50 text-[#FF8A66] hover:text-[#FFB199] font-semibold transition"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#101A2C] px-6 py-4 text-sm font-bold text-[#FF8A66] transition hover:border-[#FF6B35]/50 hover:text-[#FFB199]"
           >
             Back to Subjects
           </button>
