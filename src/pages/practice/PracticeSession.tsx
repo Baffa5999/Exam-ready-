@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../supabase';
-import { ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, AlertCircle, WifiOff, HardDriveDownload } from 'lucide-react';
+import { getQuestionCache, saveQuestionCache } from '../../lib/offlineCache';
 
 interface Question {
   id: string;
@@ -56,6 +57,7 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionAnswers, setSessionAnswers] = useState<Map<string, string | null>>(new Map());
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [loadedFromCache, setLoadedFromCache] = useState(false);
 
   const getSessionParams = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
@@ -90,30 +92,65 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
           return;
         }
 
-        const subqueries = await Promise.all(
-          topics.map(({ subject, topic }) =>
-            supabase
-              .from('questions')
-              .select('*')
-              .eq('subject', subject)
-              .eq('subtopic', topic)
-              .limit(limit)
-          )
-        );
+        const cacheKey = `practice:${topics
+          .map(item => `${item.subject}::${item.topic}`)
+          .sort()
+          .join('|')}::${limit}`;
 
-        const allQuestions: Question[] = [];
-        for (const { data, error: queryError } of subqueries) {
-          if (queryError) {
-            console.error('Error loading questions:', queryError);
-            continue;
+        let allQuestions: Question[] = [];
+        let hadNetworkError = false;
+
+        try {
+          const subqueries = await Promise.all(
+            topics.map(({ subject, topic }) =>
+              supabase
+                .from('questions')
+                .select('*')
+                .eq('subject', subject)
+                .eq('subtopic', topic)
+                .limit(limit)
+            )
+          );
+
+          for (const { data, error: queryError } of subqueries) {
+            if (queryError) {
+              console.error('Error loading questions:', queryError);
+              hadNetworkError = true;
+              continue;
+            }
+            if (data) {
+              allQuestions.push(...(data as Question[]));
+            }
           }
-          if (data) {
-            allQuestions.push(...(data as Question[]));
+        } catch (networkError) {
+          console.error('Question network request failed:', networkError);
+          hadNetworkError = true;
+        }
+
+        // Save a successful online result for future offline sessions.
+        if (allQuestions.length > 0 && !hadNetworkError) {
+          try {
+            await saveQuestionCache(cacheKey, allQuestions);
+          } catch (cacheError) {
+            console.warn('Could not save offline question cache:', cacheError);
+          }
+        }
+
+        // If Supabase is unavailable (or returned no questions), try the local cache.
+        if (allQuestions.length === 0 || hadNetworkError) {
+          try {
+            const cached = await getQuestionCache<Question[]>(cacheKey);
+            if (cached?.data?.length) {
+              allQuestions = cached.data;
+              setLoadedFromCache(true);
+            }
+          } catch (cacheError) {
+            console.warn('Could not read offline question cache:', cacheError);
           }
         }
 
         if (allQuestions.length === 0) {
-          setError('No questions found for the selected topics.');
+          setError('No questions found for the selected topics. Connect to the internet once to cache these questions for offline use.');
           setLoading(false);
           return;
         }
@@ -277,9 +314,17 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
               <span>Exit</span>
             </button>
 
-            <p className="text-center font-heading text-xl font-bold text-white sm:text-2xl">
-              Question {currentIndex + 1} of {questions.length}
-            </p>
+            <div className="text-center">
+              <p className="font-heading text-xl font-bold text-white sm:text-2xl">
+                Question {currentIndex + 1} of {questions.length}
+              </p>
+              {loadedFromCache && (
+                <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[#2EC4B6]">
+                  <HardDriveDownload className="h-3.5 w-3.5" />
+                  Available offline
+                </p>
+              )}
+            </div>
 
             <div className="w-12" />
           </div>
