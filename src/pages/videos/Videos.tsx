@@ -53,8 +53,19 @@ const subjectAccents: Record<string, string> = {
   Biology: '#00FF87',
   Chemistry: '#9B5DE5',
   Physics: '#FF6B35',
-  Literature: '#F15BB5',
+  Economics: '#F15BB5',
 };
+
+// Subjects available in ExamReady. They are shown even before video lessons
+// have been uploaded, so students can immediately browse the lesson library.
+const availableSubjects = [
+  'Mathematics',
+  'English Language',
+  'Biology',
+  'Chemistry',
+  'Physics',
+  'Economics',
+];
 
 const pageClass = 'min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,107,53,0.10),transparent_34%),#0A0F1E] pb-36 text-white font-sans';
 const mainClass = 'mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 md:px-10 md:py-8 animate-fade-up';
@@ -144,7 +155,10 @@ export default function Videos({ navigatePath, renderBottomNavigation }: VideosP
         subMap.get(v.subtopic)!.push(v);
       }
 
-      const grouped: SubjectGroup[] = Array.from(subjectMap.entries()).map(([subject, topicMap]) => {
+      // Build the subject list from the subjects supported by ExamReady first.
+      // This keeps the library useful even when a subject has no videos yet.
+      const grouped: SubjectGroup[] = availableSubjects.map(subject => {
+        const topicMap = subjectMap.get(subject) || new Map<string, Map<string, VideoLesson[]>>();
         const topics: TopicGroup[] = Array.from(topicMap.entries()).map(([topic, subMap]) => {
           const subtopics: SubtopicGroup[] = Array.from(subMap.entries()).map(([subtopic, vids]) => ({
             subtopic,
@@ -157,6 +171,7 @@ export default function Videos({ navigatePath, renderBottomNavigation }: VideosP
             videoCount: vids_count(subtopics),
           };
         });
+
         return {
           subject,
           accent: subjectAccents[subject] || '#FF6B35',
@@ -165,7 +180,25 @@ export default function Videos({ navigatePath, renderBottomNavigation }: VideosP
         };
       });
 
-      // Sort subjects alphabetically, topics alphabetically
+      // Include any additional subject added to video_lessons later.
+      for (const [subject, topicMap] of subjectMap.entries()) {
+        if (grouped.some(g => g.subject === subject)) continue;
+        const topics: TopicGroup[] = Array.from(topicMap.entries()).map(([topic, subMap]) => {
+          const subtopics: SubtopicGroup[] = Array.from(subMap.entries()).map(([subtopic, vids]) => ({
+            subtopic,
+            videos: vids,
+            totalDuration: vids.reduce((s, v) => s + (v.duration_minutes || 0), 0),
+          }));
+          return { topic, subtopics, videoCount: vids_count(subtopics) };
+        });
+        grouped.push({
+          subject,
+          accent: subjectAccents[subject] || '#FF6B35',
+          topics,
+          videoCount: topics.reduce((s, t) => s + t.videoCount, 0),
+        });
+      }
+
       grouped.sort((a, b) => a.subject.localeCompare(b.subject));
       grouped.forEach(g => g.topics.sort((a, b) => a.topic.localeCompare(b.topic)));
 
@@ -339,15 +372,16 @@ export default function Videos({ navigatePath, renderBottomNavigation }: VideosP
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Subjects are always shown. Individual subjects display their own empty state
+            until lessons are uploaded. */}
         {!loading && !error && subjects.length === 0 && (
           <div className="rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[#0B1324]/85 p-8 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#FF6B35]/15">
               <Sparkles className="h-8 w-8 text-[#FF6B35]" />
             </div>
-            <h2 className="mt-4 font-heading text-xl font-bold text-white">Coming soon</h2>
+            <h2 className="mt-4 font-heading text-xl font-bold text-white">No subjects available</h2>
             <p className="mt-2 font-sans text-sm leading-6 text-[#8B9CB8]">
-              We&apos;re adding video lessons for every subject. Check back soon — new lessons are uploaded regularly.
+              Please try again later.
             </p>
           </div>
         )}
@@ -392,7 +426,14 @@ export default function Videos({ navigatePath, renderBottomNavigation }: VideosP
 
                     {expanded && (
                       <div className="space-y-2 px-4 pb-4">
-                        {group.topics.map(topicGroup => {
+                        {group.topics.length === 0 ? (
+                          <div className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-[#0A0F1E]/60 p-4">
+                            <p className="font-heading text-sm font-semibold text-white">Lessons coming soon</p>
+                            <p className="mt-1 font-sans text-xs leading-5 text-[#8B9CB8]">
+                              Video lessons for {group.subject} are being added. Check back soon.
+                            </p>
+                          </div>
+                        ) : group.topics.map(topicGroup => {
                           const topicKey = `${group.subject}::${topicGroup.topic}`;
                           const topicExpanded = expandedTopic === topicKey;
                           return (
