@@ -7,7 +7,7 @@ interface Question {
   subject: string;
   topic: string;
   subtopic: string;
-  question: string;
+  question_text: string;
   option_a: string;
   option_b: string;
   option_c: string;
@@ -283,7 +283,7 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
           {/* Question Text */}
           {currentQuestion && (
             <h2 className="mb-6 text-base font-bold leading-relaxed text-white sm:text-lg">
-              {currentQuestion.question}
+              {currentQuestion.question_text}
             </h2>
           )}
 
