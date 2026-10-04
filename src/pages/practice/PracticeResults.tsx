@@ -57,10 +57,18 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
   const totalQuestions: number = state.totalQuestions || sessionAnswers.length;
   const accuracy: number = state.accuracy || 0;
   
-  // Session configuration to pass through
-  const sessionSelections: Array<{ subject: string; topic: string }> = state.selections || [];
-  const sessionSubtopics: string[] = state.subtopics || [];
-  const sessionLimit: number = state.limit || 20;
+  // Session configuration to pass through. Fall back to the completed questions so
+  // Try Again still works if an older session did not preserve navigation state.
+  const questionSelections = questions.map(q => ({ subject: q.subject, topic: q.subtopic }));
+  const sessionSelections: Array<{ subject: string; topic: string }> =
+    Array.isArray(state.selections) && state.selections.length > 0
+      ? state.selections
+      : Array.from(new Map(questionSelections.map(item => [item.subject + '::' + item.topic, item])).values());
+  const sessionSubtopics: string[] =
+    Array.isArray(state.subtopics) && state.subtopics.length > 0
+      ? state.subtopics
+      : Array.from(new Set(questions.map(q => q.subtopic).filter(Boolean)));
+  const sessionLimit: number = state.limit || totalQuestions || 20;
 
   const [saving, setSaving] = useState(true);
   const [savingError, setSavingError] = useState<string | null>(null);
