@@ -139,11 +139,6 @@ export default function Videos({ navigatePath, renderBottomNavigation }: VideosP
 
       const videos = (data || []) as VideoLesson[];
 
-      if (videos.length === 0) {
-        setSubjects([]);
-        return;
-      }
-
       // Group: subject -> topic -> subtopic
       const subjectMap = new Map<string, Map<string, Map<string, VideoLesson[]>>>();
       for (const v of videos) {
