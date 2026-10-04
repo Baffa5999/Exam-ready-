@@ -162,6 +162,11 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
   };
 
   const handleSubmit = () => {
+    // Preserve the exact topics/subtopics used for this session so Results -> Try Again
+    // can restore the same practice configuration.
+    const { topics, limit } = getSessionParams();
+    const subtopics = Array.from(new Set(topics.map(item => item.topic).filter(Boolean)));
+
     // Calculate results
     const answers: SessionAnswer[] = questions.map(q => {
       const userAnswer = sessionAnswers.get(q.id) || null;
@@ -182,6 +187,10 @@ export default function PracticeSession({ navigatePath, renderBottomNavigation, 
       correctCount,
       totalQuestions: questions.length,
       accuracy,
+      subjects: Array.from(new Set(topics.map(item => item.subject).filter(Boolean))),
+      subtopics,
+      selections: topics,
+      limit,
     });
   };
 
