@@ -7,7 +7,7 @@ interface Question {
   subject: string;
   topic: string;
   subtopic: string;
-  question: string;
+  question_text: string;
   option_a: string;
   option_b: string;
   option_c: string;
@@ -285,7 +285,7 @@ export default function PracticeResults({ navigatePath, renderBottomNavigation, 
 
         <main className="mx-auto max-w-4xl px-5 py-8">
           <section className="rounded-[28px] border border-white/10 bg-[#0B1324]/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_18px_55px_rgba(0,0,0,0.24)] sm:p-6">
-            <h2 className="mb-6 text-lg font-bold leading-relaxed text-white sm:text-2xl">{question.question}</h2>
+            <h2 className="mb-6 text-lg font-bold leading-relaxed text-white sm:text-2xl">{question.question_text}</h2>
 
             <div className="space-y-3">
               {options.map(option => {
