@@ -8,6 +8,8 @@ interface LeaderboardEntry {
   username: string;
   accuracy: number;
   questions_attempted: number;
+  points: number;
+  subject?: string;
 }
 
 interface LeaderboardProps {
@@ -31,7 +33,7 @@ export default function Leaderboard({ currentPath, onNavigate }: LeaderboardProp
         const { data, error: err } = await supabase
           .from(view)
           .select('*')
-          .order('rank', { ascending: true })
+          .order('points', { ascending: false })
           .limit(50);
 
         if (err) throw err;
@@ -40,8 +42,10 @@ export default function Leaderboard({ currentPath, onNavigate }: LeaderboardProp
           (data || []).map((entry: any, index: number) => ({
             rank: index + 1,
             username: entry.username || 'Anonymous',
-            accuracy: entry.accuracy || 0,
-            questions_attempted: entry.questions_attempted || 0
+            accuracy: Number(entry.accuracy || 0),
+            questions_attempted: Number(entry.total_attempted || 0),
+            points: Number(entry.points || 0),
+            subject: entry.subject || undefined
           }))
         );
       } catch (err) {
@@ -124,12 +128,12 @@ export default function Leaderboard({ currentPath, onNavigate }: LeaderboardProp
                   </div>
                   <div>
                     <p className="font-sans font-semibold text-white">{entry.username}</p>
-                    <p className="text-xs text-[#8B9CB8]">{entry.questions_attempted} questions</p>
+                    <p className="text-xs text-[#8B9CB8]">{entry.questions_attempted} questions{entry.subject ? ' • ' + entry.subject : ''}</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="font-heading text-lg font-bold text-[#FF6B35]">{entry.accuracy}%</p>
-                  <p className="text-xs text-[#8B9CB8]">Accuracy</p>
+                  <p className="text-xs text-[#8B9CB8]">{entry.points} points</p>
                 </div>
               </div>
             ))}
