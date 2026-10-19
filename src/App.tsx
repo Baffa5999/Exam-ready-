@@ -65,8 +65,10 @@ function App() {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user || null);
+        // Read the locally persisted session first so startup does not require
+        // a network request. This lets returning users open the app offline.
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
       } catch (error) {
         console.error('Failed to initialize auth:', error);
         setUser(null);
