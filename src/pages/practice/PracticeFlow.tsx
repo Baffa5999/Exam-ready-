@@ -93,6 +93,7 @@ export default function PracticeFlow({ route, navigatePath, renderBottomNavigati
             .from('questions')
             .select('topic, subtopic')
             .eq('subject', subject.name)
+            .order('id', { ascending: true })
             .range(offset, offset + pageSize - 1);
 
           if (error) {
