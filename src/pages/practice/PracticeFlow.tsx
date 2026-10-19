@@ -33,28 +33,10 @@ const subjectLibrary: Subject[] = [
   { name: 'English Language', accent: '#2EC4B6', gradient: 'from-[#2EC4B6] to-[#118A7E]' },
   { name: 'Biology', accent: '#00FF87', gradient: 'from-[#00FF87] to-[#0B8F52]' },
   { name: 'Chemistry', accent: '#9B5DE5', gradient: 'from-[#9B5DE5] to-[#5D2E91]' },
+  { name: 'Economics', accent: '#F15BB5', gradient: 'from-[#F15BB5] to-[#B5179E]' },
   { name: 'Physics', accent: '#FF6B35', gradient: 'from-[#FF6B35] to-[#F7931E]' },
   { name: 'Literature', accent: '#F15BB5', gradient: 'from-[#F15BB5] to-[#B5179E]' },
 ];
-
-const subtopicsBySubject: Record<string, string[]> = {
-  Mathematics: ['Number and Numeration', 'Algebra', 'Geometry and Trigonometry', 'Statistics and Probability', 'Calculus'],
-  Biology: ['Cell Biology', 'Genetics and Evolution', 'Ecology', 'Human Biology and Health', 'Plant Biology'],
-  Chemistry: ['Physical Chemistry', 'Organic Chemistry', 'Inorganic Chemistry', 'Electrochemistry', 'Environmental Chemistry'],
-  Physics: ['Mechanics', 'Waves and Optics', 'Electricity and Magnetism', 'Modern Physics', 'Thermodynamics'],
-  'English Language': ['Comprehension', 'Lexis and Structure', 'Oral English', 'Essay and Letter Writing', 'Figures of Speech'],
-  Literature: ['Poetry', 'Prose', 'Drama', 'Literary Devices', 'African Literature'],
-};
-
-const fallbackPracticeSubtopicsByTopic: Record<string, Record<string, string[]>> = {
-  Mathematics: {
-    'Number and Numeration': ['Number Bases', 'Fractions Decimals and Percentages'],
-    Algebra: [],
-    'Geometry and Trigonometry': [],
-    'Statistics and Probability': [],
-    Calculus: [],
-  },
-};
 
 const pageClass = 'min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,107,53,0.10),transparent_34%),#0A0F1E] pb-36 text-white font-sans';
 const mainClass = 'mx-auto max-w-5xl space-y-7 px-4 py-6 sm:px-6 md:px-10 md:py-8 animate-fade-up';
@@ -83,6 +65,7 @@ export default function PracticeFlow({ route, navigatePath, renderBottomNavigati
   const [expandedTopics, setExpandedTopics] = useState<Record<string, string[]>>({});
   const [availableSubtopics, setAvailableSubtopics] = useState<Record<string, PracticeTopicAvailability[]>>({});
   const [loadingAvailability, setLoadingAvailability] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
   const isSubjectsPage = route === '/practice/subjects';
 
@@ -94,33 +77,49 @@ export default function PracticeFlow({ route, navigatePath, renderBottomNavigati
     const loadAvailableSubtopics = async () => {
       setLoadingAvailability(true);
 
-      const subjects = subjectLibrary.filter(s => s.name !== 'Literature');
+      const subjects = subjectLibrary;
       const nextAvailability: Record<string, PracticeTopicAvailability[]> = {};
+      const failedSubjects: string[] = [];
+      const pageSize = 1000;
 
       await Promise.all(subjects.map(async subject => {
-        const { data, error } = await supabase
-          .from('questions')
-          .select('topic, subtopic')
-          .eq('subject', subject.name);
-
-        if (error) {
-          nextAvailability[subject.name] = [];
-          return;
-        }
-
         const uniqueRows = new Map<string, PracticeTopicAvailability>();
-        (data || []).forEach(row => {
-          const topic = `${row.topic || ''}`.trim();
-          const subtopic = `${row.subtopic || ''}`.trim();
-          if (!topic || !subtopic) return;
-          uniqueRows.set(`${topic}::${subtopic}`, { topic, subtopic });
-        });
+        let offset = 0;
+
+        // Supabase may cap a response at 1,000 rows. Fetch every page so
+        // subtopics occurring later in a large question bank are not missed.
+        while (true) {
+          const { data, error } = await supabase
+            .from('questions')
+            .select('topic, subtopic')
+            .eq('subject', subject.name)
+            .range(offset, offset + pageSize - 1);
+
+          if (error) {
+            failedSubjects.push(subject.name);
+            break;
+          }
+
+          const rows = data || [];
+          rows.forEach(row => {
+            const topic = `${row.topic || ''}`.trim();
+            const subtopic = `${row.subtopic || ''}`.trim();
+            if (!topic || !subtopic) return;
+            uniqueRows.set(`${topic}::${subtopic}`, { topic, subtopic });
+          });
+
+          if (rows.length < pageSize) break;
+          offset += pageSize;
+        }
 
         nextAvailability[subject.name] = Array.from(uniqueRows.values());
       }));
 
       if (!cancelled) {
         setAvailableSubtopics(nextAvailability);
+        setAvailabilityError(failedSubjects.length > 0
+          ? `Could not load database topics for: ${Array.from(new Set(failedSubjects)).join(', ')}. Check your connection and try again.`
+          : null);
         setLoadingAvailability(false);
       }
     };
@@ -130,21 +129,15 @@ export default function PracticeFlow({ route, navigatePath, renderBottomNavigati
     return () => { cancelled = true; };
   }, [isSubjectsPage]);
 
-  const getTopicsForSubject = (subject: string) => {
-    const staticTopics = subtopicsBySubject[subject] || [];
-    const dynamicTopics = (availableSubtopics[subject] || []).map(row => row.topic).filter(Boolean);
-    return Array.from(new Set([...staticTopics, ...dynamicTopics]));
-  };
+  // The database is the source of truth: don't invent static topics/subtopics
+  // that have no matching question records.
+  const getTopicsForSubject = (subject: string) =>
+    Array.from(new Set((availableSubtopics[subject] || []).map(row => row.topic).filter(Boolean)));
 
   const getAvailableSubtopicRows = (subject: string, topic: string) => {
     const rows = availableSubtopics[subject] || [];
-    const fallbackSubtopics = fallbackPracticeSubtopicsByTopic[subject]?.[topic] || [];
-    const availableSubtopicsList = rows.filter(row => row.topic === topic).map(row => row.subtopic).filter(Boolean);
-    const merged = Array.from(new Set([...fallbackSubtopics, ...availableSubtopicsList]));
-    return merged.map(subtopic => ({
-      name: subtopic,
-      available: availableSubtopicsList.includes(subtopic),
-    }));
+    return Array.from(new Set(rows.filter(row => row.topic === topic).map(row => row.subtopic).filter(Boolean)))
+      .map(subtopic => ({ name: subtopic, available: true }));
   };
 
   const getSelectableSubtopics = (subject: string, topic: string) =>
@@ -319,7 +312,7 @@ export default function PracticeFlow({ route, navigatePath, renderBottomNavigati
 
   // ── Practice Subject Selection Page ──
   if (isSubjectsPage) {
-    const practiceSubjects = subjectLibrary.filter(s => s.name !== 'Literature');
+    const practiceSubjects = subjectLibrary.filter(s => (availableSubtopics[s.name] || []).length > 0);
 
     return (
       <div className={pageClass}>
@@ -331,7 +324,17 @@ export default function PracticeFlow({ route, navigatePath, renderBottomNavigati
           {loadingAvailability && (
             <p className="mt-2 inline-flex items-center gap-2 font-sans text-xs font-normal text-[#8B9CB8]">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-[#FF6B35]" />
-              Checking available questions...
+              Loading all available database subtopics...
+            </p>
+          )}
+          {availabilityError && (
+            <p role="alert" className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm leading-5 text-amber-200">
+              {availabilityError} Some subjects may be incomplete until the request succeeds.
+            </p>
+          )}
+          {!loadingAvailability && practiceSubjects.length === 0 && !availabilityError && (
+            <p className="mt-3 rounded-xl border border-white/10 bg-[#0B1324]/85 p-4 text-sm text-[#8B9CB8]">
+              No subjects with available question subtopics were found.
             </p>
           )}
 
